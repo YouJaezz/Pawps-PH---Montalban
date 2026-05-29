@@ -12,6 +12,7 @@ import {
   displayCatalogFlavor,
   displayCatalogItem,
 } from "@/lib/catalog-item-display";
+import { requireAuth } from "@/lib/auth-guard";
 import { and, eq } from "drizzle-orm";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
@@ -47,6 +48,8 @@ export async function createProduct(
   _prev: CreateProductResult | null,
   formData: FormData,
 ): Promise<CreateProductResult> {
+  await requireAuth();
+
   const supplierId = Number.parseInt(
     String(formData.get("supplierId") ?? ""),
     10,
@@ -174,6 +177,8 @@ export async function createProduct(
 }
 
 export async function restockProduct(formData: FormData) {
+  await requireAuth();
+
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
   const quantity = parseIntOr(formData.get("quantity"), 0);
   const noteRaw = String(formData.get("note") ?? "").trim();

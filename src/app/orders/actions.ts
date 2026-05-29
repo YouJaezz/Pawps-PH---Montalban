@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAuth } from "@/lib/auth-guard";
 import { db } from "@/db";
 import {
   deliveryLogs,
@@ -26,6 +27,8 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
 }
 
 export async function quickSell(formData: FormData) {
+  await requireAuth();
+
   const productId = parseIntOr(formData.get("productId"), 0);
   const quantity = parseIntOr(formData.get("quantity"), 1);
   const priceTier = String(formData.get("priceTier") ?? "Retail") as
@@ -129,6 +132,8 @@ export async function quickSell(formData: FormData) {
 }
 
 export async function createBulkOrder(formData: FormData) {
+  await requireAuth();
+
   const customerName = String(formData.get("customerName") ?? "").trim();
   const locationRaw = String(formData.get("location") ?? "").trim();
   const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
@@ -249,6 +254,8 @@ export async function createBulkOrder(formData: FormData) {
 }
 
 export async function cancelOrder(formData: FormData) {
+  await requireAuth();
+
   const orderId = parseIntOr(formData.get("orderId"), 0);
   if (!orderId) throw new Error("Invalid order.");
 
@@ -354,6 +361,8 @@ export async function cancelOrder(formData: FormData) {
 }
 
 export async function addPayment(formData: FormData) {
+  await requireAuth();
+
   const orderId = parseIntOr(formData.get("orderId"), 0);
   const addAmount = parseMoneyToCents(formData.get("addAmount"));
   if (!orderId || addAmount <= 0) throw new Error("Invalid payment.");

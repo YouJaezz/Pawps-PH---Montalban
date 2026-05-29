@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { transportJobs } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const str = typeof value === "string" ? value.trim() : "";
@@ -13,6 +14,8 @@ function parseMoneyToCents(value: FormDataEntryValue | null) {
 }
 
 export async function createTransportJob(formData: FormData) {
+  await requireAuth();
+
   const customerName = String(formData.get("customerName") ?? "").trim();
   const contactRaw = String(formData.get("contact") ?? "").trim();
   const pickupLocation = String(formData.get("pickupLocation") ?? "").trim();

@@ -13,6 +13,7 @@ import {
   suppliers,
 } from "@/db/schema";
 import { parseSupplierFile } from "@/lib/supplier-parse";
+import { requireAuth } from "@/lib/auth-guard";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
 import { eq } from "drizzle-orm";
 
@@ -23,6 +24,8 @@ async function ensureUploadDir() {
 }
 
 export async function createSupplier(formData: FormData) {
+  await requireAuth();
+
   const name = String(formData.get("name") ?? "").trim();
   const contactRaw = String(formData.get("contact") ?? "").trim();
   const locationRaw = String(formData.get("location") ?? "").trim();
@@ -41,6 +44,8 @@ export async function createSupplier(formData: FormData) {
 }
 
 export async function uploadSupplierCatalog(formData: FormData) {
+  await requireAuth();
+
   const supplierId = Number.parseInt(String(formData.get("supplierId") ?? ""), 10);
   const file = formData.get("file");
 
@@ -217,6 +222,8 @@ export async function uploadSupplierCatalog(formData: FormData) {
 }
 
 export async function deleteSupplierCatalogItem(formData: FormData) {
+  await requireAuth();
+
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
   if (!Number.isFinite(id) || id <= 0) throw new Error("Invalid item.");
 

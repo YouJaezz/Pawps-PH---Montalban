@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { products } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { asc, eq } from "drizzle-orm";
 
 export async function GET() {
+  await requireAuth();
   const rows = await db
     .select({
       id: products.id,

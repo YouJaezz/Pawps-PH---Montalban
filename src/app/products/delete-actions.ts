@@ -2,11 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAuth } from "@/lib/auth-guard";
 import { db } from "@/db";
 import { orderItems, products, stockMovements } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
 export async function deleteProduct(formData: FormData) {
+  await requireAuth();
+
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
   if (!Number.isFinite(productId) || productId <= 0) {
     throw new Error("Invalid product.");

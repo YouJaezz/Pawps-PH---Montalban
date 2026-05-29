@@ -64,6 +64,13 @@
       "when": 1780068000000,
       "tag": "0008_catalog_item_type_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1780069000000,
+      "tag": "0009_users",
+      "breakpoints": true
     }
   ]
 }

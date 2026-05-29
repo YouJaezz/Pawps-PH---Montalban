@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   description: "ERP dashboard for pet supply operations",
 };
 
+/** Always render on the server — pages query Turso/SQLite at request time. */
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { deliveryLogs } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const str = typeof value === "string" ? value.trim() : "";
@@ -13,6 +14,8 @@ function parseMoneyToCents(value: FormDataEntryValue | null) {
 }
 
 export async function createDeliveryLog(formData: FormData) {
+  await requireAuth();
+
   const orderIdRaw = String(formData.get("orderId") ?? "").trim();
   const orderId = orderIdRaw ? Number.parseInt(orderIdRaw, 10) : null;
   const customerNameRaw = String(formData.get("customerName") ?? "").trim();
