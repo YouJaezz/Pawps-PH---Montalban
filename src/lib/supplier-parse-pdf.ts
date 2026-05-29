@@ -1,7 +1,5 @@
 import type { ParsedCatalogRow } from "@/lib/catalog-fields";
-import { buildCatalogRow, detectPdfFormat, formatNotes } from "@/lib/catalog-fields";
-import { configurePdfWorker } from "@/lib/pdf-worker";
-import { parseWsPriceListText } from "@/lib/supplier-parse-pdf-ws";
+import { buildCatalogRow, formatNotes } from "@/lib/catalog-fields";
 
 const SKIP_LINE =
   /^(?:--\s*\d+\s+of\s+\d+\s+--|\(\s*\)|FREE DELIVERY|Discounts Available|Prices are subject|OPEN FOR RESELLERS|BRANCH LOCATIONS|Bulk Discount)/i;
@@ -421,27 +419,6 @@ export function parseMayPriceListText(text: string): ParsedCatalogRow[] {
       currentItemType ||
       "General",
   }));
-}
-
-async function configurePdfWorkerForParse(PDFParse: {
-  setWorker: (workerSrc?: string) => string;
-}) {
-  await configurePdfWorker(PDFParse);
-}
-
-export async function parsePdfBuffer(buffer: Buffer): Promise<ParsedCatalogRow[]> {
-  const { PDFParse } = await import("pdf-parse");
-  await configurePdfWorkerForParse(PDFParse);
-
-  const parser = new PDFParse({ data: buffer });
-  const result = await parser.getText();
-  await parser.destroy();
-
-  const format = detectPdfFormat(result.text);
-  if (format === "ws") {
-    return parseWsPriceListText(result.text);
-  }
-  return parseMayPriceListText(result.text);
 }
 
 /** @deprecated use parseMayPriceListText */

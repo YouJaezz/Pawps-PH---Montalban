@@ -149,7 +149,7 @@ export async function parseSupplierFile(
   }
 
   if (ext === "pdf") {
-    const { parsePdfBuffer } = await import("@/lib/supplier-parse-pdf");
+    const { parsePdfBuffer } = await import("@/lib/pdf-parse-server");
     return parsePdfBuffer(buffer);
   }
 
