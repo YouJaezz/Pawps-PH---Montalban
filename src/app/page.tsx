@@ -1,65 +1,135 @@
-import Image from "next/image";
+import { StatCard } from "@/components/StatCard";
+import { AppShell } from "@/components/AppShell";
+import { ScrollableTable } from "@/components/ScrollableTable";
+import { getInventoryAtAGlance } from "@/db/queries/inventory";
+import { getBusinessInsights } from "@/db/queries/business";
+import { formatPhpFromCents } from "@/lib/money";
+import Link from "next/link";
 
-export default function Home() {
+function formatDateShort(d: Date) {
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
+export default async function Home() {
+  const glance = await getInventoryAtAGlance({ daysUntilExpiry: 30 });
+  const insights = await getBusinessInsights();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <AppShell>
+      <div className="w-full px-0 py-4">
+        <div className="flex flex-col gap-2">
+          <div className="text-sm text-zinc-400">Dashboard</div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Inventory Dashboard
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-sm text-zinc-400">
+            At-a-glance stock health and expiry risk.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href="/products"
+            className="rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Add / Manage Products
+          </Link>
+          <Link
+            href="/orders"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
           >
-            Documentation
-          </a>
+            Sales & Orders
+          </Link>
+          <div className="text-xs text-zinc-400">
+            (Quick Sell modal will be on this dashboard next.)
+          </div>
         </div>
-      </main>
-    </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <StatCard
+            title="Total stock value (cost basis)"
+            value={formatPhpFromCents(glance.totalStockValueCents)}
+            subtitle="Sum of costPrice × stockQuantity"
+          />
+          <StatCard
+            title="Items expiring soon"
+            value={`${glance.expiringSoonCount}`}
+            subtitle={`Within 30 days (by ${formatDateShort(glance.cutoff)})`}
+          />
+          <StatCard
+            title="Income (last 30 days)"
+            value={formatPhpFromCents(insights.incomeLast30DaysCents)}
+            subtitle="From paid orders"
+          />
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href="/reports"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
+          >
+            View Business Insights
+          </Link>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm text-zinc-300">Expiring soon</div>
+              <div className="mt-1 text-xs text-zinc-400">
+                Showing up to 8 products with an expiry date in the next 30 days.
+              </div>
+            </div>
+            <div className="text-xs text-zinc-400">
+              (Quick Sell + Bulk Tools next)
+            </div>
+          </div>
+
+          <ScrollableTable maxHeight="max-h-[min(50vh,400px)]">
+            <table className="w-full text-sm">
+              <thead className="bg-white/5 text-left text-zinc-300">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Product</th>
+                  <th className="px-4 py-3 font-medium">Stock</th>
+                  <th className="px-4 py-3 font-medium">Expiry</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {glance.expiringSoon.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-4 text-zinc-400" colSpan={3}>
+                      No expiring items found (or no products yet).
+                    </td>
+                  </tr>
+                ) : (
+                  glance.expiringSoon.map((p) => (
+                    <tr key={p.id} className="hover:bg-white/5">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-zinc-50">
+                          {p.name}
+                        </div>
+                        <div className="text-xs text-zinc-400">
+                          {[p.brand, p.variant].filter(Boolean).join(" • ")}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-200">
+                        {p.stockQuantity}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-200">
+                        {p.expiryDate ? formatDateShort(p.expiryDate) : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </ScrollableTable>
+        </div>
+      </div>
+    </AppShell>
   );
 }

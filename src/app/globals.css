@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Sticky table headers inside scrollable table shells */
+.scrollable-table-body thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #121218;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
