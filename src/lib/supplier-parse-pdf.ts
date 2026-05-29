@@ -1,9 +1,6 @@
 import type { ParsedCatalogRow } from "@/lib/catalog-fields";
-import {
-  buildCatalogRow,
-  detectPdfFormat,
-  formatNotes,
-} from "@/lib/catalog-fields";
+import { buildCatalogRow, detectPdfFormat, formatNotes } from "@/lib/catalog-fields";
+import { configurePdfWorker } from "@/lib/pdf-worker";
 import { parseWsPriceListText } from "@/lib/supplier-parse-pdf-ws";
 
 const SKIP_LINE =
@@ -426,27 +423,15 @@ export function parseMayPriceListText(text: string): ParsedCatalogRow[] {
   }));
 }
 
-async function configurePdfWorker(PDFParse: {
+async function configurePdfWorkerForParse(PDFParse: {
   setWorker: (workerSrc?: string) => string;
 }) {
-  const path = await import("path");
-  const { pathToFileURL } = await import("url");
-
-  const workerPath = path.join(
-    process.cwd(),
-    "node_modules",
-    "pdfjs-dist",
-    "legacy",
-    "build",
-    "pdf.worker.mjs",
-  );
-
-  PDFParse.setWorker(pathToFileURL(workerPath).href);
+  await configurePdfWorker(PDFParse);
 }
 
 export async function parsePdfBuffer(buffer: Buffer): Promise<ParsedCatalogRow[]> {
   const { PDFParse } = await import("pdf-parse");
-  await configurePdfWorker(PDFParse);
+  await configurePdfWorkerForParse(PDFParse);
 
   const parser = new PDFParse({ data: buffer });
   const result = await parser.getText();

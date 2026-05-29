@@ -1,7 +1,5 @@
 "use server";
 
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
@@ -17,11 +15,22 @@ import { requireAuth } from "@/lib/auth-guard";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
 import { eq } from "drizzle-orm";
 
-const UPLOAD_DIR = path.join(process.cwd(), "storage", "supplier-uploads");
+const INSERT_CHUNK = 40;
 
-async function ensureUploadDir() {
-  await mkdir(UPLOAD_DIR, { recursive: true });
+function chunk<T>(rows: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) {
+    out.push(rows.slice(i, i + size));
+  }
+  return out;
 }
+
+export type UploadCatalogResult = {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  itemCount?: number;
+};
 
 export async function createSupplier(formData: FormData) {
   await requireAuth();
@@ -43,182 +52,223 @@ export async function createSupplier(formData: FormData) {
   revalidatePath("/suppliers");
 }
 
-export async function uploadSupplierCatalog(formData: FormData) {
-  await requireAuth();
+export async function uploadSupplierCatalog(
+  _prev: UploadCatalogResult | null,
+  formData: FormData,
+): Promise<UploadCatalogResult> {
+  try {
+    await requireAuth();
 
-  const supplierId = Number.parseInt(String(formData.get("supplierId") ?? ""), 10);
-  const file = formData.get("file");
+    const supplierId = Number.parseInt(
+      String(formData.get("supplierId") ?? ""),
+      10,
+    );
+    const file = formData.get("file");
 
-  if (!Number.isFinite(supplierId) || supplierId <= 0) {
-    throw new Error("Select a supplier.");
-  }
+    if (!Number.isFinite(supplierId) || supplierId <= 0) {
+      return { error: "Select a supplier." };
+    }
 
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("Choose a file to upload.");
-  }
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Choose a file to upload." };
+    }
 
-  const [supplier] = await db
-    .select({ id: suppliers.id })
-    .from(suppliers)
-    .where(eq(suppliers.id, supplierId))
-    .limit(1);
+    if (file.size > 10 * 1024 * 1024) {
+      return { error: "File is too large (max 10 MB)." };
+    }
 
-  if (!supplier) throw new Error("Supplier not found.");
+    const [supplier] = await db
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.id, supplierId))
+      .limit(1);
 
-  const existingCatalog = await db
-    .select({
-      id: supplierCatalogItems.id,
-      documentId: supplierCatalogItems.documentId,
-      itemName: supplierCatalogItems.itemName,
-      brand: supplierCatalogItems.brand,
-      variant: supplierCatalogItems.variant,
-      unitCost: supplierCatalogItems.unitCost,
-    })
-    .from(supplierCatalogItems)
-    .where(eq(supplierCatalogItems.supplierId, supplierId));
+    if (!supplier) return { error: "Supplier not found." };
 
-  const previousDocumentId =
-    existingCatalog.find((row) => row.documentId != null)?.documentId ?? null;
+    const existingCatalog = await db
+      .select({
+        id: supplierCatalogItems.id,
+        documentId: supplierCatalogItems.documentId,
+        itemName: supplierCatalogItems.itemName,
+        brand: supplierCatalogItems.brand,
+        variant: supplierCatalogItems.variant,
+        unitCost: supplierCatalogItems.unitCost,
+      })
+      .from(supplierCatalogItems)
+      .where(eq(supplierCatalogItems.supplierId, supplierId));
 
-  await ensureUploadDir();
+    const previousDocumentId =
+      existingCatalog.find((row) => row.documentId != null)?.documentId ?? null;
 
-  const safeName = file.name.replace(/[^\w.\-() ]+/g, "_");
-  const storedName = `${Date.now()}-${safeName}`;
-  const storedPath = path.join(UPLOAD_DIR, storedName);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(storedPath, buffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const safeName = file.name.replace(/[^\w.\-() ]+/g, "_");
 
-  const insertedDoc = await db
-    .insert(supplierDocuments)
-    .values({
-      supplierId,
-      fileName: file.name,
-      filePath: storedPath,
-      mimeType: file.type || null,
-    })
-    .returning({ id: supplierDocuments.id });
+    let parsed;
+    try {
+      parsed = await parseSupplierFile(buffer, file.name);
+    } catch (parseErr) {
+      console.error("Catalog parse failed:", parseErr);
+      return {
+        error:
+          parseErr instanceof Error
+            ? `Could not read file: ${parseErr.message}`
+            : "Could not read file. Try PDF, xlsx, or csv.",
+      };
+    }
 
-  const documentId = insertedDoc[0]?.id;
-  if (!documentId) throw new Error("Failed to save document record.");
+    if (parsed.length === 0) {
+      return {
+        error:
+          "No items found in this file. Use a supplier price list (PDF, xlsx, csv).",
+      };
+    }
 
-  const parsed = await parseSupplierFile(buffer, file.name);
-  const now = new Date();
+    const insertedDoc = await db
+      .insert(supplierDocuments)
+      .values({
+        supplierId,
+        fileName: file.name,
+        filePath: `catalog://${supplierId}/${Date.now()}-${safeName}`,
+        mimeType: file.type || null,
+      })
+      .returning({ id: supplierDocuments.id });
 
-  const oldByKey = new Map(
-    existingCatalog.map((row) => [
-      catalogItemKey(row),
-      row,
-    ]),
-  );
+    const documentId = insertedDoc[0]?.id;
+    if (!documentId) return { error: "Failed to save document record." };
 
-  const newByKey = new Map(
-    parsed.map((row) => [
-      catalogItemKey({
+    const now = new Date();
+
+    const oldByKey = new Map(
+      existingCatalog.map((row) => [catalogItemKey(row), row]),
+    );
+
+    const newByKey = new Map(
+      parsed.map((row) => [
+        catalogItemKey({
+          brand: row.brand,
+          variant: row.variant,
+          itemName: row.itemName,
+        }),
+        row,
+      ]),
+    );
+
+    const priceChangeRows: (typeof supplierPriceChanges.$inferInsert)[] = [];
+
+    for (const row of parsed) {
+      const key = catalogItemKey({
         brand: row.brand,
         variant: row.variant,
         itemName: row.itemName,
-      }),
-      row,
-    ]),
-  );
+      });
+      const previous = oldByKey.get(key);
+      const previousCost = previous?.unitCost ?? null;
+      const newCost = row.unitCostCents ?? null;
+      const changePct = percentChange(previousCost, newCost);
 
-  const priceChangeRows: (typeof supplierPriceChanges.$inferInsert)[] = [];
+      if (previousCost != null || newCost != null) {
+        priceChangeRows.push({
+          supplierId,
+          itemKey: key,
+          itemName: row.itemName,
+          brand: row.brand ?? null,
+          variant: row.variant ?? null,
+          previousUnitCost: previousCost,
+          newUnitCost: newCost,
+          changePercent:
+            changePct != null ? Math.round(changePct) : null,
+          previousDocumentId,
+          newDocumentId: documentId,
+          recordedAt: now,
+        });
+      }
+    }
 
-  for (const row of parsed) {
-    const key = catalogItemKey({
-      brand: row.brand,
-      variant: row.variant,
-      itemName: row.itemName,
-    });
-    const previous = oldByKey.get(key);
-    const previousCost = previous?.unitCost ?? null;
-    const newCost = row.unitCostCents ?? null;
-    const changePct = percentChange(previousCost, newCost);
-
-    if (previousCost != null || newCost != null) {
+    for (const [key, previous] of oldByKey) {
+      if (newByKey.has(key)) continue;
       priceChangeRows.push({
         supplierId,
         itemKey: key,
-        itemName: row.itemName,
-        brand: row.brand ?? null,
-        variant: row.variant ?? null,
-        previousUnitCost: previousCost,
-        newUnitCost: newCost,
-        changePercent:
-          changePct != null ? Math.round(changePct) : null,
+        itemName: previous.itemName,
+        brand: previous.brand,
+        variant: previous.variant,
+        previousUnitCost: previous.unitCost,
+        newUnitCost: null,
+        changePercent: null,
         previousDocumentId,
         newDocumentId: documentId,
         recordedAt: now,
       });
     }
-  }
 
-  for (const [key, previous] of oldByKey) {
-    if (newByKey.has(key)) continue;
-    priceChangeRows.push({
+    await db
+      .delete(supplierCatalogItems)
+      .where(eq(supplierCatalogItems.supplierId, supplierId));
+
+    const catalogRows = parsed.map((row) => ({
       supplierId,
-      itemKey: key,
-      itemName: previous.itemName,
-      brand: previous.brand,
-      variant: previous.variant,
-      previousUnitCost: previous.unitCost,
-      newUnitCost: null,
-      changePercent: null,
-      previousDocumentId,
-      newDocumentId: documentId,
+      documentId,
+      itemName: row.itemName,
+      brand: row.brand ?? null,
+      variant: row.variant ?? null,
+      sku: row.sku ?? null,
+      unitCost: row.unitCostCents ?? null,
+      packSize: row.packSize ?? null,
+      packUnit: row.packUnit ?? null,
+      perKiloPrice: row.perKiloCents ?? null,
+      retailPrice: row.retailPriceCents ?? null,
+      itemType: row.itemType ?? null,
+      productName: row.productName ?? null,
+      notes: row.notes ?? null,
+    }));
+
+    const historyRows = parsed.map((row) => ({
+      supplierId,
+      documentId,
+      itemKey: catalogItemKey({
+        brand: row.brand,
+        variant: row.variant,
+        itemName: row.itemName,
+      }),
+      itemName: row.itemName,
+      brand: row.brand ?? null,
+      variant: row.variant ?? null,
+      unitCost: row.unitCostCents ?? null,
+      retailPrice: row.retailPriceCents ?? null,
+      perKiloPrice: row.perKiloCents ?? null,
       recordedAt: now,
-    });
+    }));
+
+    for (const batch of chunk(catalogRows, INSERT_CHUNK)) {
+      await db.insert(supplierCatalogItems).values(batch);
+    }
+
+    if (priceChangeRows.length) {
+      for (const batch of chunk(priceChangeRows, INSERT_CHUNK)) {
+        await db.insert(supplierPriceChanges).values(batch);
+      }
+    }
+
+    for (const batch of chunk(historyRows, INSERT_CHUNK)) {
+      await db.insert(supplierPriceHistory).values(batch);
+    }
+
+    revalidatePath("/suppliers");
+
+    return {
+      ok: true,
+      message: `Imported ${parsed.length} items for this supplier.`,
+      itemCount: parsed.length,
+    };
+  } catch (err) {
+    console.error("uploadSupplierCatalog failed:", err);
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Upload failed. Please try again.",
+    };
   }
-
-  if (priceChangeRows.length) {
-    await db.insert(supplierPriceChanges).values(priceChangeRows);
-  }
-
-  await db
-    .delete(supplierCatalogItems)
-    .where(eq(supplierCatalogItems.supplierId, supplierId));
-
-  if (parsed.length) {
-    await db.insert(supplierCatalogItems).values(
-      parsed.map((row) => ({
-        supplierId,
-        documentId,
-        itemName: row.itemName,
-        brand: row.brand ?? null,
-        variant: row.variant ?? null,
-        sku: row.sku ?? null,
-        unitCost: row.unitCostCents ?? null,
-        packSize: row.packSize ?? null,
-        packUnit: row.packUnit ?? null,
-        perKiloPrice: row.perKiloCents ?? null,
-        retailPrice: row.retailPriceCents ?? null,
-        itemType: row.itemType ?? null,
-        productName: row.productName ?? null,
-        notes: row.notes ?? null,
-      })),
-    );
-
-    await db.insert(supplierPriceHistory).values(
-      parsed.map((row) => ({
-        supplierId,
-        documentId,
-        itemKey: catalogItemKey({
-          brand: row.brand,
-          variant: row.variant,
-          itemName: row.itemName,
-        }),
-        itemName: row.itemName,
-        brand: row.brand ?? null,
-        variant: row.variant ?? null,
-        unitCost: row.unitCostCents ?? null,
-        retailPrice: row.retailPriceCents ?? null,
-        perKiloPrice: row.perKiloCents ?? null,
-        recordedAt: now,
-      })),
-    );
-  }
-
-  revalidatePath("/suppliers");
 }
 
 export async function deleteSupplierCatalogItem(formData: FormData) {

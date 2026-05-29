@@ -1,4 +1,5 @@
-import { createSupplier, uploadSupplierCatalog } from "@/app/suppliers/actions";
+import { createSupplier } from "@/app/suppliers/actions";
+import { UploadCatalogForm } from "@/app/suppliers/UploadCatalogForm";
 import { SupplierInflationPanel } from "@/app/suppliers/SupplierInflationPanel";
 import { SupplierSearch } from "@/app/suppliers/SupplierSearch";
 import { AppShell } from "@/components/AppShell";
@@ -81,44 +82,7 @@ export default async function SuppliersPage() {
               <p className="mt-0.5 text-[11px] text-zinc-500">
                 Replaces only the selected supplier&apos;s catalog.
               </p>
-              <form action={uploadSupplierCatalog} className="mt-3 space-y-2.5">
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Supplier *</span>
-                  <select
-                    name="supplierId"
-                    required
-                    className={inputClass}
-                    defaultValue={supplierRows[0]?.id ?? ""}
-                  >
-                    {supplierRows.length === 0 ? (
-                      <option value="">Add a supplier first</option>
-                    ) : (
-                      supplierRows.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">File *</span>
-                  <input
-                    name="file"
-                    type="file"
-                    required
-                    accept=".xlsx,.xls,.csv,.txt,.pdf"
-                    className="w-full text-[11px] text-zinc-400 file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-zinc-200"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={supplierRows.length === 0}
-                  className="w-full rounded-lg bg-zinc-50 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
-                >
-                  Upload &amp; replace
-                </button>
-              </form>
+              <UploadCatalogForm suppliers={supplierRows} />
             </div>
 
             {docs.length > 0 ? (
