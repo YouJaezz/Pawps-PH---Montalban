@@ -138,6 +138,8 @@ export const transportPricingSettings = sqliteTable("transport_pricing_settings"
   baseFeeCents: integer("base_fee_cents").notNull().default(15000),
   perKmCents: integer("per_km_cents").notNull().default(2500),
   minimumFeeCents: integer("minimum_fee_cents").notNull().default(15000),
+  trafficPerMinCents: integer("traffic_per_min_cents").notNull().default(800),
+  stopLightFeeCents: integer("stop_light_fee_cents").notNull().default(2000),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -181,6 +183,8 @@ export const transportJobs = sqliteTable("transport_jobs", {
   distanceKmTenths: integer("distance_km_tenths").notNull().default(0),
   baseFeeCents: integer("base_fee_cents").notNull().default(0),
   distanceFeeCents: integer("distance_fee_cents").notNull().default(0),
+  trafficFeeCents: integer("traffic_fee_cents").notNull().default(0),
+  stopLightFeeCents: integer("stop_light_fee_cents").notNull().default(0),
   extrasTotalCents: integer("extras_total_cents").notNull().default(0),
   trackingToken: text("tracking_token").unique(),
   driverLat: text("driver_lat"),

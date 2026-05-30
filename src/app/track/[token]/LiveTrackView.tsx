@@ -49,10 +49,10 @@ export function LiveTrackView(props: { token: string }) {
     return <p className="text-sm text-zinc-400">Loading live location…</p>;
   }
 
-  const mapUrl =
-    data.driverLat && data.driverLng
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(data.driverLng) - 0.02}%2C${Number(data.driverLat) - 0.02}%2C${Number(data.driverLng) + 0.02}%2C${Number(data.driverLat) + 0.02}&layer=mapnik&marker=${data.driverLat}%2C${data.driverLng}`
-      : null;
+  const hasLocation = Boolean(data.driverLat && data.driverLng);
+  const mapUrl = hasLocation
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(data.driverLng) - 0.02}%2C${Number(data.driverLat) - 0.02}%2C${Number(data.driverLng) + 0.02}%2C${Number(data.driverLat) + 0.02}&layer=mapnik&marker=${data.driverLat}%2C${data.driverLng}`
+    : null;
 
   return (
     <div className="space-y-4">
@@ -78,9 +78,22 @@ export function LiveTrackView(props: { token: string }) {
           />
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">
-          Driver location will appear once the trip starts.
-        </p>
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <p className="text-sm font-medium text-amber-100">
+            Waiting for driver location
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            The map appears once your driver starts sharing GPS from their phone.
+          </p>
+          <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-400">
+            <li>Driver opens Pawps PH → Transport jobs on their phone.</li>
+            <li>Opens this trip → taps <span className="text-zinc-200">Driver mode</span>.</li>
+            <li>Taps <span className="text-zinc-200">Start sharing location</span> and allows GPS.</li>
+          </ol>
+          <p className="mt-3 text-[10px] text-zinc-500">
+            This page refreshes every few seconds automatically.
+          </p>
+        </div>
       )}
 
       {data.lastLocationAt ? (

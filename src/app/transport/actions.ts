@@ -55,6 +55,14 @@ export async function createTransportJob(formData: FormData) {
   const distanceKmRaw = String(formData.get("distanceKm") ?? "").trim();
   const manualDistance = Number.parseFloat(distanceKmRaw);
   const autoEstimate = formData.get("autoEstimate") === "on";
+  const trafficBufferMinutes = Number.parseInt(
+    String(formData.get("trafficBufferMinutes") ?? "0"),
+    10,
+  );
+  const intersectionCount = Number.parseInt(
+    String(formData.get("intersectionCount") ?? "0"),
+    10,
+  );
 
   if (!customerName || !pickupLocation || !dropoffLocation) {
     throw new Error("Customer name, pickup, and dropoff are required.");
@@ -70,7 +78,12 @@ export async function createTransportJob(formData: FormData) {
 
   const extras = parseExtras(formData);
   const extrasTotalCents = extras.reduce((s, e) => s + e.amountCents, 0);
-  const feeCalc = calculateTransportFee(pricing, distanceKm, extrasTotalCents);
+  const feeCalc = calculateTransportFee(pricing, distanceKm, extrasTotalCents, {
+    trafficBufferMinutes: Number.isFinite(trafficBufferMinutes)
+      ? trafficBufferMinutes
+      : 0,
+    intersectionCount: Number.isFinite(intersectionCount) ? intersectionCount : 0,
+  });
 
   const trackingToken = randomUUID();
   const receiptNumber = `PPH-T-${Date.now().toString(36).toUpperCase()}`;
@@ -99,6 +112,8 @@ export async function createTransportJob(formData: FormData) {
       distanceKmTenths: kmToTenths(distanceKm),
       baseFeeCents: feeCalc.baseFeeCents,
       distanceFeeCents: feeCalc.distanceFeeCents,
+      trafficFeeCents: feeCalc.trafficFeeCents,
+      stopLightFeeCents: feeCalc.stopLightFeeCents,
       extrasTotalCents,
       trackingToken,
       receiptNumber,

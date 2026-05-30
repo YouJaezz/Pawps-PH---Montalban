@@ -6,6 +6,7 @@ import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 import type { GeoPoint } from "@/lib/transport-geo";
 import { PH_MAP_CENTER } from "@/lib/transport-geo";
 import { formatPhpFromCents } from "@/lib/money";
+import { calculateTravelFees } from "@/lib/transport-pricing";
 import {
   formatDurationMinutes,
   type TravelTimeEstimate,
@@ -27,6 +28,8 @@ export type RouteDistanceBreakdown = {
   durationMinutes: number | null;
   travelTime: TravelTimeEstimate | null;
   distanceFeeCents: number;
+  trafficFeeCents: number;
+  stopLightFeeCents: number;
   viaRoadNetwork: boolean;
 };
 
@@ -37,6 +40,8 @@ export function TransportRouteMap(props: {
   onDropoffChange: (point: GeoPoint | null) => void;
   onRoadKmChange: (km: number | null, breakdown: RouteDistanceBreakdown | null) => void;
   perKmCents: number;
+  trafficPerMinCents: number;
+  stopLightFeeCents: number;
   distanceKmInput: string;
   onDistanceKmInputChange: (value: string) => void;
 }) {
@@ -47,6 +52,8 @@ export function TransportRouteMap(props: {
     onDropoffChange,
     onRoadKmChange,
     perKmCents,
+    trafficPerMinCents,
+    stopLightFeeCents,
     distanceKmInput,
     onDistanceKmInputChange,
   } = props;
@@ -93,14 +100,23 @@ export function TransportRouteMap(props: {
 
   const breakdown = useMemo((): RouteDistanceBreakdown | null => {
     if (!pickup || !dropoff || !activeRouteData) return null;
+    const travelFees = calculateTravelFees(
+      { trafficPerMinCents, stopLightFeeCents },
+      {
+        trafficBufferMinutes: activeRouteData.travelTime?.trafficBufferMinutes,
+        intersectionCount: activeRouteData.travelTime?.intersectionCount,
+      },
+    );
     return {
       routeKm: activeRouteData.distanceKm,
       durationMinutes: activeRouteData.durationMinutes,
       travelTime: activeRouteData.travelTime,
       distanceFeeCents: Math.round(activeRouteData.distanceKm * perKmCents),
+      trafficFeeCents: travelFees.trafficFeeCents,
+      stopLightFeeCents: travelFees.stopLightFeeCents,
       viaRoadNetwork: true,
     };
-  }, [pickup, dropoff, activeRouteData, perKmCents]);
+  }, [pickup, dropoff, activeRouteData, perKmCents, trafficPerMinCents, stopLightFeeCents]);
 
   useEffect(() => {
     if (!breakdown) {
@@ -484,6 +500,24 @@ export function TransportRouteMap(props: {
                   </span>
                   <span className="font-semibold text-amber-200">
                     {formatDurationMinutes(breakdown.travelTime.totalEstimatedMinutes)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-amber-500/10 pt-1">
+                  <span>
+                    Traffic charge ({breakdown.travelTime.trafficBufferMinutes} min ×{" "}
+                    {formatPhpFromCents(trafficPerMinCents)}/min)
+                  </span>
+                  <span className="text-zinc-200">
+                    {formatPhpFromCents(breakdown.trafficFeeCents)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span>
+                    Stop lights ({breakdown.travelTime.intersectionCount} ×{" "}
+                    {formatPhpFromCents(stopLightFeeCents)})
+                  </span>
+                  <span className="text-zinc-200">
+                    {formatPhpFromCents(breakdown.stopLightFeeCents)}
                   </span>
                 </div>
               </>

@@ -41,6 +41,14 @@ export default async function DriverPage(props: {
         </p>
         <p className="text-xs text-zinc-500">Status: {job.status}</p>
 
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-400">
+          <div className="font-medium text-zinc-200">Before you drive</div>
+          <p className="mt-1">
+            Customer tracking only works while this page is open and location sharing
+            is started below.
+          </p>
+        </div>
+
         <div className="mt-4">
           <DriverTracker jobId={job.id} trackingToken={job.trackingToken} />
         </div>

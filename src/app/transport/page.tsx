@@ -49,6 +49,8 @@ export default async function TransportPage() {
             baseFeeCents={pricing.baseFeeCents}
             perKmCents={pricing.perKmCents}
             minimumFeeCents={pricing.minimumFeeCents}
+            trafficPerMinCents={pricing.trafficPerMinCents}
+            stopLightFeeCents={pricing.stopLightFeeCents}
           />
         </div>
 
@@ -63,6 +65,8 @@ export default async function TransportPage() {
                   baseFeeCents={pricing.baseFeeCents}
                   perKmCents={pricing.perKmCents}
                   minimumFeeCents={pricing.minimumFeeCents}
+                  trafficPerMinCents={pricing.trafficPerMinCents}
+                  stopLightFeeCents={pricing.stopLightFeeCents}
                 />
               </div>
             </div>

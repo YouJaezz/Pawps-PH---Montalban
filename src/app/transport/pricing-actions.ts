@@ -20,6 +20,8 @@ export async function updateTransportPricing(formData: FormData) {
   const baseFeeCents = parseMoneyToCents(formData.get("baseFee"));
   const perKmCents = parseMoneyToCents(formData.get("perKm"));
   const minimumFeeCents = parseMoneyToCents(formData.get("minimumFee"));
+  const trafficPerMinCents = parseMoneyToCents(formData.get("trafficPerMin"));
+  const stopLightFeeCents = parseMoneyToCents(formData.get("stopLightFee"));
 
   await db
     .insert(transportPricingSettings)
@@ -28,6 +30,8 @@ export async function updateTransportPricing(formData: FormData) {
       baseFeeCents,
       perKmCents,
       minimumFeeCents,
+      trafficPerMinCents,
+      stopLightFeeCents,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -36,6 +40,8 @@ export async function updateTransportPricing(formData: FormData) {
         baseFeeCents,
         perKmCents,
         minimumFeeCents,
+        trafficPerMinCents,
+        stopLightFeeCents,
         updatedAt: new Date(),
       },
     });

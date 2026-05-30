@@ -15,6 +15,8 @@ export async function getTransportPricing() {
       baseFeeCents: 15000,
       perKmCents: 2500,
       minimumFeeCents: 15000,
+      trafficPerMinCents: 800,
+      stopLightFeeCents: 2000,
       updatedAt: new Date(),
     }
   );

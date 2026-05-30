@@ -78,6 +78,13 @@
       "when": 1780070000000,
       "tag": "0010_erp_expansion",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1780071000000,
+      "tag": "0011_transport_traffic_fees",
+      "breakpoints": true
     }
   ]
 }

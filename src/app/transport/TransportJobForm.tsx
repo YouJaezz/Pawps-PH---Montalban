@@ -24,6 +24,8 @@ export function TransportJobForm(props: {
   baseFeeCents: number;
   perKmCents: number;
   minimumFeeCents: number;
+  trafficPerMinCents: number;
+  stopLightFeeCents: number;
 }) {
   const [pickupPoint, setPickupPoint] = useState<GeoPoint | null>(null);
   const [dropoffPoint, setDropoffPoint] = useState<GeoPoint | null>(null);
@@ -64,11 +66,19 @@ export function TransportJobForm(props: {
           baseFeeCents: props.baseFeeCents,
           perKmCents: props.perKmCents,
           minimumFeeCents: props.minimumFeeCents,
+          trafficPerMinCents: props.trafficPerMinCents,
+          stopLightFeeCents: props.stopLightFeeCents,
         },
         km,
         extrasTotalCents,
+        breakdown?.travelTime
+          ? {
+              trafficBufferMinutes: breakdown.travelTime.trafficBufferMinutes,
+              intersectionCount: breakdown.travelTime.intersectionCount,
+            }
+          : undefined,
       ),
-    [props, km, extrasTotalCents],
+    [props, km, extrasTotalCents, breakdown],
   );
 
   return (
@@ -102,6 +112,8 @@ export function TransportJobForm(props: {
         }}
         onRoadKmChange={handleRoadKmChange}
         perKmCents={props.perKmCents}
+        trafficPerMinCents={props.trafficPerMinCents}
+        stopLightFeeCents={props.stopLightFeeCents}
         distanceKmInput={distanceKm}
         onDistanceKmInputChange={handleDistanceInputChange}
       />
@@ -118,6 +130,16 @@ export function TransportJobForm(props: {
       />
       <input type="hidden" name="distanceKm" value={distanceKm} />
       <input type="hidden" name="autoEstimate" value={kmFromMap ? "on" : ""} />
+      <input
+        type="hidden"
+        name="trafficBufferMinutes"
+        value={breakdown?.travelTime?.trafficBufferMinutes ?? 0}
+      />
+      <input
+        type="hidden"
+        name="intersectionCount"
+        value={breakdown?.travelTime?.intersectionCount ?? 0}
+      />
 
       {!pickupPoint || !dropoffPoint ? (
         <p className="text-[11px] text-amber-300/80">
@@ -134,6 +156,18 @@ export function TransportJobForm(props: {
             ({breakdown.routeKm} km driving route ×{" "}
             {formatPhpFromCents(props.perKmCents)})
           </span>
+        ) : null}
+        {preview.trafficFeeCents > 0 ? (
+          <>
+            {" "}
+            + traffic {formatPhpFromCents(preview.trafficFeeCents)}
+          </>
+        ) : null}
+        {preview.stopLightFeeCents > 0 ? (
+          <>
+            {" "}
+            + stop lights {formatPhpFromCents(preview.stopLightFeeCents)}
+          </>
         ) : null}{" "}
         + extras {formatPhpFromCents(preview.extrasTotalCents)} ={" "}
         <span className="font-medium text-amber-200">

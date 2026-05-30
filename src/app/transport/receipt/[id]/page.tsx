@@ -79,6 +79,18 @@ export default async function TransportReceiptPage(props: {
               <span>Distance fee</span>
               <span>{formatPhpFromCents(job.distanceFeeCents)}</span>
             </div>
+            {job.trafficFeeCents > 0 ? (
+              <div className="flex justify-between">
+                <span>Traffic fee</span>
+                <span>{formatPhpFromCents(job.trafficFeeCents)}</span>
+              </div>
+            ) : null}
+            {job.stopLightFeeCents > 0 ? (
+              <div className="flex justify-between">
+                <span>Stop lights fee</span>
+                <span>{formatPhpFromCents(job.stopLightFeeCents)}</span>
+              </div>
+            ) : null}
             {extras.map((e) => (
               <div key={e.id} className="flex justify-between text-zinc-700">
                 <span>{e.label}</span>
