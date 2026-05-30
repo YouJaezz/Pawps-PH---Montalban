@@ -25,7 +25,38 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Sticky table headers inside scrollable table shells */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: #1a1a22;
+}
+
+.leaflet-tile-pane img,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.transport-map.leaflet-container {
+  height: 14rem;
+  min-height: 14rem;
+}
+
+@media (min-width: 640px) {
+  .transport-map.leaflet-container {
+    height: 16rem;
+    min-height: 16rem;
+  }
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: #a1a1aa !important;
+}
+
 .scrollable-table-body thead th {
   position: sticky;
   top: 0;

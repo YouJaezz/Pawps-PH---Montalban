@@ -1,4 +1,5 @@
 import { geocodeAddress } from "@/lib/geocode-server";
+import { getOsrmDrivingRoute } from "@/lib/osrm-routing";
 import { estimateRoadKmFromCoords } from "@/lib/transport-geo";
 
 type GeocodeResult = { lat: number; lng: number } | null;
@@ -14,6 +15,11 @@ export async function estimateRouteKm(
 
   if (!pickupGeo || !dropoffGeo) {
     return { km: null, pickup: pickupGeo, dropoff: dropoffGeo };
+  }
+
+  const osrm = await getOsrmDrivingRoute(pickupGeo, dropoffGeo);
+  if (osrm) {
+    return { km: osrm.distanceKm, pickup: pickupGeo, dropoff: dropoffGeo };
   }
 
   const { roadKm } = estimateRoadKmFromCoords(pickupGeo, dropoffGeo);

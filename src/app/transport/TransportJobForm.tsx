@@ -131,7 +131,8 @@ export function TransportJobForm(props: {
         {breakdown ? (
           <span className="text-zinc-600">
             {" "}
-            ({breakdown.roadKm} km × {formatPhpFromCents(props.perKmCents)})
+            ({breakdown.routeKm} km driving route ×{" "}
+            {formatPhpFromCents(props.perKmCents)})
           </span>
         ) : null}{" "}
         + extras {formatPhpFromCents(preview.extrasTotalCents)} ={" "}

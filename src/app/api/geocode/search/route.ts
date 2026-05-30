@@ -10,6 +10,6 @@ export async function GET(request: Request) {
     return NextResponse.json([]);
   }
 
-  const results = await searchAddresses(q, 6);
+  const results = await searchAddresses(q, 8);
   return NextResponse.json(results);
 }

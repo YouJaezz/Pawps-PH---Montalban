@@ -35,3 +35,6 @@ export function estimateRoadKmFromCoords(
 }
 
 export type GeoPoint = { lat: number; lng: number; label: string };
+
+/** Default map center — Montalban / Rizal service area. */
+export const PH_MAP_CENTER = { lat: 14.72, lng: 121.15 };
