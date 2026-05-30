@@ -117,6 +117,7 @@ Custom domain (e.g. `pawps.ph`) is optional — buy from Cloudflare/Namecheap la
 | `DATABASE_AUTH_TOKEN is required` | Add token in Vercel env vars (Step 2) |
 | Build fails on migrate | Ensure `DATABASE_URL` and `DATABASE_AUTH_TOKEN` are set for **Production** |
 | Login fails | Re-run migrate with `ADMIN_EMAIL` / `ADMIN_PASSWORD` set |
+| Customer tracking asks for Vercel login | Use **Copy customer link** (production URL). In Vercel → **Settings → Deployment Protection**, set scope to **Only Preview Deployments** so production stays public |
 
 ---
 

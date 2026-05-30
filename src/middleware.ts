@@ -3,12 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login", "/track"];
-
 function getSecret() {
   return new TextEncoder().encode(
     process.env.SESSION_SECRET ?? "dev-only-change-me-please",
   );
+}
+
+function isPublicPath(pathname: string) {
+  if (pathname === "/login" || pathname.startsWith("/login/")) return true;
+  if (pathname === "/track" || pathname.startsWith("/track/")) return true;
+  if (pathname === "/api/track" || pathname.startsWith("/api/track/")) return true;
+  return false;
 }
 
 async function readSession(request: NextRequest) {
@@ -31,8 +36,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
-    pathname.startsWith("/api/track/") ||
+    isPublicPath(pathname) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

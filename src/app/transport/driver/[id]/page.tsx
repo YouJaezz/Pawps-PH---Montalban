@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CopyTrackingLink } from "@/app/transport/CopyTrackingLink";
 import { DriverTracker } from "@/app/transport/driver/DriverTracker";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { transportJobs } from "@/db/schema";
+import { getTrackingUrl } from "@/lib/site-url";
 import { eq } from "drizzle-orm";
 
 export default async function DriverPage(props: {
@@ -53,15 +55,25 @@ export default async function DriverPage(props: {
           <DriverTracker jobId={job.id} trackingToken={job.trackingToken} />
         </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-400">
-          Share this link with your customer:{" "}
-          <Link
-            href={`/track/${job.trackingToken}`}
-            className="text-amber-200 underline"
-            target="_blank"
-          >
-            Open tracking page
-          </Link>
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-zinc-400">
+          <div className="font-medium text-amber-100">Customer tracking link</div>
+          <p className="mt-1">
+            Send this URL to your customer — it works without login on any phone.
+          </p>
+          <p className="mt-2 break-all font-mono text-[11px] text-zinc-200">
+            {getTrackingUrl(job.trackingToken)}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <CopyTrackingLink token={job.trackingToken} />
+            <Link
+              href={getTrackingUrl(job.trackingToken)}
+              className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Preview
+            </Link>
+          </div>
         </div>
       </div>
     </AppShell>

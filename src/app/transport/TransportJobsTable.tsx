@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { CopyTrackingLink } from "@/app/transport/CopyTrackingLink";
 import { deleteTransportJob } from "@/app/transport/delete-actions";
 import { updateTransportStatus } from "@/app/transport/actions";
 import { formatPhpFromCents } from "@/lib/money";
@@ -88,13 +89,17 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
                 </Link>
               ) : null}
               {j.trackingToken ? (
-                <Link
-                  href={`/track/${j.trackingToken}`}
-                  target="_blank"
-                  className="rounded border border-amber-500/30 px-2 py-0.5 text-amber-200"
-                >
-                  Share tracking
-                </Link>
+                <>
+                  <CopyTrackingLink token={j.trackingToken} />
+                  <Link
+                    href={`/track/${j.trackingToken}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+                  >
+                    Preview
+                  </Link>
+                </>
               ) : null}
               <form action={deleteTransportJob}>
                 <input type="hidden" name="id" value={j.id} />
