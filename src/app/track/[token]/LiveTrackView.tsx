@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+import { CustomerTrackMap } from "@/app/track/[token]/CustomerTrackMap";
+
 type TrackData = {
   status: string;
   customerName: string;
   pickupLocation: string;
   dropoffLocation: string;
+  pickup: { lat: number; lng: number } | null;
+  dropoff: { lat: number; lng: number } | null;
+  driver: { lat: number; lng: number } | null;
   driverLat: string | null;
   driverLng: string | null;
   lastLocationAt: string | null;
@@ -49,10 +54,8 @@ export function LiveTrackView(props: { token: string }) {
     return <p className="text-sm text-zinc-400">Loading live location…</p>;
   }
 
-  const hasLocation = Boolean(data.driverLat && data.driverLng);
-  const mapUrl = hasLocation
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(data.driverLng) - 0.02}%2C${Number(data.driverLat) - 0.02}%2C${Number(data.driverLng) + 0.02}%2C${Number(data.driverLat) + 0.02}&layer=mapnik&marker=${data.driverLat}%2C${data.driverLng}`
-    : null;
+  const hasDriver = Boolean(data.driver ?? (data.driverLat && data.driverLng));
+  const canShowMap = Boolean(data.pickup && data.dropoff);
 
   return (
     <div className="space-y-4">
@@ -68,33 +71,53 @@ export function LiveTrackView(props: { token: string }) {
         </div>
       </div>
 
-      {mapUrl ? (
-        <div className="overflow-hidden rounded-xl border border-white/10">
-          <iframe
-            title="Driver location"
-            src={mapUrl}
-            className="h-72 w-full"
-            loading="lazy"
-          />
-        </div>
+      {canShowMap ? (
+        <CustomerTrackMap token={props.token} hasDriver={hasDriver} />
       ) : (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <p className="text-sm font-medium text-amber-100">
+            Waiting for route details
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            Map will appear once pickup and dropoff locations are resolved.
+          </p>
+        </div>
+      )}
+
+      {!hasDriver ? (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
           <p className="text-sm font-medium text-amber-100">
             Waiting for driver location
           </p>
           <p className="mt-1 text-xs text-zinc-400">
-            The map appears once your driver starts sharing GPS from their phone.
+            Your driver must open Driver mode and tap Start sharing location.
           </p>
           <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-400">
             <li>Driver opens Pawps PH → Transport jobs on their phone.</li>
             <li>Opens this trip → taps <span className="text-zinc-200">Driver mode</span>.</li>
             <li>Taps <span className="text-zinc-200">Start sharing location</span> and allows GPS.</li>
           </ol>
-          <p className="mt-3 text-[10px] text-zinc-500">
-            This page refreshes every few seconds automatically.
-          </p>
         </div>
-      )}
+      ) : null}
+
+      <div className="flex flex-wrap gap-3 text-[10px] text-zinc-500">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          Pickup
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-flex h-3 w-3 items-center justify-center rounded-full border-2 border-zinc-900 bg-white">
+            <span className="h-1 w-1 rounded-full bg-zinc-900" />
+          </span>
+          Dropoff
+        </span>
+        {hasDriver ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-3 w-5 rounded bg-zinc-100" />
+            Driver
+          </span>
+        ) : null}
+      </div>
 
       {data.lastLocationAt ? (
         <p className="text-[11px] text-zinc-500">

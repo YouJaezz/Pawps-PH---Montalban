@@ -63,6 +63,10 @@ export async function createTransportJob(formData: FormData) {
     String(formData.get("intersectionCount") ?? "0"),
     10,
   );
+  const pickupLatRaw = String(formData.get("pickupLat") ?? "").trim();
+  const pickupLngRaw = String(formData.get("pickupLng") ?? "").trim();
+  const dropoffLatRaw = String(formData.get("dropoffLat") ?? "").trim();
+  const dropoffLngRaw = String(formData.get("dropoffLng") ?? "").trim();
 
   if (!customerName || !pickupLocation || !dropoffLocation) {
     throw new Error("Customer name, pickup, and dropoff are required.");
@@ -95,6 +99,10 @@ export async function createTransportJob(formData: FormData) {
       contact: contactRaw.length ? contactRaw : null,
       pickupLocation,
       dropoffLocation,
+      pickupLat: pickupLatRaw.length ? pickupLatRaw : null,
+      pickupLng: pickupLngRaw.length ? pickupLngRaw : null,
+      dropoffLat: dropoffLatRaw.length ? dropoffLatRaw : null,
+      dropoffLng: dropoffLngRaw.length ? dropoffLngRaw : null,
       petDetails: petDetailsRaw.length ? petDetailsRaw : null,
       serviceType: serviceType as
         | "Pet Taxi"

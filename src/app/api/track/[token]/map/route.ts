@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { transportJobs } from "@/db/schema";
+import { getOsrmDrivingRoute } from "@/lib/osrm-routing";
 import {
   driverPointFromJob,
   resolveTransportJobCoords,
@@ -40,16 +41,33 @@ export async function GET(
   const { pickup, dropoff } = await resolveTransportJobCoords(job);
   const driver = driverPointFromJob(job);
 
+  let routePath: [number, number][] = [];
+  let routeKind: "remaining" | "planned" | null = null;
+
+  if (driver && dropoff) {
+    const route = await getOsrmDrivingRoute(driver, dropoff);
+    if (route) {
+      routePath = route.path;
+      routeKind = "remaining";
+    }
+  } else if (pickup && dropoff) {
+    const route = await getOsrmDrivingRoute(pickup, dropoff);
+    if (route) {
+      routePath = route.path;
+      routeKind = "planned";
+    }
+  }
+
   return NextResponse.json({
+    pickup,
+    dropoff,
+    driver,
+    routePath,
+    routeKind,
     status: job.status,
     customerName: job.customerName,
     pickupLocation: job.pickupLocation,
     dropoffLocation: job.dropoffLocation,
-    pickup,
-    dropoff,
-    driver,
-    driverLat: job.driverLat,
-    driverLng: job.driverLng,
     lastLocationAt: job.lastLocationAt?.toISOString() ?? null,
   });
 }

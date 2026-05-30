@@ -128,6 +128,10 @@ export function TransportJobForm(props: {
         name="dropoffLocation"
         value={dropoffPoint?.label ?? ""}
       />
+      <input type="hidden" name="pickupLat" value={pickupPoint?.lat ?? ""} />
+      <input type="hidden" name="pickupLng" value={pickupPoint?.lng ?? ""} />
+      <input type="hidden" name="dropoffLat" value={dropoffPoint?.lat ?? ""} />
+      <input type="hidden" name="dropoffLng" value={dropoffPoint?.lng ?? ""} />
       <input type="hidden" name="distanceKm" value={distanceKm} />
       <input type="hidden" name="autoEstimate" value={kmFromMap ? "on" : ""} />
       <input

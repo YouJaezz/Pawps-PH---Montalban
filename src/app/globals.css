@@ -51,6 +51,18 @@ body {
   }
 }
 
+.customer-track-map.leaflet-container {
+  height: 20rem;
+  min-height: 20rem;
+}
+
+@media (min-width: 640px) {
+  .customer-track-map.leaflet-container {
+    height: 24rem;
+    min-height: 24rem;
+  }
+}
+
 .leaflet-control-attribution {
   font-size: 10px;
   background: rgba(0, 0, 0, 0.55) !important;

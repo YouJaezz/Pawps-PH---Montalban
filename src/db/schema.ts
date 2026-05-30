@@ -168,6 +168,10 @@ export const transportJobs = sqliteTable("transport_jobs", {
   contact: text("contact"),
   pickupLocation: text("pickup_location").notNull(),
   dropoffLocation: text("dropoff_location").notNull(),
+  pickupLat: text("pickup_lat"),
+  pickupLng: text("pickup_lng"),
+  dropoffLat: text("dropoff_lat"),
+  dropoffLng: text("dropoff_lng"),
   petDetails: text("pet_details"),
   serviceType: text("service_type", {
     enum: ["Pet Taxi", "Vet Visit", "Grooming Visit", "Boarding Transfer", "Other"],
