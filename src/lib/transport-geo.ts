@@ -1,3 +1,6 @@
+/** Road distance factor applied to straight-line km (typical urban PH routes). */
+export const ROAD_DISTANCE_FACTOR = 1.3;
+
 /** Haversine distance in km between two lat/lng points. */
 export function haversineKm(
   lat1: number,
@@ -15,54 +18,20 @@ export function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-type GeocodeResult = { lat: number; lng: number } | null;
-
-/** Free geocoding via OpenStreetMap Nominatim (Philippines-biased). */
-export async function geocodeAddress(address: string): Promise<GeocodeResult> {
-  const q = address.trim();
-  if (!q) return null;
-
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", `${q}, Philippines`);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("limit", "1");
-
-  try {
-    const res = await fetch(url.toString(), {
-      headers: { "User-Agent": "PawpsPH-Transport/1.0" },
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { lat: string; lon: string }[];
-    if (!data[0]) return null;
-    return {
-      lat: Number.parseFloat(data[0].lat),
-      lng: Number.parseFloat(data[0].lon),
-    };
-  } catch {
-    return null;
-  }
+export function roundKm(km: number) {
+  return Math.round(km * 10) / 10;
 }
 
-export async function estimateRouteKm(
-  pickup: string,
-  dropoff: string,
-): Promise<{ km: number | null; pickup: GeocodeResult; dropoff: GeocodeResult }> {
-  const [pickupGeo, dropoffGeo] = await Promise.all([
-    geocodeAddress(pickup),
-    geocodeAddress(dropoff),
-  ]);
-
-  if (!pickupGeo || !dropoffGeo) {
-    return { km: null, pickup: pickupGeo, dropoff: dropoffGeo };
-  }
-
-  const km = haversineKm(
-    pickupGeo.lat,
-    pickupGeo.lng,
-    dropoffGeo.lat,
-    dropoffGeo.lng,
-  );
-
-  return { km: Math.round(km * 1.3 * 10) / 10, pickup: pickupGeo, dropoff: dropoffGeo };
+export function estimateRoadKmFromCoords(
+  pickup: { lat: number; lng: number },
+  dropoff: { lat: number; lng: number },
+) {
+  const straightKm = haversineKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+  const roadKm = straightKm * ROAD_DISTANCE_FACTOR;
+  return {
+    straightKm: roundKm(straightKm),
+    roadKm: roundKm(roadKm),
+  };
 }
+
+export type GeoPoint = { lat: number; lng: number; label: string };

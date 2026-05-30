@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { createTransportJob, estimateTransportDistance } from "@/app/transport/actions";
+import { createTransportJob } from "@/app/transport/actions";
+import {
+  TransportRouteMap,
+  type RouteDistanceBreakdown,
+} from "@/app/transport/TransportRouteMap";
+import type { GeoPoint } from "@/lib/transport-geo";
 import { calculateTransportFee } from "@/lib/transport-pricing";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -20,13 +25,31 @@ export function TransportJobForm(props: {
   perKmCents: number;
   minimumFeeCents: number;
 }) {
-  const [pickup, setPickup] = useState("");
-  const [dropoff, setDropoff] = useState("");
+  const [pickupPoint, setPickupPoint] = useState<GeoPoint | null>(null);
+  const [dropoffPoint, setDropoffPoint] = useState<GeoPoint | null>(null);
   const [distanceKm, setDistanceKm] = useState("");
+  const [kmFromMap, setKmFromMap] = useState(true);
+  const [breakdown, setBreakdown] = useState<RouteDistanceBreakdown | null>(
+    null,
+  );
   const [extras, setExtras] = useState<{ label: string; amount: string }[]>([
     { label: "Toll fee", amount: "" },
   ]);
-  const [estimating, setEstimating] = useState(false);
+
+  const handleRoadKmChange = useCallback(
+    (km: number | null, nextBreakdown: RouteDistanceBreakdown | null) => {
+      setBreakdown(nextBreakdown);
+      if (km != null && kmFromMap) {
+        setDistanceKm(String(km));
+      }
+    },
+    [kmFromMap],
+  );
+
+  const handleDistanceInputChange = useCallback((value: string) => {
+    setKmFromMap(false);
+    setDistanceKm(value);
+  }, []);
 
   const km = Number.parseFloat(distanceKm) || 0;
   const extrasTotalCents = extras.reduce(
@@ -48,20 +71,6 @@ export function TransportJobForm(props: {
     [props, km, extrasTotalCents],
   );
 
-  async function handleEstimate() {
-    if (!pickup.trim() || !dropoff.trim()) return;
-    setEstimating(true);
-    try {
-      const fd = new FormData();
-      fd.set("pickup", pickup);
-      fd.set("dropoff", dropoff);
-      const result = await estimateTransportDistance(fd);
-      if (result.km != null) setDistanceKm(String(result.km));
-    } finally {
-      setEstimating(false);
-    }
-  }
-
   return (
     <form action={createTransportJob} className="space-y-4">
       <label className="space-y-1">
@@ -74,63 +83,61 @@ export function TransportJobForm(props: {
       </label>
       <label className="space-y-1">
         <div className="text-xs text-zinc-300">Contact</div>
-        <input name="contact" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none" />
-      </label>
-      <label className="space-y-1">
-        <div className="text-xs text-zinc-300">Pickup *</div>
         <input
-          name="pickupLocation"
-          required
-          value={pickup}
-          onChange={(e) => setPickup(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
-        />
-      </label>
-      <label className="space-y-1">
-        <div className="text-xs text-zinc-300">Dropoff *</div>
-        <input
-          name="dropoffLocation"
-          required
-          value={dropoff}
-          onChange={(e) => setDropoff(e.target.value)}
+          name="contact"
           className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
       </label>
 
-      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-zinc-300">Distance (km)</span>
-          <label className="flex items-center gap-1 text-[10px] text-zinc-500">
-            <input type="checkbox" name="autoEstimate" defaultChecked />
-            Auto-estimate from map
-          </label>
-        </div>
-        <div className="mt-2 flex gap-2">
-          <input
-            name="distanceKm"
-            value={distanceKm}
-            onChange={(e) => setDistanceKm(e.target.value)}
-            inputMode="decimal"
-            placeholder="e.g. 12.5"
-            className="flex-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-sm outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleEstimate}
-            disabled={estimating}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200"
-          >
-            {estimating ? "…" : "Estimate km"}
-          </button>
-        </div>
-        <div className="mt-2 text-[11px] text-zinc-500">
-          Base {formatPhpFromCents(preview.baseFeeCents)} + distance{" "}
-          {formatPhpFromCents(preview.distanceFeeCents)} + extras{" "}
-          {formatPhpFromCents(preview.extrasTotalCents)} ={" "}
-          <span className="font-medium text-amber-200">
-            {formatPhpFromCents(preview.totalFeeCents)}
+      <TransportRouteMap
+        pickup={pickupPoint}
+        dropoff={dropoffPoint}
+        onPickupChange={(p) => {
+          setPickupPoint(p);
+          if (p) setKmFromMap(true);
+        }}
+        onDropoffChange={(p) => {
+          setDropoffPoint(p);
+          if (p) setKmFromMap(true);
+        }}
+        onRoadKmChange={handleRoadKmChange}
+        perKmCents={props.perKmCents}
+        distanceKmInput={distanceKm}
+        onDistanceKmInputChange={handleDistanceInputChange}
+      />
+
+      <input
+        type="hidden"
+        name="pickupLocation"
+        value={pickupPoint?.label ?? ""}
+      />
+      <input
+        type="hidden"
+        name="dropoffLocation"
+        value={dropoffPoint?.label ?? ""}
+      />
+      <input type="hidden" name="distanceKm" value={distanceKm} />
+      <input type="hidden" name="autoEstimate" value={kmFromMap ? "on" : ""} />
+
+      {!pickupPoint || !dropoffPoint ? (
+        <p className="text-[11px] text-amber-300/80">
+          Select pickup and dropoff on the map above before creating the job.
+        </p>
+      ) : null}
+
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-[11px] text-zinc-500">
+        Base {formatPhpFromCents(preview.baseFeeCents)} + distance{" "}
+        {formatPhpFromCents(preview.distanceFeeCents)}
+        {breakdown ? (
+          <span className="text-zinc-600">
+            {" "}
+            ({breakdown.roadKm} km × {formatPhpFromCents(props.perKmCents)})
           </span>
-        </div>
+        ) : null}{" "}
+        + extras {formatPhpFromCents(preview.extrasTotalCents)} ={" "}
+        <span className="font-medium text-amber-200">
+          {formatPhpFromCents(preview.totalFeeCents)}
+        </span>
       </div>
 
       <div className="space-y-2">
@@ -177,12 +184,19 @@ export function TransportJobForm(props: {
 
       <label className="space-y-1">
         <div className="text-xs text-zinc-300">Pet details</div>
-        <input name="petDetails" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none" />
+        <input
+          name="petDetails"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
+        />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="space-y-1">
           <div className="text-xs text-zinc-300">Service</div>
-          <select name="serviceType" defaultValue="Pet Taxi" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm">
+          <select
+            name="serviceType"
+            defaultValue="Pet Taxi"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          >
             <option>Pet Taxi</option>
             <option>Vet Visit</option>
             <option>Grooming Visit</option>
@@ -192,7 +206,11 @@ export function TransportJobForm(props: {
         </label>
         <label className="space-y-1">
           <div className="text-xs text-zinc-300">Status</div>
-          <select name="status" defaultValue="Scheduled" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm">
+          <select
+            name="status"
+            defaultValue="Scheduled"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          >
             <option>Requested</option>
             <option>Scheduled</option>
             <option>In Transit</option>
@@ -203,11 +221,15 @@ export function TransportJobForm(props: {
       </div>
       <label className="space-y-1">
         <div className="text-xs text-zinc-300">Notes</div>
-        <input name="notes" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none" />
+        <input
+          name="notes"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
+        />
       </label>
       <button
         type="submit"
-        className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+        disabled={!pickupPoint || !dropoffPoint || km <= 0}
+        className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-40"
       >
         Create job · {formatPhpFromCents(preview.totalFeeCents)}
       </button>

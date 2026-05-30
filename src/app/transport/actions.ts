@@ -12,7 +12,7 @@ import {
 } from "@/db/schema";
 import { requireAuth } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
-import { estimateRouteKm } from "@/lib/transport-geo";
+import { estimateRouteKm } from "@/lib/transport-geo-server";
 import {
   calculateTransportFee,
   kmToTenths,
