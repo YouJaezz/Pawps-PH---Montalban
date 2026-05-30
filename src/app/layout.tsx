@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: BRAND_NAME,
+  title: {
+    default: BRAND_NAME,
+    template: `%s · ${BRAND_NAME}`,
+  },
   description: BRAND_DESCRIPTION,
+  applicationName: BRAND_NAME,
 };
 
 /** Always render on the server — pages query Turso/SQLite at request time. */
