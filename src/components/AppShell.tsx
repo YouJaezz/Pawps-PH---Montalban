@@ -52,6 +52,7 @@ export async function AppShell(props: {
               <NavItem href="/products" label="Inventory" hint="CRUD" />
               <NavItem href="/orders" label="Sales & Orders" hint="next" />
               <NavItem href="/customers" label="Customers" hint="next" />
+              <NavItem href="/preorders" label="Pre-orders" hint="supplier" />
               <NavItem
                 href="/delivery"
                 label="Delivery Log"
@@ -61,7 +62,7 @@ export async function AppShell(props: {
               />
               <NavItem href="/reports" label="Reports" hint="insights" />
               <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
-              <NavItem href="/transport" label="Pet Transport" hint="new" />
+              <NavItem href="/transport" label="Pet Transport" hint="driver" />
               <NavItem href="/pos" label="Future POS" hint="placeholder" />
               {session?.role === "admin" ? (
                 <NavItem href="/settings" label="Settings" hint="admin" />

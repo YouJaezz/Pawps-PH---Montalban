@@ -1,4 +1,6 @@
 import { createSupplier } from "@/app/suppliers/actions";
+import { SupplierDeleteButton } from "@/app/suppliers/SupplierDeleteButton";
+import { SupplierPriceComparison } from "@/app/suppliers/SupplierPriceComparison";
 import { UploadCatalogForm } from "@/app/suppliers/UploadCatalogForm";
 import { SupplierInflationPanel } from "@/app/suppliers/SupplierInflationPanel";
 import { SupplierSearch } from "@/app/suppliers/SupplierSearch";
@@ -8,6 +10,7 @@ import {
   backfillSupplierPriceHistoryIfEmpty,
   getSupplierInflationInsights,
 } from "@/db/queries/supplier-inflation";
+import { getSupplierPriceComparison } from "@/db/queries/supplier-comparison";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { suppliers } from "@/db/schema";
 
@@ -31,6 +34,7 @@ export default async function SuppliersPage() {
     await getSupplierCatalogRows();
 
   const inflation = await getSupplierInflationInsights();
+  const priceComparison = await getSupplierPriceComparison();
 
   const latestDocBySupplier = new Map<number, (typeof docs)[0]>();
   for (const doc of docs) {
@@ -85,6 +89,30 @@ export default async function SuppliersPage() {
               <UploadCatalogForm suppliers={supplierRows} />
             </div>
 
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="text-xs font-medium text-zinc-300">Your suppliers</div>
+              <ul className="mt-2 space-y-2 text-[11px]">
+                {supplierRows.length === 0 ? (
+                  <li className="text-zinc-500">None yet.</li>
+                ) : (
+                  supplierRows.map((s) => (
+                    <li
+                      key={s.id}
+                      className="flex items-start justify-between gap-2 border-b border-white/5 pb-2 last:border-0"
+                    >
+                      <div>
+                        <div className="font-medium text-zinc-200">{s.name}</div>
+                        <div className="text-zinc-500">
+                          {s.contact ?? "—"} · {s.location ?? "—"}
+                        </div>
+                      </div>
+                      <SupplierDeleteButton supplierId={s.id} name={s.name} />
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+
             {docs.length > 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-medium text-zinc-300">Latest per supplier</div>
@@ -102,6 +130,7 @@ export default async function SuppliersPage() {
           </div>
 
           <div className="space-y-5 xl:col-span-4">
+            <SupplierPriceComparison rows={priceComparison} />
             <SupplierSearch rows={searchRows} suppliers={suppliersWithCounts} />
             <SupplierInflationPanel {...inflation} />
           </div>

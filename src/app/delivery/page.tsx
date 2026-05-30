@@ -1,10 +1,9 @@
 import { AppShell } from "@/components/AppShell";
-import { ScrollableTable } from "@/components/ScrollableTable";
 import { createDeliveryLog } from "@/app/delivery/actions";
-import { deleteDeliveryLog } from "@/app/delivery/delete-actions";
+import { DeliveryLogTable } from "@/app/delivery/DeliveryLogTable";
 import { db } from "@/db";
-import { deliveryLogs } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { deliveryLogs, deliveryStatusHistory } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
 
 export default async function DeliveryLogPage() {
   const rows = await db
@@ -24,6 +23,24 @@ export default async function DeliveryLogPage() {
     .orderBy(desc(deliveryLogs.createdAt))
     .limit(50);
 
+  const tableRows = await Promise.all(
+    rows.map(async (d) => {
+      const history = await db
+        .select({
+          id: deliveryStatusHistory.id,
+          previousStatus: deliveryStatusHistory.previousStatus,
+          newStatus: deliveryStatusHistory.newStatus,
+          note: deliveryStatusHistory.note,
+          changedAt: deliveryStatusHistory.changedAt,
+        })
+        .from(deliveryStatusHistory)
+        .where(eq(deliveryStatusHistory.deliveryLogId, d.id))
+        .orderBy(desc(deliveryStatusHistory.changedAt));
+
+      return { ...d, history };
+    }),
+  );
+
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
@@ -32,7 +49,7 @@ export default async function DeliveryLogPage() {
           Delivery log
         </h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Track Montalban Free Delivery vs Lalamove with status + fees.
+          Queue once, then update status and fees inline — history is kept automatically.
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -48,7 +65,7 @@ export default async function DeliveryLogPage() {
                     name="orderId"
                     inputMode="numeric"
                     placeholder="e.g. 123"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
                 <label className="space-y-1">
@@ -56,7 +73,7 @@ export default async function DeliveryLogPage() {
                   <input
                     name="customerName"
                     placeholder="Matches FB workflow"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
                 <label className="space-y-1">
@@ -64,16 +81,15 @@ export default async function DeliveryLogPage() {
                   <input
                     name="location"
                     placeholder="e.g. Montalban"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
-
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="space-y-1">
                     <div className="text-xs text-zinc-300">Method</div>
                     <select
                       name="deliveryMethod"
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                       defaultValue="Montalban Free Delivery"
                     >
                       <option>Montalban Free Delivery</option>
@@ -85,7 +101,7 @@ export default async function DeliveryLogPage() {
                     <div className="text-xs text-zinc-300">Status</div>
                     <select
                       name="status"
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                       defaultValue="Queued"
                     >
                       <option>Queued</option>
@@ -96,14 +112,13 @@ export default async function DeliveryLogPage() {
                     </select>
                   </label>
                 </div>
-
                 <label className="space-y-1">
                   <div className="text-xs text-zinc-300">Fee (₱)</div>
                   <input
                     name="fee"
                     inputMode="decimal"
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
                 <label className="space-y-1">
@@ -111,7 +126,7 @@ export default async function DeliveryLogPage() {
                   <input
                     name="reference"
                     placeholder="Lalamove booking / tracking"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
                 <label className="space-y-1">
@@ -119,7 +134,7 @@ export default async function DeliveryLogPage() {
                   <input
                     name="notes"
                     placeholder="Optional notes"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   />
                 </label>
                 <button
@@ -134,83 +149,12 @@ export default async function DeliveryLogPage() {
 
           <div className="lg:col-span-3">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium text-zinc-100">
-                    Recent deliveries
-                  </div>
-                  <div className="mt-1 text-xs text-zinc-400">
-                    Latest 50 logs.
-                  </div>
-                </div>
-                <div className="text-xs text-zinc-400">{rows.length} shown</div>
+              <div className="text-sm font-medium text-zinc-100">
+                Recent deliveries ({tableRows.length})
               </div>
-
-              <ScrollableTable maxHeight="max-h-[min(65vh,640px)]">
-                <table className="w-full table-fixed text-sm">
-                  <thead className="bg-white/5 text-left text-zinc-300">
-                    <tr>
-                      <th className="hidden w-20 px-4 py-3 font-medium sm:table-cell">
-                        Order
-                      </th>
-                      <th className="px-4 py-3 font-medium">Customer</th>
-                      <th className="hidden px-4 py-3 font-medium md:table-cell">
-                        Method
-                      </th>
-                      <th className="w-24 px-4 py-3 font-medium">Status</th>
-                      <th className="w-24 px-4 py-3 font-medium">Fee</th>
-                      <th className="w-20 px-4 py-3 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {rows.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-4 text-zinc-400" colSpan={5}>
-                          No delivery logs yet — add one on the left.
-                        </td>
-                      </tr>
-                    ) : (
-                      rows.map((d) => (
-                        <tr key={d.id} className="hover:bg-white/5">
-                          <td className="hidden px-4 py-3 text-zinc-200 sm:table-cell">
-                            {d.orderId ? `#${d.orderId}` : "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-zinc-50">
-                              {d.customerName ?? "—"}
-                            </div>
-                            <div className="text-xs text-zinc-400">
-                              {d.location ?? "—"}
-                            </div>
-                            <div className="mt-1 text-xs text-zinc-400 md:hidden">
-                              {d.deliveryMethod}
-                              {d.orderId ? ` • #${d.orderId}` : ""}
-                            </div>
-                          </td>
-                          <td className="hidden px-4 py-3 text-zinc-200 md:table-cell">
-                            {d.deliveryMethod}
-                          </td>
-                          <td className="px-4 py-3 text-zinc-200">{d.status}</td>
-                          <td className="px-4 py-3 text-zinc-200">
-                            ₱{(d.fee / 100).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <form action={deleteDeliveryLog}>
-                              <input type="hidden" name="id" value={d.id} />
-                              <button
-                                type="submit"
-                                className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/15"
-                              >
-                                Delete
-                              </button>
-                            </form>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </ScrollableTable>
+              <div className="mt-4">
+                <DeliveryLogTable rows={tableRows} />
+              </div>
             </div>
           </div>
         </div>
@@ -218,4 +162,3 @@ export default async function DeliveryLogPage() {
     </AppShell>
   );
 }
-

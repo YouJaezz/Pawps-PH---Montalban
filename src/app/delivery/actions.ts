@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
-import { deliveryLogs } from "@/db/schema";
+import { deliveryLogs, deliveryStatusHistory } from "@/db/schema";
 import { requireAuth } from "@/lib/auth-guard";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
@@ -33,24 +33,37 @@ export async function createDeliveryLog(formData: FormData) {
   const safeOrderId =
     orderId != null && Number.isFinite(orderId) ? orderId : null;
 
-  await db.insert(deliveryLogs).values({
-    orderId: safeOrderId,
-    customerName: customerNameRaw.length ? customerNameRaw : null,
-    location: locationRaw.length ? locationRaw : null,
-    deliveryMethod: deliveryMethod as
-      | "Montalban Free Delivery"
-      | "Lalamove"
-      | "Other",
-    status: status as
-      | "Queued"
-      | "Booked"
-      | "Picked Up"
-      | "Delivered"
-      | "Cancelled",
-    fee,
-    reference: referenceRaw.length ? referenceRaw : null,
-    notes: notesRaw.length ? notesRaw : null,
-  });
+  const inserted = await db
+    .insert(deliveryLogs)
+    .values({
+      orderId: safeOrderId,
+      customerName: customerNameRaw.length ? customerNameRaw : null,
+      location: locationRaw.length ? locationRaw : null,
+      deliveryMethod: deliveryMethod as
+        | "Montalban Free Delivery"
+        | "Lalamove"
+        | "Other",
+      status: status as
+        | "Queued"
+        | "Booked"
+        | "Picked Up"
+        | "Delivered"
+        | "Cancelled",
+      fee,
+      reference: referenceRaw.length ? referenceRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+    })
+    .returning({ id: deliveryLogs.id });
+
+  const logId = inserted[0]?.id;
+  if (logId) {
+    await db.insert(deliveryStatusHistory).values({
+      deliveryLogId: logId,
+      previousStatus: null,
+      newStatus: status,
+      note: "Created",
+    });
+  }
 
   revalidatePath("/delivery");
 }

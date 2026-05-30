@@ -85,6 +85,9 @@ export function ProductForm(props: {
   const [retailInput, setRetailInput] = useState("");
   const [bulkInput, setBulkInput] = useState("");
   const [manualCostInput, setManualCostInput] = useState("");
+  const [purchaseTier, setPurchaseTier] = useState<"Wholesale" | "Retail">(
+    "Wholesale",
+  );
 
   const numericSupplierId = Number.parseInt(supplierId, 10);
 
@@ -107,7 +110,9 @@ export function ProductForm(props: {
     : "";
 
   const costPerUnitCents = selectedCatalog
-    ? (selectedCatalog.unitCost ?? 0)
+    ? purchaseTier === "Retail"
+      ? (selectedCatalog.retailPrice ?? selectedCatalog.unitCost ?? 0)
+      : (selectedCatalog.unitCost ?? 0)
     : parseMoneyInput(manualCostInput);
 
   const stockQuantity = Number.parseInt(stockInput, 10);
@@ -243,31 +248,56 @@ export function ProductForm(props: {
         </label>
 
         {selectedCatalog ? (
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-zinc-500">My cost (per unit)</span>
-            <div className={readOnlyClass}>
-              {costPerUnitCents > 0
-                ? formatPhpFromCents(costPerUnitCents)
-                : "—"}
+          <>
+            <label className="col-span-2 space-y-0.5">
+              <span className="text-[10px] text-zinc-500">How I bought this *</span>
+              <select
+                name="purchaseTier"
+                value={purchaseTier}
+                onChange={(e) =>
+                  setPurchaseTier(e.target.value as "Wholesale" | "Retail")
+                }
+                className={fieldClass}
+              >
+                <option value="Wholesale">Wholesale (supplier bulk price)</option>
+                <option value="Retail">Retail (supplier retail price)</option>
+              </select>
+            </label>
+            <div className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">My cost (per unit)</span>
+              <div className={readOnlyClass}>
+                {costPerUnitCents > 0
+                  ? formatPhpFromCents(costPerUnitCents)
+                  : "—"}
+              </div>
+              <input
+                type="hidden"
+                name="costPrice"
+                value={centsToInput(costPerUnitCents)}
+              />
             </div>
-            <input
-              type="hidden"
-              name="costPrice"
-              value={centsToInput(costPerUnitCents)}
-            />
-          </div>
+          </>
         ) : (
-          <label className="space-y-0.5">
-            <span className="text-[10px] text-zinc-500">My cost (per unit) *</span>
-            <input
-              name="costPrice"
-              value={manualCostInput}
-              onChange={(e) => setManualCostInput(e.target.value)}
-              inputMode="decimal"
-              required
-              className={fieldClass}
-            />
-          </label>
+          <>
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">How I bought this *</span>
+              <select name="purchaseTier" defaultValue="Wholesale" className={fieldClass}>
+                <option value="Wholesale">Wholesale</option>
+                <option value="Retail">Retail</option>
+              </select>
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">My cost (per unit) *</span>
+              <input
+                name="costPrice"
+                value={manualCostInput}
+                onChange={(e) => setManualCostInput(e.target.value)}
+                inputMode="decimal"
+                required
+                className={fieldClass}
+              />
+            </label>
+          </>
         )}
 
         <label className="space-y-0.5">

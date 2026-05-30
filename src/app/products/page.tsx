@@ -51,6 +51,7 @@ export default async function ProductsPage() {
       retailPrice: products.retailPrice,
       bulkPrice: products.bulkPrice,
       stockQuantity: products.stockQuantity,
+      purchaseTier: products.purchaseTier,
       supplierId: products.supplierId,
       supplierRetailPrice: products.supplierRetailPrice,
       supplierBulkPrice: products.supplierBulkPrice,
@@ -145,7 +146,9 @@ export default async function ProductsPage() {
                       <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
                       <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
                       <th className="hidden px-2 py-2 lg:table-cell">Sup. wholesale</th>
-                      <th className="px-2 py-2">My cost</th>
+                      <th className="px-2 py-2">Total cost</th>
+                      <th className="hidden px-2 py-2 sm:table-cell">Unit cost</th>
+                      <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
                       <th className="hidden px-2 py-2 sm:table-cell">Retail</th>
                       <th className="hidden px-2 py-2 sm:table-cell">Bulk</th>
                       <th className="px-2 py-2">Stock</th>
@@ -156,7 +159,7 @@ export default async function ProductsPage() {
                   <tbody className="divide-y divide-white/10">
                     {rows.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-5 text-zinc-400" colSpan={11}>
+                        <td className="px-3 py-5 text-zinc-400" colSpan={13}>
                           No inventory — pick a supplier catalog item to add.
                         </td>
                       </tr>
@@ -170,6 +173,7 @@ export default async function ProductsPage() {
                         const profit =
                           Math.max(0, p.retailPrice - p.costPrice) *
                           p.stockQuantity;
+                        const totalCost = p.costPrice * p.stockQuantity;
 
                         return (
                           <tr key={p.id} className="hover:bg-white/5">
@@ -188,8 +192,14 @@ export default async function ProductsPage() {
                             <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
                               {formatMoneyOrDash(p.supplierBulkPrice)}
                             </td>
-                            <td className="px-2 py-2 text-zinc-200">
+                            <td className="px-2 py-2 font-medium text-amber-100">
+                              {formatPhpFromCents(totalCost)}
+                            </td>
+                            <td className="hidden px-2 py-2 text-zinc-400 sm:table-cell">
                               {formatPhpFromCents(p.costPrice)}
+                            </td>
+                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                              {p.purchaseTier}
                             </td>
                             <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
                               {formatPhpFromCents(p.retailPrice)}

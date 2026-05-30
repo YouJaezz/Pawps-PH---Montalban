@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import {
+  preOrders,
+  products,
   supplierCatalogItems,
   supplierDocuments,
   supplierPriceChanges,
@@ -269,6 +271,69 @@ export async function uploadSupplierCatalog(
           : "Upload failed. Please try again.",
     };
   }
+}
+
+export async function deleteSupplier(formData: FormData) {
+  await requireAuth();
+
+  const supplierId = Number.parseInt(
+    String(formData.get("supplierId") ?? ""),
+    10,
+  );
+  const mode = String(formData.get("mode") ?? "disconnect");
+
+  if (!Number.isFinite(supplierId) || supplierId <= 0) {
+    throw new Error("Invalid supplier.");
+  }
+
+  if (mode === "purge") {
+    await db
+      .delete(supplierPriceChanges)
+      .where(eq(supplierPriceChanges.supplierId, supplierId));
+    await db
+      .delete(supplierPriceHistory)
+      .where(eq(supplierPriceHistory.supplierId, supplierId));
+    await db
+      .delete(supplierCatalogItems)
+      .where(eq(supplierCatalogItems.supplierId, supplierId));
+    await db
+      .delete(supplierDocuments)
+      .where(eq(supplierDocuments.supplierId, supplierId));
+    await db.delete(preOrders).where(eq(preOrders.supplierId, supplierId));
+    await db
+      .update(products)
+      .set({
+        supplierId: null,
+        supplierCatalogItemId: null,
+      })
+      .where(eq(products.supplierId, supplierId));
+    await db.delete(suppliers).where(eq(suppliers.id, supplierId));
+  } else {
+    await db
+      .update(products)
+      .set({
+        supplierId: null,
+        supplierCatalogItemId: null,
+      })
+      .where(eq(products.supplierId, supplierId));
+    const [existing] = await db
+      .select({ notes: suppliers.notes })
+      .from(suppliers)
+      .where(eq(suppliers.id, supplierId))
+      .limit(1);
+    await db
+      .update(suppliers)
+      .set({
+        notes: existing?.notes
+          ? `${existing.notes} · Disconnected`
+          : "Disconnected — no longer active",
+      })
+      .where(eq(suppliers.id, supplierId));
+  }
+
+  revalidatePath("/suppliers");
+  revalidatePath("/products");
+  revalidatePath("/preorders");
 }
 
 export async function deleteSupplierCatalogItem(formData: FormData) {

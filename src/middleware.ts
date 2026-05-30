@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/track"];
 
 function getSecret() {
   return new TextEncoder().encode(
@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
+    pathname.startsWith("/api/track/") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

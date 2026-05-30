@@ -70,6 +70,10 @@ export async function createProduct(
   let supplierRetailPrice = parseMoneyToCents(formData.get("supplierRetailPrice"));
   let supplierBulkPrice = parseMoneyToCents(formData.get("supplierBulkPrice"));
 
+  const purchaseTierRaw = String(formData.get("purchaseTier") ?? "Wholesale");
+  const purchaseTier =
+    purchaseTierRaw === "Retail" ? ("Retail" as const) : ("Wholesale" as const);
+
   if (catalogItemId && Number.isFinite(catalogItemId)) {
     const [catalogRow] = await db
       .select({
@@ -94,8 +98,11 @@ export async function createProduct(
           ? displayCatalogFlavor(catalogRow.variant, catalogRow.itemName)
           : null);
 
-      if (!formData.get("costPrice") && catalogRow.unitCost != null) {
-        costPrice = catalogRow.unitCost;
+      if (!formData.get("costPrice")) {
+        costPrice =
+          purchaseTier === "Retail"
+            ? (catalogRow.retailPrice ?? catalogRow.unitCost ?? 0)
+            : (catalogRow.unitCost ?? 0);
       }
       if (!formData.get("supplierRetailPrice") && catalogRow.retailPrice != null) {
         supplierRetailPrice = catalogRow.retailPrice;
@@ -134,6 +141,7 @@ export async function createProduct(
         catalogItemId && Number.isFinite(catalogItemId) ? catalogItemId : null,
       supplierRetailPrice: supplierRetailPrice || null,
       supplierBulkPrice: supplierBulkPrice || null,
+      purchaseTier,
     })
     .returning({ id: products.id });
 
