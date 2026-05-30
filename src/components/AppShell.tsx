@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { db } from "@/db";
 import { deliveryLogs } from "@/db/schema";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { getSession, type SessionUser } from "@/lib/session";
 import { inArray, sql } from "drizzle-orm";
 
@@ -43,11 +44,9 @@ export async function AppShell(props: {
         <aside className="hidden w-64 shrink-0 md:block">
           <div className="sticky top-0 flex max-h-[calc(100dvh-3rem)] flex-col rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="text-sm font-semibold tracking-tight">
-              Pet Pro Manager
+              {BRAND_NAME}
             </div>
-            <div className="mt-1 text-xs text-zinc-400">
-              PH pet supplies ERP
-            </div>
+            <div className="mt-1 text-xs text-zinc-400">{BRAND_TAGLINE}</div>
             <div className="mt-4 flex-1 space-y-1 overflow-y-auto">
               <NavItem href="/" label="Dashboard" />
               <NavItem href="/products" label="Inventory" hint="CRUD" />

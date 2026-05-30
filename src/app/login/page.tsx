@@ -1,4 +1,5 @@
 import { LoginForm } from "@/app/login/LoginForm";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 
 export default async function LoginPage(props: {
   searchParams: Promise<{ next?: string }>;
@@ -11,10 +12,10 @@ export default async function LoginPage(props: {
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6">
         <div className="mb-6 text-center">
           <div className="text-lg font-semibold tracking-tight">
-            Pet Pro Manager
+            {BRAND_NAME}
           </div>
           <div className="mt-1 text-xs text-zinc-400">
-            Sign in to manage inventory &amp; sales
+            Sign in · {BRAND_TAGLINE}
           </div>
         </div>
         <LoginForm nextPath={nextPath} />

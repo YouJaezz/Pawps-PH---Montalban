@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pet Pro Manager",
-  description: "ERP dashboard for pet supply operations",
+  title: BRAND_NAME,
+  description: BRAND_DESCRIPTION,
 };
 
 /** Always render on the server — pages query Turso/SQLite at request time. */
