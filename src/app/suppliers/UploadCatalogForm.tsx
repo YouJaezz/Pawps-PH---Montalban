@@ -19,7 +19,7 @@ export function UploadCatalogForm(props: {
   >(uploadSupplierCatalog, null);
 
   return (
-    <form action={formAction} className="mt-3 space-y-2.5">
+    <form action={formAction} className="mt-2 space-y-1.5">
       <label className="block space-y-0.5">
         <span className="text-[11px] text-zinc-400">Supplier *</span>
         <select

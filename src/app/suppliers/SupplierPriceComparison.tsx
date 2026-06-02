@@ -2,25 +2,23 @@
 
 import { useMemo, useState } from "react";
 
+import { ScrollableTable } from "@/components/ScrollableTable";
 import type { PriceComparisonRow } from "@/db/queries/supplier-comparison";
 import { formatPhpFromCents } from "@/lib/money";
 
 type SortMode = "expensive" | "cheap" | "name";
-type PriceView = "wholesale" | "retail" | "both";
+type PriceView = "wholesale" | "retail";
 
-function priceCell(cents: number | null, isBest: boolean) {
+function formatPrice(cents: number | null) {
   if (cents == null) return "—";
-  return (
-    <span className={isBest ? "font-semibold text-emerald-300" : "text-zinc-200"}>
-      {formatPhpFromCents(cents)}
-    </span>
-  );
+  return formatPhpFromCents(cents);
 }
 
 export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
   const [query, setQuery] = useState("");
-  const [sortMode, setSortMode] = useState<SortMode>("expensive");
-  const [priceView, setPriceView] = useState<PriceView>("both");
+  const [sortMode, setSortMode] = useState<SortMode>("cheap");
+  const [priceView, setPriceView] = useState<PriceView>("wholesale");
+  const [expanded, setExpanded] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,113 +44,152 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
     return list;
   }, [props.rows, query, sortMode]);
 
+  const visibleRows = expanded ? filtered : filtered.slice(0, 8);
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-sm font-medium text-zinc-100">
-            Cross-supplier price comparison
-          </div>
-          <div className="mt-0.5 text-xs text-zinc-400">
-            Items sold by 2+ suppliers — green = cheapest for that tier.
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-zinc-100">Price comparison</div>
+          <div className="text-[10px] text-zinc-500">
+            Same item across 2+ suppliers · green = cheapest
           </div>
         </div>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <select
-            value={sortMode}
-            onChange={(e) => setSortMode(e.target.value as SortMode)}
-            className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none"
-          >
-            <option value="expensive">Most → least expensive</option>
-            <option value="cheap">Cheapest first</option>
-            <option value="name">By item name</option>
-          </select>
-          <select
-            value={priceView}
-            onChange={(e) => setPriceView(e.target.value as PriceView)}
-            className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none"
-          >
-            <option value="both">Wholesale + retail</option>
-            <option value="wholesale">Wholesale only</option>
-            <option value="retail">Retail only</option>
-          </select>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search item..."
-            className="min-w-[120px] rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none sm:w-40"
-          />
-        </div>
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value as SortMode)}
+          className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none"
+        >
+          <option value="cheap">Cheapest first</option>
+          <option value="expensive">Most expensive</option>
+          <option value="name">A–Z</option>
+        </select>
+        <select
+          value={priceView}
+          onChange={(e) => setPriceView(e.target.value as PriceView)}
+          className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none"
+        >
+          <option value="wholesale">Wholesale</option>
+          <option value="retail">Retail</option>
+        </select>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filter…"
+          className="w-24 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none sm:w-32"
+        />
       </div>
 
       {props.rows.length === 0 ? (
-        <p className="mt-4 text-sm text-zinc-500">
-          Upload catalogs from 2+ suppliers with overlapping items to compare prices.
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Upload 2+ suppliers with overlapping items to compare.
         </p>
       ) : (
-        <div className="mt-4 space-y-3">
-          {filtered.map((row) => (
-            <div
-              key={row.itemKey}
-              className="rounded-xl border border-white/10 bg-black/20 p-3"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <span className="font-medium text-zinc-50">{row.itemLabel}</span>
-                  {row.flavor !== "—" ? (
-                    <span className="ml-2 text-xs text-zinc-400">{row.flavor}</span>
-                  ) : null}
-                </div>
-                <div className="text-[10px] text-zinc-500">
-                  {row.offers.length} suppliers
-                </div>
-              </div>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full min-w-[320px] text-xs">
-                  <thead>
-                    <tr className="text-left text-[10px] text-zinc-500">
-                      <th className="py-1 pr-3">Supplier</th>
-                      {(priceView === "both" || priceView === "wholesale") && (
-                        <th className="py-1 pr-3">Wholesale</th>
-                      )}
-                      {(priceView === "both" || priceView === "retail") && (
-                        <th className="py-1">Retail</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {row.offers.map((o) => (
-                      <tr key={o.supplierId} className="border-t border-white/5">
-                        <td className="py-1.5 pr-3 text-zinc-400">{o.supplierName}</td>
-                        {(priceView === "both" || priceView === "wholesale") && (
-                          <td className="py-1.5 pr-3">
-                            {priceCell(
-                              o.wholesaleCents,
-                              o.wholesaleCents != null &&
-                                o.wholesaleCents === row.bestWholesale,
-                            )}
-                          </td>
-                        )}
-                        {(priceView === "both" || priceView === "retail") && (
-                          <td className="py-1.5">
-                            {priceCell(
-                              o.retailCents,
-                              o.retailCents != null &&
-                                o.retailCents === row.bestRetail,
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ScrollableTable
+          maxHeight={expanded ? "max-h-[min(38vh,320px)]" : "max-h-[9.5rem]"}
+          className="mt-2"
+        >
+          <table className="w-full min-w-[640px] text-[11px]">
+            <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+              <tr>
+                <th className="px-2 py-1.5 font-medium">Item</th>
+                <th className="hidden w-28 px-2 py-1.5 font-medium sm:table-cell">
+                  Flavor
+                </th>
+                <th className="w-24 px-2 py-1.5 font-medium">Best</th>
+                <th className="w-28 px-2 py-1.5 font-medium">At</th>
+                <th className="w-24 px-2 py-1.5 font-medium">Highest</th>
+                <th className="w-16 px-2 py-1.5 font-medium">Gap</th>
+                <th className="min-w-[140px] px-2 py-1.5 font-medium">All offers</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {visibleRows.map((row) => {
+                const best =
+                  priceView === "wholesale" ? row.bestWholesale : row.bestRetail;
+                const worst =
+                  priceView === "wholesale"
+                    ? row.worstWholesale
+                    : row.offers.reduce<number | null>((max, o) => {
+                        const p = o.retailCents;
+                        if (p == null) return max;
+                        return max == null ? p : Math.max(max, p);
+                      }, null);
+                const gap =
+                  best != null && worst != null && worst > best
+                    ? worst - best
+                    : null;
+                const bestOffer = row.offers.find((o) =>
+                  priceView === "wholesale"
+                    ? o.wholesaleCents === best
+                    : o.retailCents === best,
+                );
+
+                return (
+                  <tr key={row.itemKey} className="hover:bg-white/[0.03]">
+                    <td className="max-w-[120px] truncate px-2 py-1 font-medium text-zinc-100">
+                      {row.itemLabel}
+                    </td>
+                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-500 sm:table-cell">
+                      {row.flavor === "—" ? "" : row.flavor}
+                    </td>
+                    <td className="px-2 py-1 font-semibold text-emerald-300">
+                      {formatPrice(best)}
+                    </td>
+                    <td className="max-w-[100px] truncate px-2 py-1 text-zinc-400">
+                      {bestOffer?.supplierName ?? "—"}
+                    </td>
+                    <td className="px-2 py-1 text-zinc-300">
+                      {formatPrice(worst)}
+                    </td>
+                    <td className="px-2 py-1 text-amber-300/90">
+                      {gap != null ? formatPrice(gap) : "—"}
+                    </td>
+                    <td className="px-2 py-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                        {row.offers.map((o) => {
+                          const cents =
+                            priceView === "wholesale"
+                              ? o.wholesaleCents
+                              : o.retailCents;
+                          const isBest = cents != null && cents === best;
+                          return (
+                            <span
+                              key={o.supplierId}
+                              className={
+                                isBest
+                                  ? "text-emerald-300"
+                                  : "text-zinc-500"
+                              }
+                              title={o.supplierName}
+                            >
+                              {o.supplierName.split(/\s+/)[0]} {formatPrice(cents)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </ScrollableTable>
       )}
-      <div className="mt-2 text-[11px] text-zinc-500">
-        {filtered.length} of {props.rows.length} comparable items
+
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-500">
+        <span>
+          {filtered.length} comparable · showing {visibleRows.length}
+        </span>
+        {filtered.length > 8 ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[#e8a44a] hover:underline"
+          >
+            {expanded ? "Show less" : `Show all ${filtered.length}`}
+          </button>
+        ) : null}
       </div>
     </div>
   );

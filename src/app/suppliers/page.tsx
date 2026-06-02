@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { createSupplier } from "@/app/suppliers/actions";
 import { SupplierDeleteButton } from "@/app/suppliers/SupplierDeleteButton";
 import { SupplierPriceComparison } from "@/app/suppliers/SupplierPriceComparison";
@@ -15,7 +17,7 @@ import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { suppliers } from "@/db/schema";
 
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+  "w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-50 outline-none focus:border-white/20";
 
 export default async function SuppliersPage() {
   await backfillSupplierPriceHistoryIfEmpty();
@@ -30,87 +32,78 @@ export default async function SuppliersPage() {
     .from(suppliers)
     .orderBy(suppliers.name);
 
-  const { suppliersWithCounts, searchRows, docs, supplierById } =
-    await getSupplierCatalogRows();
+  const { suppliersWithCounts, searchRows } = await getSupplierCatalogRows();
 
   const inflation = await getSupplierInflationInsights();
   const priceComparison = await getSupplierPriceComparison();
 
-  const latestDocBySupplier = new Map<number, (typeof docs)[0]>();
-  for (const doc of docs) {
-    if (!latestDocBySupplier.has(doc.supplierId)) {
-      latestDocBySupplier.set(doc.supplierId, doc);
-    }
-  }
-
   return (
     <AppShell>
-      <div className="w-full px-0 py-4">
-        <div className="text-sm text-zinc-400">Suppliers</div>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-          Supplier catalog
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Upload price lists per supplier. Re-uploading replaces that supplier&apos;s
-          catalog only.{" "}
-          <a
+      <div className="flex h-full min-h-0 flex-col px-0 py-3">
+        <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
+          <div>
+            <div className="text-xs text-zinc-500">Suppliers</div>
+            <h1 className="text-xl font-semibold tracking-tight">Supplier catalog</h1>
+          </div>
+          <Link
             href="/suppliers/normalize"
-            className="text-[#e8a44a] underline-offset-2 hover:underline"
+            className="rounded-md border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-2.5 py-1 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/15"
           >
-            Normalize a messy pricelist with AI →
-          </a>
-        </p>
+            Normalize pricelist →
+          </Link>
+        </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-6">
-          <div className="space-y-4 xl:col-span-2 xl:max-w-sm">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-medium text-zinc-100">Add supplier</div>
-              <form action={createSupplier} className="mt-3 space-y-2.5">
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Name *</span>
-                  <input name="name" required placeholder="Distributor name" className={inputClass} />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Contact</span>
-                  <input name="contact" placeholder="Phone / FB" className={inputClass} />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Location</span>
+        <div className="mt-3 shrink-0">
+          <SupplierPriceComparison rows={priceComparison} />
+        </div>
+
+        <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="flex shrink-0 flex-col gap-2 lg:max-h-[min(52vh,520px)] lg:overflow-y-auto">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[11px] font-medium text-zinc-200">Add supplier</div>
+              <form action={createSupplier} className="mt-2 space-y-1.5">
+                <input
+                  name="name"
+                  required
+                  placeholder="Name *"
+                  className={inputClass}
+                />
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input name="contact" placeholder="Contact" className={inputClass} />
                   <input name="location" placeholder="City" className={inputClass} />
-                </label>
+                </div>
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-zinc-50 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white"
+                  className="w-full rounded-md bg-zinc-50 py-1 text-[10px] font-medium text-zinc-900 hover:bg-white"
                 >
                   Save
                 </button>
               </form>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-medium text-zinc-100">Upload price list</div>
-              <p className="mt-0.5 text-[11px] text-zinc-500">
-                Replaces only the selected supplier&apos;s catalog.
-              </p>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[11px] font-medium text-zinc-200">Upload list</div>
               <UploadCatalogForm suppliers={supplierRows} />
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs font-medium text-zinc-300">Your suppliers</div>
-              <ul className="mt-2 space-y-2 text-[11px]">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                Suppliers ({supplierRows.length})
+              </div>
+              <ul className="mt-1.5 max-h-32 space-y-1 overflow-y-auto text-[10px]">
                 {supplierRows.length === 0 ? (
-                  <li className="text-zinc-500">None yet.</li>
+                  <li className="text-zinc-600">None yet</li>
                 ) : (
                   supplierRows.map((s) => (
                     <li
                       key={s.id}
-                      className="flex items-start justify-between gap-2 border-b border-white/5 pb-2 last:border-0"
+                      className="flex items-center justify-between gap-1 border-b border-white/5 py-1 last:border-0"
                     >
-                      <div>
-                        <div className="font-medium text-zinc-200">{s.name}</div>
-                        <div className="text-zinc-500">
-                          {s.contact ?? "—"} · {s.location ?? "—"}
-                        </div>
+                      <div className="min-w-0 truncate">
+                        <span className="text-zinc-200">{s.name}</span>
+                        {s.location ? (
+                          <span className="text-zinc-600"> · {s.location}</span>
+                        ) : null}
                       </div>
                       <SupplierDeleteButton supplierId={s.id} name={s.name} />
                     </li>
@@ -118,25 +111,9 @@ export default async function SuppliersPage() {
                 )}
               </ul>
             </div>
+          </aside>
 
-            {docs.length > 0 ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs font-medium text-zinc-300">Latest per supplier</div>
-                <ul className="mt-2 space-y-1.5 text-[11px] text-zinc-500">
-                  {Array.from(latestDocBySupplier.values()).map((doc) => (
-                    <li key={doc.id} className="flex justify-between gap-2">
-                      <span className="truncate text-zinc-400">
-                        {supplierById.get(doc.supplierId)} · {doc.fileName}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-5 xl:col-span-4">
-            <SupplierPriceComparison rows={priceComparison} />
+          <div className="flex min-h-0 flex-col gap-2">
             <SupplierSearch rows={searchRows} suppliers={suppliersWithCounts} />
             <SupplierInflationPanel {...inflation} />
           </div>
