@@ -3,7 +3,7 @@ import { createDeliveryLog } from "@/app/delivery/actions";
 import { DeliveryLogTable } from "@/app/delivery/DeliveryLogTable";
 import { db } from "@/db";
 import { deliveryLogs, deliveryStatusHistory } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 
 export default async function DeliveryLogPage() {
   const rows = await db
@@ -23,23 +23,36 @@ export default async function DeliveryLogPage() {
     .orderBy(desc(deliveryLogs.createdAt))
     .limit(50);
 
-  const tableRows = await Promise.all(
-    rows.map(async (d) => {
-      const history = await db
-        .select({
-          id: deliveryStatusHistory.id,
-          previousStatus: deliveryStatusHistory.previousStatus,
-          newStatus: deliveryStatusHistory.newStatus,
-          note: deliveryStatusHistory.note,
-          changedAt: deliveryStatusHistory.changedAt,
-        })
-        .from(deliveryStatusHistory)
-        .where(eq(deliveryStatusHistory.deliveryLogId, d.id))
-        .orderBy(desc(deliveryStatusHistory.changedAt));
+  const logIds = rows.map((d) => d.id);
+  const allHistory =
+    logIds.length === 0
+      ? []
+      : await db
+          .select({
+            deliveryLogId: deliveryStatusHistory.deliveryLogId,
+            id: deliveryStatusHistory.id,
+            previousStatus: deliveryStatusHistory.previousStatus,
+            newStatus: deliveryStatusHistory.newStatus,
+            note: deliveryStatusHistory.note,
+            changedAt: deliveryStatusHistory.changedAt,
+          })
+          .from(deliveryStatusHistory)
+          .where(inArray(deliveryStatusHistory.deliveryLogId, logIds))
+          .orderBy(desc(deliveryStatusHistory.changedAt));
 
-      return { ...d, history };
-    }),
-  );
+  const historyByLog = new Map<number, Array<Omit<(typeof allHistory)[number], "deliveryLogId">>>();
+  for (const entry of allHistory) {
+    const list = historyByLog.get(entry.deliveryLogId) ?? [];
+    const { deliveryLogId, ...rest } = entry;
+    void deliveryLogId;
+    list.push(rest);
+    historyByLog.set(entry.deliveryLogId, list);
+  }
+
+  const tableRows = rows.map((d) => ({
+    ...d,
+    history: historyByLog.get(d.id) ?? [],
+  }));
 
   return (
     <AppShell>

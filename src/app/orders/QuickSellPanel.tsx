@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
-import { quickSell } from "@/app/orders/actions";
+import {
+  quickSell,
+  type OrderActionResult,
+} from "@/app/orders/actions";
 import {
   CustomerPicker,
   type CustomerOption,
@@ -24,15 +27,38 @@ export function QuickSellPanel(props: {
   customers: CustomerOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+  const [state, formAction, pending] = useActionState<
+    OrderActionResult | null,
+    FormData
+  >(quickSell, null);
   const [productId, setProductId] = useState<number>(
     props.products[0]?.id ?? 0,
   );
   const [priceTier, setPriceTier] = useState<"Retail" | "Bulk">("Retail");
   const [quantity, setQuantity] = useState(1);
+  const [deductStock, setDeductStock] = useState(
+    () => (props.products[0]?.stockQuantity ?? 0) > 0,
+  );
   const [customerName, setCustomerName] = useState("");
   const [contact, setContact] = useState("");
   const [location, setLocation] = useState("");
   const [customerId, setCustomerId] = useState("");
+
+  function closeModal() {
+    setOpen(false);
+    setFormKey((k) => k + 1);
+    setCustomerName("");
+    setContact("");
+    setLocation("");
+    setCustomerId("");
+    setQuantity(1);
+  }
+
+  function openModal() {
+    setFormKey((k) => k + 1);
+    setOpen(true);
+  }
 
   const product = useMemo(
     () => props.products.find((p) => p.id === productId),
@@ -46,7 +72,7 @@ export function QuickSellPanel(props: {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={openModal}
         className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
       >
         Quick Sell
@@ -56,7 +82,7 @@ export function QuickSellPanel(props: {
         <div className="fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-black/60"
-            onClick={() => setOpen(false)}
+            onClick={closeModal}
           />
           <div className="absolute left-1/2 top-1/2 w-[94vw] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0b0b10] p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
@@ -70,21 +96,40 @@ export function QuickSellPanel(props: {
                 </div>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={closeModal}
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 hover:bg-white/10"
               >
                 Close
               </button>
             </div>
 
-            <form action={quickSell} className="mt-6 space-y-4">
+            {state?.ok ? (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                  {state.message ?? "Quick sell recorded."}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+            <form key={formKey} action={formAction} className="mt-6 space-y-4">
               <label className="space-y-1">
                 <div className="text-xs text-zinc-300">Product *</div>
                 <select
                   name="productId"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   value={productId}
-                  onChange={(e) => setProductId(Number(e.target.value))}
+                  onChange={(e) => {
+                    const nextId = Number(e.target.value);
+                    setProductId(nextId);
+                    const nextProduct = props.products.find((p) => p.id === nextId);
+                    setDeductStock((nextProduct?.stockQuantity ?? 0) > 0);
+                  }}
                 >
                   {props.products.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -170,19 +215,33 @@ export function QuickSellPanel(props: {
                 <input
                   name="deductStock"
                   type="checkbox"
-                  defaultChecked
+                  checked={deductStock}
+                  onChange={(e) => setDeductStock(e.target.checked)}
                   className="size-4 accent-white"
                 />
                 Deduct stock
+                {product && product.stockQuantity <= 0 ? (
+                  <span className="text-xs text-amber-300">
+                    (no stock — leave unchecked)
+                  </span>
+                ) : null}
               </label>
+
+              {state?.error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  {state.error}
+                </div>
+              ) : null}
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+                disabled={pending}
+                className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
               >
-                Confirm Quick Sell
+                {pending ? "Saving…" : "Confirm Quick Sell"}
               </button>
             </form>
+            )}
           </div>
         </div>
       ) : null}

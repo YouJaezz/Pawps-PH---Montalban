@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
-import { createBulkOrder } from "@/app/orders/actions";
+import {
+  createBulkOrder,
+  type OrderActionResult,
+} from "@/app/orders/actions";
 import {
   CustomerPicker,
   type CustomerOption,
@@ -25,6 +28,11 @@ export function BulkOrderModal(props: {
   customers: CustomerOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+  const [state, formAction, pending] = useActionState<
+    OrderActionResult | null,
+    FormData
+  >(createBulkOrder, null);
   const [search, setSearch] = useState("");
   const [priceTier, setPriceTier] = useState<"Bulk" | "Retail">("Bulk");
   const [lines, setLines] = useState<Line[]>([
@@ -34,6 +42,21 @@ export function BulkOrderModal(props: {
   const [contact, setContact] = useState("");
   const [location, setLocation] = useState("");
   const [customerId, setCustomerId] = useState("");
+
+  function closeModal() {
+    setOpen(false);
+    setFormKey((k) => k + 1);
+    setCustomerName("");
+    setContact("");
+    setLocation("");
+    setCustomerId("");
+    setLines([{ productId: props.products[0]?.id ?? 0, quantity: 1 }]);
+  }
+
+  function openModal() {
+    setFormKey((k) => k + 1);
+    setOpen(true);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -81,7 +104,7 @@ export function BulkOrderModal(props: {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={openModal}
         className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
       >
         Bulk Order
@@ -91,7 +114,7 @@ export function BulkOrderModal(props: {
         <div className="fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-black/60"
-            onClick={() => setOpen(false)}
+            onClick={closeModal}
           />
           <div className="absolute left-1/2 top-1/2 w-[96vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0b0b10] p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
@@ -105,14 +128,28 @@ export function BulkOrderModal(props: {
                 </div>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={closeModal}
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 hover:bg-white/10"
               >
                 Close
               </button>
             </div>
 
-            <form action={createBulkOrder} className="mt-6 space-y-4">
+            {state?.ok ? (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                  {state.message ?? "Bulk order created."}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full rounded-xl bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+            <form key={formKey} action={formAction} className="mt-6 space-y-4">
               <CustomerPicker
                 customers={props.customers}
                 customerName={customerName}
@@ -271,12 +308,20 @@ export function BulkOrderModal(props: {
                 </div>
                 <button
                   type="submit"
-                  className="rounded-2xl bg-zinc-50 p-4 text-sm font-medium text-zinc-900 hover:bg-white"
+                  disabled={pending}
+                  className="rounded-2xl bg-zinc-50 p-4 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
                 >
-                  Create bulk order
+                  {pending ? "Creating…" : "Create bulk order"}
                 </button>
               </div>
+
+              {state?.error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  {state.error}
+                </div>
+              ) : null}
             </form>
+            )}
           </div>
         </div>
       ) : null}

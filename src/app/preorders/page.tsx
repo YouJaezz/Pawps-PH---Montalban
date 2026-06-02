@@ -4,59 +4,71 @@ import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { preOrderItems, preOrders, suppliers } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 export default async function PreOrdersPage() {
-  const supplierRows = await db
-    .select({ id: suppliers.id, name: suppliers.name })
-    .from(suppliers)
-    .orderBy(suppliers.name);
-
-  const { searchRows: catalogItems } = await getSupplierCatalogRows();
-
-  const orderRows = await db
-    .select({
-      id: preOrders.id,
-      supplierId: preOrders.supplierId,
-      status: preOrders.status,
-      customerName: preOrders.customerName,
-      expectedDate: preOrders.expectedDate,
-      depositCents: preOrders.depositCents,
-      totalCostCents: preOrders.totalCostCents,
-      notes: preOrders.notes,
-      createdAt: preOrders.createdAt,
-    })
-    .from(preOrders)
-    .orderBy(desc(preOrders.createdAt))
-    .limit(100);
+  const [supplierRows, { searchRows: catalogItems }, orderRows] =
+    await Promise.all([
+      db
+        .select({ id: suppliers.id, name: suppliers.name })
+        .from(suppliers)
+        .orderBy(suppliers.name),
+      getSupplierCatalogRows(),
+      db
+        .select({
+          id: preOrders.id,
+          supplierId: preOrders.supplierId,
+          status: preOrders.status,
+          customerName: preOrders.customerName,
+          expectedDate: preOrders.expectedDate,
+          depositCents: preOrders.depositCents,
+          totalCostCents: preOrders.totalCostCents,
+          notes: preOrders.notes,
+          createdAt: preOrders.createdAt,
+        })
+        .from(preOrders)
+        .orderBy(desc(preOrders.createdAt))
+        .limit(100),
+    ]);
 
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
 
-  const rows = await Promise.all(
-    orderRows.map(async (o) => {
-      const items = await db
-        .select({
-          id: preOrderItems.id,
-          itemName: preOrderItems.itemName,
-          variant: preOrderItems.variant,
-          quantity: preOrderItems.quantity,
-          unitCostCents: preOrderItems.unitCostCents,
-          lineTotalCents: preOrderItems.lineTotalCents,
-          receivedQty: preOrderItems.receivedQty,
-        })
-        .from(preOrderItems)
-        .where(eq(preOrderItems.preOrderId, o.id));
+  const orderIds = orderRows.map((o) => o.id);
+  const allItems =
+    orderIds.length === 0
+      ? []
+      : await db
+          .select({
+            preOrderId: preOrderItems.preOrderId,
+            id: preOrderItems.id,
+            itemName: preOrderItems.itemName,
+            variant: preOrderItems.variant,
+            quantity: preOrderItems.quantity,
+            unitCostCents: preOrderItems.unitCostCents,
+            lineTotalCents: preOrderItems.lineTotalCents,
+            receivedQty: preOrderItems.receivedQty,
+          })
+          .from(preOrderItems)
+          .where(inArray(preOrderItems.preOrderId, orderIds));
 
-      return {
-        ...o,
-        supplierName: supplierById.get(o.supplierId) ?? "Unknown",
-        items,
-      };
+  const itemsByOrder = new Map<number, typeof allItems>();
+  for (const item of allItems) {
+    const list = itemsByOrder.get(item.preOrderId) ?? [];
+    list.push(item);
+    itemsByOrder.set(item.preOrderId, list);
+  }
+
+  const rows = orderRows.map((o) => ({
+    ...o,
+    supplierName: supplierById.get(o.supplierId) ?? "Unknown",
+    items: (itemsByOrder.get(o.id) ?? []).map(({ preOrderId, ...item }) => {
+      void preOrderId;
+      return item;
     }),
-  );
+  }));
 
   const pendingCount = rows.filter(
     (r) => !["Received", "Cancelled"].includes(r.status),

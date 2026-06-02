@@ -15,8 +15,10 @@ function formatDateShort(d: Date) {
 }
 
 export default async function Home() {
-  const glance = await getInventoryAtAGlance({ daysUntilExpiry: 30 });
-  const insights = await getBusinessInsights();
+  const [glance, insights] = await Promise.all([
+    getInventoryAtAGlance({ daysUntilExpiry: 30 }),
+    getBusinessInsights(),
+  ]);
 
   return (
     <AppShell>

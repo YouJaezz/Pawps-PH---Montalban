@@ -17,13 +17,33 @@ import { formatPhpFromCents } from "@/lib/money";
 import { eq } from "drizzle-orm";
 
 export default async function ProductsPage() {
-  const supplierRows = await db
-    .select({ id: suppliers.id, name: suppliers.name })
-    .from(suppliers)
-    .orderBy(suppliers.name);
+  const [supplierRows, catalogData, rows] = await Promise.all([
+    db
+      .select({ id: suppliers.id, name: suppliers.name })
+      .from(suppliers)
+      .orderBy(suppliers.name),
+    getSupplierCatalogRows(),
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        variant: products.variant,
+        costPrice: products.costPrice,
+        retailPrice: products.retailPrice,
+        bulkPrice: products.bulkPrice,
+        stockQuantity: products.stockQuantity,
+        purchaseTier: products.purchaseTier,
+        supplierId: products.supplierId,
+        supplierRetailPrice: products.supplierRetailPrice,
+        supplierBulkPrice: products.supplierBulkPrice,
+      })
+      .from(products)
+      .where(eq(products.archived, false))
+      .orderBy(products.name),
+  ]);
 
-  const { suppliersWithCounts, searchRows: catalogItems } =
-    await getSupplierCatalogRows();
+  const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
 
   const catalogPickItems = catalogItems.map((c) => ({
     id: c.id,
@@ -40,25 +60,6 @@ export default async function ProductsPage() {
     name: s.name,
     itemCount: suppliersWithCounts.find((c) => c.id === s.id)?.itemCount ?? 0,
   }));
-
-  const rows = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brand: products.brand,
-      variant: products.variant,
-      costPrice: products.costPrice,
-      retailPrice: products.retailPrice,
-      bulkPrice: products.bulkPrice,
-      stockQuantity: products.stockQuantity,
-      purchaseTier: products.purchaseTier,
-      supplierId: products.supplierId,
-      supplierRetailPrice: products.supplierRetailPrice,
-      supplierBulkPrice: products.supplierBulkPrice,
-    })
-    .from(products)
-    .where(eq(products.archived, false))
-    .orderBy(products.name);
 
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
 

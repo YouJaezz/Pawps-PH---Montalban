@@ -41,7 +41,7 @@ export async function resolveCustomerForOrder(params: {
   const [byName] = await db
     .select()
     .from(customers)
-    .where(sql`lower(${customers.name}) = lower(${name})`)
+    .where(sql`lower(${customers.name}) = ${name.toLowerCase()}`)
     .limit(1);
 
   if (byName) {

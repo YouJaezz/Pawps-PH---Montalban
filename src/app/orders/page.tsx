@@ -7,34 +7,47 @@ import { customers, orderItems, orders, products } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 
 export default async function OrdersPage() {
-  const customerRows = await db
-    .select({
-      id: customers.id,
-      name: customers.name,
-      contact: customers.contact,
-      location: customers.location,
-      totalSpend: customers.totalSpend,
-    })
-    .from(customers)
-    .orderBy(customers.name);
-
-  const recentOrders = await db
-    .select({
-      id: orders.id,
-      customerName: orders.customerName,
-      contact: orders.contact,
-      location: orders.location,
-      orderStatus: orders.orderStatus,
-      totalAmount: orders.totalAmount,
-      amountPaid: orders.amountPaid,
-      paymentStatus: orders.paymentStatus,
-      deliveryMethod: orders.deliveryMethod,
-      storeType: orders.storeType,
-      createdAt: orders.createdAt,
-    })
-    .from(orders)
-    .orderBy(desc(orders.createdAt))
-    .limit(50);
+  const [customerRows, recentOrders, quickSellProducts] = await Promise.all([
+    db
+      .select({
+        id: customers.id,
+        name: customers.name,
+        contact: customers.contact,
+        location: customers.location,
+        totalSpend: customers.totalSpend,
+      })
+      .from(customers)
+      .orderBy(customers.name),
+    db
+      .select({
+        id: orders.id,
+        customerName: orders.customerName,
+        contact: orders.contact,
+        location: orders.location,
+        orderStatus: orders.orderStatus,
+        totalAmount: orders.totalAmount,
+        amountPaid: orders.amountPaid,
+        paymentStatus: orders.paymentStatus,
+        deliveryMethod: orders.deliveryMethod,
+        storeType: orders.storeType,
+        createdAt: orders.createdAt,
+      })
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(50),
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        variant: products.variant,
+        retailPrice: products.retailPrice,
+        bulkPrice: products.bulkPrice,
+        stockQuantity: products.stockQuantity,
+      })
+      .from(products)
+      .where(eq(products.archived, false)),
+  ]);
 
   const recentOrderIds = recentOrders.map((o) => o.id);
   const recentLines =
@@ -94,19 +107,6 @@ export default async function OrdersPage() {
       itemCount: items.length,
     };
   });
-
-  const quickSellProducts = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brand: products.brand,
-      variant: products.variant,
-      retailPrice: products.retailPrice,
-      bulkPrice: products.bulkPrice,
-      stockQuantity: products.stockQuantity,
-    })
-    .from(products)
-    .where(eq(products.archived, false));
 
   return (
     <AppShell>

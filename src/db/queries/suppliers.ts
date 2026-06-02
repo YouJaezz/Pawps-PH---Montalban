@@ -3,52 +3,54 @@ import { supplierCatalogItems, supplierDocuments, suppliers } from "@/db/schema"
 import { asc, desc, sql } from "drizzle-orm";
 
 export async function getSupplierCatalogRows() {
-  const supplierRows = await db
-    .select({ id: suppliers.id, name: suppliers.name })
-    .from(suppliers)
-    .orderBy(suppliers.name);
-
-  const catalogRows = await db
-    .select({
-      id: supplierCatalogItems.id,
-      supplierId: supplierCatalogItems.supplierId,
-      itemName: supplierCatalogItems.itemName,
-      brand: supplierCatalogItems.brand,
-      productName: supplierCatalogItems.productName,
-      variant: supplierCatalogItems.variant,
-      itemType: supplierCatalogItems.itemType,
-      sku: supplierCatalogItems.sku,
-      unitCost: supplierCatalogItems.unitCost,
-      packSize: supplierCatalogItems.packSize,
-      packUnit: supplierCatalogItems.packUnit,
-      perKiloPrice: supplierCatalogItems.perKiloPrice,
-      retailPrice: supplierCatalogItems.retailPrice,
-      notes: supplierCatalogItems.notes,
-      documentId: supplierCatalogItems.documentId,
-    })
-    .from(supplierCatalogItems)
-    .orderBy(asc(supplierCatalogItems.supplierId), asc(supplierCatalogItems.itemName));
-
-  const docs = await db
-    .select({
-      id: supplierDocuments.id,
-      fileName: supplierDocuments.fileName,
-      supplierId: supplierDocuments.supplierId,
-      uploadedAt: supplierDocuments.uploadedAt,
-    })
-    .from(supplierDocuments)
-    .orderBy(desc(supplierDocuments.uploadedAt));
+  const [supplierRows, catalogRows, docs, countRows] = await Promise.all([
+    db
+      .select({ id: suppliers.id, name: suppliers.name })
+      .from(suppliers)
+      .orderBy(suppliers.name),
+    db
+      .select({
+        id: supplierCatalogItems.id,
+        supplierId: supplierCatalogItems.supplierId,
+        itemName: supplierCatalogItems.itemName,
+        brand: supplierCatalogItems.brand,
+        productName: supplierCatalogItems.productName,
+        variant: supplierCatalogItems.variant,
+        itemType: supplierCatalogItems.itemType,
+        sku: supplierCatalogItems.sku,
+        unitCost: supplierCatalogItems.unitCost,
+        packSize: supplierCatalogItems.packSize,
+        packUnit: supplierCatalogItems.packUnit,
+        perKiloPrice: supplierCatalogItems.perKiloPrice,
+        retailPrice: supplierCatalogItems.retailPrice,
+        notes: supplierCatalogItems.notes,
+        documentId: supplierCatalogItems.documentId,
+      })
+      .from(supplierCatalogItems)
+      .orderBy(
+        asc(supplierCatalogItems.supplierId),
+        asc(supplierCatalogItems.itemName),
+      ),
+    db
+      .select({
+        id: supplierDocuments.id,
+        fileName: supplierDocuments.fileName,
+        supplierId: supplierDocuments.supplierId,
+        uploadedAt: supplierDocuments.uploadedAt,
+      })
+      .from(supplierDocuments)
+      .orderBy(desc(supplierDocuments.uploadedAt)),
+    db
+      .select({
+        supplierId: supplierCatalogItems.supplierId,
+        count: sql<number>`count(*)`,
+      })
+      .from(supplierCatalogItems)
+      .groupBy(supplierCatalogItems.supplierId),
+  ]);
 
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
   const docById = new Map(docs.map((d) => [d.id, d.fileName]));
-
-  const countRows = await db
-    .select({
-      supplierId: supplierCatalogItems.supplierId,
-      count: sql<number>`count(*)`,
-    })
-    .from(supplierCatalogItems)
-    .groupBy(supplierCatalogItems.supplierId);
 
   const countBySupplier = new Map(
     countRows.map((r) => [r.supplierId, Number(r.count)]),
@@ -94,5 +96,8 @@ export async function getCatalogPickOptions() {
       retailPrice: supplierCatalogItems.retailPrice,
     })
     .from(supplierCatalogItems)
-    .orderBy(asc(supplierCatalogItems.supplierId), asc(supplierCatalogItems.itemName));
+    .orderBy(
+      asc(supplierCatalogItems.supplierId),
+      asc(supplierCatalogItems.itemName),
+    );
 }
