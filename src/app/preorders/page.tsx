@@ -27,6 +27,7 @@ export default async function PreOrdersPage() {
           depositCents: preOrders.depositCents,
           totalCostCents: preOrders.totalCostCents,
           notes: preOrders.notes,
+          fulfillmentOrderId: preOrders.fulfillmentOrderId,
           createdAt: preOrders.createdAt,
         })
         .from(preOrders)
@@ -83,7 +84,9 @@ export default async function PreOrdersPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
           Place orders before stock arrives — track deposits, expected dates, and
-          receiving. {pendingCount} active.
+          receiving. {pendingCount} active. Customer pre-orders marked{" "}
+          <strong className="font-medium text-zinc-300">Received</strong> auto-create
+          a sales order and restock inventory.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-5">

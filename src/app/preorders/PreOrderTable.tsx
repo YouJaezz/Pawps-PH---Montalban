@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useActionState, useMemo, useState } from "react";
 
 import {
   deletePreOrder,
   receivePreOrderItem,
   updatePreOrderStatus,
+  type PreOrderActionResult,
 } from "@/app/preorders/actions";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -18,6 +20,7 @@ export type PreOrderRow = {
   depositCents: number;
   totalCostCents: number;
   notes: string | null;
+  fulfillmentOrderId: number | null;
   createdAt: Date;
   items: {
     id: number;
@@ -39,9 +42,49 @@ const statuses = [
   "Cancelled",
 ] as const;
 
+function FeedbackBanner(props: { state: PreOrderActionResult | null }) {
+  if (!props.state) return null;
+  if (props.state.error) {
+    return (
+      <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        {props.state.error}
+      </div>
+    );
+  }
+  if (props.state.ok && props.state.message) {
+    return (
+      <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+        {props.state.message}
+        {props.state.orderId ? (
+          <>
+            {" "}
+            <Link
+              href="/orders"
+              className="font-medium underline hover:text-emerald-200"
+            >
+              Open Sales &amp; Orders →
+            </Link>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function PreOrderTable(props: { rows: PreOrderRow[] }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [statusState, statusAction, statusPending] = useActionState<
+    PreOrderActionResult | null,
+    FormData
+  >(updatePreOrderStatus, null);
+  const [receiveState, receiveAction, receivePending] = useActionState<
+    PreOrderActionResult | null,
+    FormData
+  >(receivePreOrderItem, null);
+
+  const feedback = statusState ?? receiveState;
 
   const filtered = useMemo(() => {
     if (filter === "all") return props.rows;
@@ -50,6 +93,8 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
 
   return (
     <div>
+      <FeedbackBanner state={feedback} />
+
       <div className="mb-3 flex flex-wrap gap-2">
         <select
           value={filter}
@@ -80,19 +125,35 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                     #{row.id} · {row.supplierName}
                   </div>
                   <div className="text-xs text-zinc-400">
-                    {row.customerName ? `For ${row.customerName} · ` : ""}
-                    {formatPhpFromCents(row.totalCostCents)} total
+                    {row.customerName ? `For ${row.customerName} · ` : "Shop stock · "}
+                    {formatPhpFromCents(row.totalCostCents)} cost
                     {row.depositCents > 0
                       ? ` · ${formatPhpFromCents(row.depositCents)} deposit`
                       : ""}
                   </div>
+                  {row.fulfillmentOrderId ? (
+                    <div className="mt-1 text-[10px] text-emerald-300">
+                      Linked to{" "}
+                      <Link
+                        href="/orders"
+                        className="underline hover:text-emerald-200"
+                      >
+                        sales order #{row.fulfillmentOrderId}
+                      </Link>
+                    </div>
+                  ) : row.customerName && row.status !== "Received" ? (
+                    <div className="mt-1 text-[10px] text-zinc-500">
+                      Set status to Received to create a sales order automatically.
+                    </div>
+                  ) : null}
                 </div>
-                <form action={updatePreOrderStatus} className="flex items-center gap-1">
+                <form action={statusAction} className="flex items-center gap-1">
                   <input type="hidden" name="id" value={row.id} />
                   <select
                     name="status"
                     defaultValue={row.status}
-                    className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-zinc-50"
+                    disabled={statusPending || !!row.fulfillmentOrderId}
+                    className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-zinc-50 disabled:opacity-50"
                   >
                     {statuses.map((s) => (
                       <option key={s} value={s}>
@@ -102,9 +163,10 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                   </select>
                   <button
                     type="submit"
-                    className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200"
+                    disabled={statusPending || !!row.fulfillmentOrderId}
+                    className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200 disabled:opacity-50"
                   >
-                    Update
+                    {statusPending ? "…" : "Update"}
                   </button>
                 </form>
               </div>
@@ -119,15 +181,17 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                 >
                   {expanded === row.id ? "Hide items" : "Show items"}
                 </button>
-                <form action={deletePreOrder}>
-                  <input type="hidden" name="id" value={row.id} />
-                  <button
-                    type="submit"
-                    className="text-[10px] text-red-400/80 hover:text-red-300"
-                  >
-                    Delete
-                  </button>
-                </form>
+                {!row.fulfillmentOrderId ? (
+                  <form action={deletePreOrder}>
+                    <input type="hidden" name="id" value={row.id} />
+                    <button
+                      type="submit"
+                      className="text-[10px] text-red-400/80 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                ) : null}
               </div>
 
               {expanded === row.id ? (
@@ -148,7 +212,7 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                         </div>
                       </div>
                       <form
-                        action={receivePreOrderItem}
+                        action={receiveAction}
                         className="flex items-center gap-1"
                       >
                         <input type="hidden" name="itemId" value={item.id} />
@@ -159,11 +223,13 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                           min={0}
                           max={item.quantity}
                           defaultValue={item.receivedQty}
-                          className="w-12 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs"
+                          disabled={receivePending || !!row.fulfillmentOrderId}
+                          className="w-12 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs disabled:opacity-50"
                         />
                         <button
                           type="submit"
-                          className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-300"
+                          disabled={receivePending || !!row.fulfillmentOrderId}
+                          className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-300 disabled:opacity-50"
                         >
                           Save
                         </button>

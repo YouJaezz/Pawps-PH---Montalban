@@ -128,6 +128,7 @@ export const preOrders = sqliteTable("pre_orders", {
   depositCents: integer("deposit_cents").notNull().default(0),
   totalCostCents: integer("total_cost_cents").notNull().default(0),
   notes: text("notes"),
+  fulfillmentOrderId: integer("fulfillment_order_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

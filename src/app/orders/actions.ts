@@ -49,6 +49,55 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+async function deductStockForOrder(orderId: number) {
+  const [order] = await db
+    .select({ stockDeducted: orders.stockDeducted })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order || order.stockDeducted) return;
+
+  const lines = await db
+    .select({
+      productId: orderItems.productId,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  for (const line of lines) {
+    const [product] = await db
+      .select({
+        id: products.id,
+        stockQuantity: products.stockQuantity,
+      })
+      .from(products)
+      .where(eq(products.id, line.productId))
+      .limit(1);
+
+    if (!product) continue;
+
+    await db
+      .update(products)
+      .set({ stockQuantity: product.stockQuantity - line.quantity })
+      .where(eq(products.id, product.id));
+
+    await db.insert(stockMovements).values({
+      productId: product.id,
+      movementType: "Sale",
+      quantityDelta: -line.quantity,
+      relatedOrderId: orderId,
+      note: "Order completed",
+    });
+  }
+
+  await db
+    .update(orders)
+    .set({ stockDeducted: true })
+    .where(eq(orders.id, orderId));
+}
+
 export async function quickSell(
   _prev: OrderActionResult | null,
   formData: FormData,
@@ -485,6 +534,7 @@ export async function updateOrderStatus(formData: FormData) {
       .update(deliveryLogs)
       .set({ status: "Delivered" })
       .where(eq(deliveryLogs.orderId, orderId));
+    await deductStockForOrder(orderId);
   } else if (nextStatus === "Cancelled") {
     await db
       .update(deliveryLogs)
@@ -494,6 +544,7 @@ export async function updateOrderStatus(formData: FormData) {
 
   revalidatePath("/orders");
   revalidatePath("/delivery");
+  revalidatePath("/products");
 }
 
 export async function markOrderPaid(formData: FormData) {
