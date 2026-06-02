@@ -74,6 +74,8 @@ async function parseFreeUploads(
       const ocrText = await extractTextFromImages(imageBuffers);
       if (ocrText.trim()) {
         addRows(parsePricelistTextFree(ocrText));
+      } else {
+        console.error("Image OCR returned no text");
       }
     } catch (err) {
       console.error("Image OCR failed:", err);

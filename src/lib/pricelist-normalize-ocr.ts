@@ -1,15 +1,31 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { createWorker, PSM } from "tesseract.js";
 
 const require = createRequire(import.meta.url);
 
-function getEngLangPath() {
+function getTesseractOptions() {
+  const cachePath = process.env.TESSERACT_CACHE_PATH ?? tmpdir();
+  const bundledTrain = path.join(process.cwd(), "eng.traineddata");
+  if (existsSync(bundledTrain)) {
+    return {
+      langPath: process.cwd(),
+      gzip: false,
+      cachePath,
+    };
+  }
+
   const pkgDir = path.dirname(
     require.resolve("@tesseract.js-data/eng/package.json"),
   );
-  return path.join(pkgDir, "4.0.0");
+  return {
+    langPath: path.join(pkgDir, "4.0.0"),
+    gzip: true,
+    cachePath,
+  };
 }
 
 export function cleanOcrText(text: string) {
@@ -195,25 +211,52 @@ async function splitImageIntoColumns(buffer: Buffer) {
   ].filter(({ sw }) => sw >= 120);
 }
 
+async function extractTextDirect(
+  worker: Awaited<ReturnType<typeof createWorker>>,
+  buffers: Buffer[],
+) {
+  const chunks: string[] = [];
+  for (const buffer of buffers) {
+    const result = await worker.recognize(buffer);
+    const text = cleanOcrText(result.data.text ?? "");
+    if (text) chunks.push(text);
+  }
+  return chunks.join("\n");
+}
+
+async function extractTextWithColumnPipeline(
+  worker: Awaited<ReturnType<typeof createWorker>>,
+  buffers: Buffer[],
+) {
+  const chunks: string[] = [];
+  for (const buffer of buffers) {
+    const columns = await splitImageIntoColumns(buffer);
+    for (const { image, sx, sw } of columns) {
+      const lines = await extractTextFromColumnHalf(worker, image, sx, sw);
+      if (lines) chunks.push(lines);
+    }
+  }
+  return chunks.join("\n");
+}
+
 export async function extractTextFromImages(buffers: Buffer[]) {
   if (buffers.length === 0) return "";
 
   const worker = await createWorker("eng", undefined, {
-    langPath: getEngLangPath(),
-    gzip: true,
+    ...getTesseractOptions(),
     logger: () => {},
   });
 
   try {
-    const chunks: string[] = [];
-    for (const buffer of buffers) {
-      const columns = await splitImageIntoColumns(buffer);
-      for (const { image, sx, sw } of columns) {
-        const lines = await extractTextFromColumnHalf(worker, image, sx, sw);
-        if (lines) chunks.push(lines);
-      }
+    try {
+      return await extractTextWithColumnPipeline(worker, buffers);
+    } catch (err) {
+      console.error(
+        "Column OCR preprocessing failed, falling back to direct OCR:",
+        err,
+      );
+      return await extractTextDirect(worker, buffers);
     }
-    return chunks.join("\n");
   } finally {
     await worker.terminate();
   }
