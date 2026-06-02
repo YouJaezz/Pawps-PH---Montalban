@@ -62,6 +62,11 @@ export async function AppShell(props: {
               />
               <NavItem href="/reports" label="Reports" hint="insights" />
               <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
+              <NavItem
+                href="/suppliers/normalize"
+                label="Pricelist AI"
+                hint="normalize"
+              />
               <NavItem href="/transport" label="Pet Transport" hint="driver" />
               <NavItem href="/pos" label="Future POS" hint="placeholder" />
               {session?.role === "admin" ? (

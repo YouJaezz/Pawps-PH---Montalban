@@ -118,6 +118,7 @@ Custom domain (e.g. `pawps.ph`) is optional — buy from Cloudflare/Namecheap la
 | Build fails on migrate | Ensure `DATABASE_URL` and `DATABASE_AUTH_TOKEN` are set for **Production** |
 | Login fails | Re-run migrate with `ADMIN_EMAIL` / `ADMIN_PASSWORD` set |
 | Customer tracking asks for Vercel login | Use **Copy customer link** (production URL). In Vercel → **Settings → Deployment Protection**, set scope to **Only Preview Deployments** so production stays public |
+| Pricelist normalizer: `ANTHROPIC_API_KEY is not configured` | Add your Claude API key from [console.anthropic.com](https://console.anthropic.com/settings/keys) to `.env.local` locally or Vercel env vars, then restart/redeploy |
 
 ---
 

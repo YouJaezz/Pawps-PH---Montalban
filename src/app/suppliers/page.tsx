@@ -52,7 +52,13 @@ export default async function SuppliersPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
           Upload price lists per supplier. Re-uploading replaces that supplier&apos;s
-          catalog only.
+          catalog only.{" "}
+          <a
+            href="/suppliers/normalize"
+            className="text-[#e8a44a] underline-offset-2 hover:underline"
+          >
+            Normalize a messy pricelist with AI →
+          </a>
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-6">

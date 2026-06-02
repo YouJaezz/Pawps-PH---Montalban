@@ -42,9 +42,45 @@ export function parseSpreadsheetBuffer(buffer: Buffer): ParsedCatalogRow[] {
     return "";
   };
 
+  const isPawpsNormalizedCsv =
+    headerMap.has("supplier") &&
+    headerMap.has("wholesale") &&
+    headerMap.has("item") &&
+    headerMap.has("type");
+
   const rows: ParsedCatalogRow[] = [];
 
   for (const row of raw) {
+    if (isPawpsNormalizedCsv) {
+      const brand = get(row, ["item"]);
+      if (!brand) continue;
+      const flavor = get(row, ["flavor", "flavour"]);
+      const itemName =
+        flavor && brand.toLowerCase() !== flavor.toLowerCase()
+          ? `${brand} — ${flavor}`
+          : brand;
+      const itemType = get(row, ["type"]);
+      const costRaw = get(row, ["wholesale"]);
+      const retailRaw = get(row, ["retail"]);
+      const packSizeRaw = get(row, ["size"]);
+      const perKiloRaw = get(row, ["per_kg", "per kg", "per kilo"]);
+      const notes = get(row, ["notes", "remarks"]);
+
+      rows.push({
+        itemName,
+        brand,
+        productName: flavor || brand,
+        variant: flavor || undefined,
+        itemType: itemType || undefined,
+        unitCostCents: costRaw ? parseMoneyToCents(costRaw) : undefined,
+        packSize: packSizeRaw || undefined,
+        perKiloCents: perKiloRaw ? parseMoneyToCents(perKiloRaw) : undefined,
+        retailPriceCents: retailRaw ? parseMoneyToCents(retailRaw) : undefined,
+        notes: notes || undefined,
+      });
+      continue;
+    }
+
     const itemName = get(row, [
       "item",
       "item name",
@@ -58,7 +94,12 @@ export function parseSpreadsheetBuffer(buffer: Buffer): ParsedCatalogRow[] {
     const itemType = get(row, ["item type", "type", "category", "department"]);
     const productName = get(row, ["product name", "name", "product"]);
     const brand = get(row, ["brand", "manufacturer"]);
-    const variant = get(row, ["variant", "size", "flavor", "flavour"]);
+    const variant = get(row, [
+      "variant",
+      "flavor",
+      "flavour",
+      "size",
+    ]);
     const sku = get(row, ["sku", "code", "item code", "product code"]);
     const costRaw = get(row, [
       "wholesale",
@@ -69,6 +110,7 @@ export function parseSpreadsheetBuffer(buffer: Buffer): ParsedCatalogRow[] {
     ]);
     const retailRaw = get(row, ["retail", "srp", "retail price"]);
     const packSizeRaw = get(row, [
+      "size",
       "unit (kg)",
       "unit kg",
       "unit",
@@ -78,7 +120,13 @@ export function parseSpreadsheetBuffer(buffer: Buffer): ParsedCatalogRow[] {
       "quantity",
     ]);
     const packUnitRaw = get(row, ["unit type", "uom", "unit label"]);
-    const perKiloRaw = get(row, ["per kilo", "per kg", "per_kilo", "perkg"]);
+    const perKiloRaw = get(row, [
+      "per kilo",
+      "per kg",
+      "per_kg",
+      "per_kilo",
+      "perkg",
+    ]);
     const notes = get(row, ["notes", "remarks"]);
 
     rows.push({
