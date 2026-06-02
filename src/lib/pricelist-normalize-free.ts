@@ -3,6 +3,10 @@ import { detectPdfFormat } from "@/lib/catalog-fields";
 import { parseMayPriceListText } from "@/lib/supplier-parse-pdf";
 import { parseWsPriceListText } from "@/lib/supplier-parse-pdf-ws";
 import {
+  looksLikeSimpleColumnPriceList,
+  parseSimpleColumnPriceListText,
+} from "@/lib/supplier-parse-simple-price-list";
+import {
   PAWPS_CATALOG_TYPES,
   type PawpsNormalizedRow,
 } from "@/lib/pricelist-normalize-types";
@@ -261,7 +265,7 @@ function parseOcrFallbackLines(text: string): PawpsNormalizedRow[] {
 
     const priceRaw = numbers[numbers.length - 1]!;
     const wholesale = parseMoneyCell(priceRaw);
-    if (wholesale == null || wholesale < 20) continue;
+    if (wholesale == null || wholesale < 15 || wholesale > 5000) continue;
 
     const priceIndex = line.lastIndexOf(priceRaw);
     const desc = line.slice(0, priceIndex).replace(/[-–—:|\s]+$/g, "").trim();
@@ -287,10 +291,7 @@ function parseOcrFallbackLines(text: string): PawpsNormalizedRow[] {
       size: sizeMatch?.[1]?.replace(/\s+/g, "") ?? null,
       per_kg: null,
       wholesale,
-      retail:
-        numbers.length >= 2
-          ? parseMoneyCell(numbers[numbers.length - 2]!)
-          : null,
+      retail: null,
     });
   }
 
@@ -303,6 +304,13 @@ export function parsePricelistTextFree(text: string): PawpsNormalizedRow[] {
 
   const structured = parseStructuredTable(trimmed);
   if (structured.length > 0) return structured;
+
+  if (looksLikeSimpleColumnPriceList(trimmed)) {
+    const simpleRows = catalogRowsToPawps(
+      parseSimpleColumnPriceListText(trimmed),
+    );
+    if (simpleRows.length > 0) return simpleRows;
+  }
 
   const format = detectPdfFormat(trimmed);
   const catalogRows =
