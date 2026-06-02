@@ -30,14 +30,27 @@ export const customers = sqliteTable("customers", {
   location: text("location"),
 });
 
+export const ORDER_STATUSES = [
+  "Pending",
+  "Confirmed",
+  "Preparing",
+  "Out for Delivery",
+  "Completed",
+  "Cancelled",
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
 export const orders = sqliteTable("orders", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   customerId: integer("customer_id"),
   customerName: text("customer_name").notNull(),
+  contact: text("contact"),
   location: text("location"),
-  orderStatus: text("order_status", { enum: ["Active", "Cancelled"] })
+  notes: text("notes"),
+  orderStatus: text("order_status", { enum: ORDER_STATUSES })
     .notNull()
-    .default("Active"),
+    .default("Pending"),
   stockDeducted: integer("stock_deducted", { mode: "boolean" })
     .notNull()
     .default(false),

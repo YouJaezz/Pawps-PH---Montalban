@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 
 import { createBulkOrder } from "@/app/orders/actions";
+import {
+  CustomerPicker,
+  type CustomerOption,
+} from "@/app/orders/CustomerPicker";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type BulkOrderProduct = {
@@ -16,13 +20,20 @@ export type BulkOrderProduct = {
 
 type Line = { productId: number; quantity: number };
 
-export function BulkOrderModal(props: { products: BulkOrderProduct[] }) {
+export function BulkOrderModal(props: {
+  products: BulkOrderProduct[];
+  customers: CustomerOption[];
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [priceTier, setPriceTier] = useState<"Bulk" | "Retail">("Bulk");
   const [lines, setLines] = useState<Line[]>([
     { productId: props.products[0]?.id ?? 0, quantity: 1 },
   ]);
+  const [customerName, setCustomerName] = useState("");
+  const [contact, setContact] = useState("");
+  const [location, setLocation] = useState("");
+  const [customerId, setCustomerId] = useState("");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -102,25 +113,17 @@ export function BulkOrderModal(props: { products: BulkOrderProduct[] }) {
             </div>
 
             <form action={createBulkOrder} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Customer name *</div>
-                  <input
-                    name="customerName"
-                    required
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                    placeholder="Customer name"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Location</div>
-                  <input
-                    name="location"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                    placeholder="e.g. Montalban"
-                  />
-                </label>
-              </div>
+              <CustomerPicker
+                customers={props.customers}
+                customerName={customerName}
+                contact={contact}
+                location={location}
+                customerId={customerId}
+                onCustomerNameChange={setCustomerName}
+                onContactChange={setContact}
+                onLocationChange={setLocation}
+                onCustomerIdChange={setCustomerId}
+              />
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label className="space-y-1">

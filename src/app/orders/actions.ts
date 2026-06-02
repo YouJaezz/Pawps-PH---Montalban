@@ -3,13 +3,17 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAuth } from "@/lib/auth-guard";
+import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
+import { normalizeOrderStatus } from "@/lib/order-status";
 import { db } from "@/db";
 import {
+  ORDER_STATUSES,
   deliveryLogs,
   orderItems,
   orders,
   products,
   stockMovements,
+  type OrderStatus,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 
@@ -35,7 +39,10 @@ export async function quickSell(formData: FormData) {
     | "Retail"
     | "Bulk";
   const customerName = String(formData.get("customerName") ?? "").trim();
+  const contactRaw = String(formData.get("contact") ?? "").trim();
   const locationRaw = String(formData.get("location") ?? "").trim();
+  const customerIdRaw = parseIntOr(formData.get("customerId"), 0);
+  const notesRaw = String(formData.get("notes") ?? "").trim();
   const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
   const storeType = String(formData.get("storeType") ?? "Online") as
     | "Online"
@@ -66,12 +73,25 @@ export async function quickSell(formData: FormData) {
   const unitPrice = priceTier === "Bulk" ? p.bulkPrice : p.retailPrice;
   const lineTotal = unitPrice * quantity;
 
-  // Basic: auto-mark as Paid because it's a "quick sell".
+  const customerId = await resolveCustomerForOrder({
+    customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
+    customerName,
+    contact: contactRaw,
+    location: locationRaw,
+  });
+
+  const fulfillmentStatus: OrderStatus =
+    storeType === "Walk-in" ? "Completed" : "Confirmed";
+
   const insertedOrder = await db
     .insert(orders)
     .values({
+      customerId,
       customerName,
+      contact: contactRaw.length ? contactRaw : null,
       location: locationRaw.length ? locationRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+      orderStatus: fulfillmentStatus,
       totalAmount: lineTotal,
       amountPaid: lineTotal,
       paymentStatus: "Paid",
@@ -118,14 +138,19 @@ export async function quickSell(formData: FormData) {
         | "Montalban Free Delivery"
         | "Lalamove"
         | "Other",
-      status: "Queued",
+      status: fulfillmentStatus === "Completed" ? "Delivered" : "Queued",
       fee: 0,
       reference: null,
       notes: "Auto-created from order",
     });
   }
 
+  if (customerId) {
+    await bumpCustomerSpend(customerId, lineTotal);
+  }
+
   revalidatePath("/orders");
+  revalidatePath("/customers");
   revalidatePath("/");
   revalidatePath("/products");
   revalidatePath("/delivery");
@@ -135,7 +160,10 @@ export async function createBulkOrder(formData: FormData) {
   await requireAuth();
 
   const customerName = String(formData.get("customerName") ?? "").trim();
+  const contactRaw = String(formData.get("contact") ?? "").trim();
   const locationRaw = String(formData.get("location") ?? "").trim();
+  const customerIdRaw = parseIntOr(formData.get("customerId"), 0);
+  const notesRaw = String(formData.get("notes") ?? "").trim();
   const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
   const storeType = String(formData.get("storeType") ?? "Online") as
     | "Online"
@@ -203,11 +231,22 @@ export async function createBulkOrder(formData: FormData) {
 
   const deposit = Math.round(total * 0.3);
 
+  const customerId = await resolveCustomerForOrder({
+    customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
+    customerName,
+    contact: contactRaw,
+    location: locationRaw,
+  });
+
   const insertedOrder = await db
     .insert(orders)
     .values({
+      customerId,
       customerName,
+      contact: contactRaw.length ? contactRaw : null,
       location: locationRaw.length ? locationRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+      orderStatus: "Pending",
       totalAmount: total,
       amountPaid: deposit,
       paymentStatus: "30% Deposit",
@@ -249,7 +288,12 @@ export async function createBulkOrder(formData: FormData) {
     });
   }
 
+  if (customerId && deposit > 0) {
+    await bumpCustomerSpend(customerId, deposit);
+  }
+
   revalidatePath("/orders");
+  revalidatePath("/customers");
   revalidatePath("/delivery");
 }
 
@@ -270,7 +314,8 @@ export async function cancelOrder(formData: FormData) {
     .limit(1);
 
   if (!order) throw new Error("Order not found.");
-  if (order.orderStatus === "Cancelled") {
+  const status = normalizeOrderStatus(order.orderStatus);
+  if (status === "Cancelled") {
     throw new Error("Order is already cancelled.");
   }
 
@@ -358,6 +403,95 @@ export async function cancelOrder(formData: FormData) {
   revalidatePath("/orders");
   revalidatePath("/products");
   revalidatePath("/delivery");
+  revalidatePath("/customers");
+}
+
+export async function updateOrderStatus(formData: FormData) {
+  await requireAuth();
+
+  const orderId = parseIntOr(formData.get("orderId"), 0);
+  const nextStatus = String(formData.get("orderStatus") ?? "") as OrderStatus;
+
+  if (!orderId) throw new Error("Invalid order.");
+  if (!(ORDER_STATUSES as readonly string[]).includes(nextStatus)) {
+    throw new Error("Invalid order status.");
+  }
+
+  const [order] = await db
+    .select({
+      id: orders.id,
+      orderStatus: orders.orderStatus,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) throw new Error("Order not found.");
+
+  const current = normalizeOrderStatus(order.orderStatus);
+  if (current === "Cancelled") {
+    throw new Error("Cancelled orders cannot be updated.");
+  }
+
+  await db
+    .update(orders)
+    .set({ orderStatus: nextStatus })
+    .where(eq(orders.id, orderId));
+
+  if (nextStatus === "Out for Delivery") {
+    await db
+      .update(deliveryLogs)
+      .set({ status: "Picked Up" })
+      .where(eq(deliveryLogs.orderId, orderId));
+  } else if (nextStatus === "Completed") {
+    await db
+      .update(deliveryLogs)
+      .set({ status: "Delivered" })
+      .where(eq(deliveryLogs.orderId, orderId));
+  } else if (nextStatus === "Cancelled") {
+    await db
+      .update(deliveryLogs)
+      .set({ status: "Cancelled" })
+      .where(eq(deliveryLogs.orderId, orderId));
+  }
+
+  revalidatePath("/orders");
+  revalidatePath("/delivery");
+}
+
+export async function markOrderPaid(formData: FormData) {
+  await requireAuth();
+
+  const orderId = parseIntOr(formData.get("orderId"), 0);
+  if (!orderId) throw new Error("Invalid order.");
+
+  const [o] = await db
+    .select({
+      id: orders.id,
+      customerId: orders.customerId,
+      totalAmount: orders.totalAmount,
+      amountPaid: orders.amountPaid,
+      paymentStatus: orders.paymentStatus,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!o) throw new Error("Order not found.");
+  if (o.paymentStatus === "Paid") return;
+
+  const delta = o.totalAmount - o.amountPaid;
+  await db
+    .update(orders)
+    .set({ amountPaid: o.totalAmount, paymentStatus: "Paid" })
+    .where(eq(orders.id, orderId));
+
+  if (o.customerId && delta > 0) {
+    await bumpCustomerSpend(o.customerId, delta);
+  }
+
+  revalidatePath("/orders");
+  revalidatePath("/customers");
 }
 
 export async function addPayment(formData: FormData) {
@@ -370,6 +504,7 @@ export async function addPayment(formData: FormData) {
   const [o] = await db
     .select({
       id: orders.id,
+      customerId: orders.customerId,
       totalAmount: orders.totalAmount,
       amountPaid: orders.amountPaid,
       paymentStatus: orders.paymentStatus,
@@ -380,6 +515,7 @@ export async function addPayment(formData: FormData) {
 
   if (!o) throw new Error("Order not found.");
 
+  const prevPaid = o.amountPaid;
   const newPaid = Math.min(o.totalAmount, o.amountPaid + addAmount);
   const newStatus =
     newPaid >= o.totalAmount
@@ -393,6 +529,12 @@ export async function addPayment(formData: FormData) {
     .set({ amountPaid: newPaid, paymentStatus: newStatus })
     .where(eq(orders.id, orderId));
 
+  const delta = newPaid - prevPaid;
+  if (o.customerId && delta > 0) {
+    await bumpCustomerSpend(o.customerId, delta);
+  }
+
   revalidatePath("/orders");
+  revalidatePath("/customers");
 }
 
