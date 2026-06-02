@@ -129,7 +129,9 @@ export function NormalizePricelistClient(props: {
       appendLog(
         preferAi && props.aiConfigured
           ? "Scanning with Claude AI…"
-          : "Parsing pricelist (free mode)…",
+          : files.some((f) => f.type.startsWith("image/"))
+            ? "Reading photos with OCR (free)…"
+            : "Parsing pricelist (free mode)…",
       );
       setProgress(50);
 

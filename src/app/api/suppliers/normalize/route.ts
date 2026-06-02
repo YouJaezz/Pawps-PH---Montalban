@@ -13,6 +13,9 @@ import {
   isPdfUpload,
   parsePricelistTextFree,
 } from "@/lib/pricelist-normalize-free";
+import {
+  extractTextFromImages,
+} from "@/lib/pricelist-normalize-ocr";
 import type {
   NormalizeUploadFile,
   PawpsNormalizedRow,
@@ -59,6 +62,21 @@ async function parseFreeUploads(
       addRows(catalogRowsToPawps(catalogRows));
     } catch {
       // skip unreadable PDFs; caller may fall back to AI
+    }
+  }
+
+  const imageBuffers = files
+    .filter(isImageUpload)
+    .map((file) => decodeBase64(file.base64));
+
+  if (imageBuffers.length > 0) {
+    try {
+      const ocrText = await extractTextFromImages(imageBuffers);
+      if (ocrText.trim()) {
+        addRows(parsePricelistTextFree(ocrText));
+      }
+    } catch (err) {
+      console.error("Image OCR failed:", err);
     }
   }
 
@@ -124,7 +142,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Could not read product lines from the image. Paste the pricelist text below, upload a PDF, or add ANTHROPIC_API_KEY for photo scanning.",
+            "Could not read product lines from the photo. Try a clearer screenshot, paste the pricelist text, upload a PDF, or add ANTHROPIC_API_KEY for AI photo scanning.",
           code: "FREE_PARSE_FAILED",
         },
         { status: 422 },

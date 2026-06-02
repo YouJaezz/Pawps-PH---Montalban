@@ -179,6 +179,12 @@ function parseGenericLines(text: string): PawpsNormalizedRow[] {
     if (!line || line.length < 4) continue;
     if (/^(?:wholesale|price list|prices may|pickup|walk.?in|📍|🛍|⚠)/i.test(line))
       continue;
+    if (
+      /anthropic|could not read|scan complete|free mode|paste the pricelist|retry scan/i.test(
+        line,
+      )
+    )
+      continue;
     if (/^(?:dog dry|cat dry|dog food|cat food|cat litter|treats)/i.test(line)) {
       sectionType = mapItemType(line);
       continue;
@@ -237,6 +243,60 @@ function parseGenericLines(text: string): PawpsNormalizedRow[] {
   return rows;
 }
 
+/** OCR screenshots often put the price as the last number on the line. */
+function parseOcrFallbackLines(text: string): PawpsNormalizedRow[] {
+  const rows: PawpsNormalizedRow[] = [];
+  let sectionType = "Other";
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+/g, " ").trim();
+    if (!line || line.length < 5) continue;
+    if (/^(?:dog dry|cat dry|dog food|cat food|cat litter|treats)/i.test(line)) {
+      sectionType = mapItemType(line);
+      continue;
+    }
+
+    const numbers = line.match(/\d[\d,]*(?:\.\d+)?/g);
+    if (!numbers?.length) continue;
+
+    const priceRaw = numbers[numbers.length - 1]!;
+    const wholesale = parseMoneyCell(priceRaw);
+    if (wholesale == null || wholesale < 20) continue;
+
+    const priceIndex = line.lastIndexOf(priceRaw);
+    const desc = line.slice(0, priceIndex).replace(/[-–—:|\s]+$/g, "").trim();
+    if (desc.length < 2 || /^(?:total|subtotal|pickup|walk)/i.test(desc)) continue;
+    if (
+      /anthropic|could not read|scan complete|free mode|paste the pricelist|retry scan/i.test(
+        desc,
+      )
+    )
+      continue;
+
+    const sizeMatch = desc.match(/(\d+(?:\.\d+)?\s*(?:kg|g|l|ml|L))/i);
+    const withoutSize = sizeMatch
+      ? desc.replace(sizeMatch[0], "").trim()
+      : desc;
+    const words = withoutSize.split(/\s+/).filter(Boolean);
+    if (words.length === 0) continue;
+
+    rows.push({
+      type: sectionType,
+      item: words[0] ?? withoutSize,
+      flavor: words.length > 1 ? words.slice(1).join(" ") : null,
+      size: sizeMatch?.[1]?.replace(/\s+/g, "") ?? null,
+      per_kg: null,
+      wholesale,
+      retail:
+        numbers.length >= 2
+          ? parseMoneyCell(numbers[numbers.length - 2]!)
+          : null,
+    });
+  }
+
+  return rows;
+}
+
 export function parsePricelistTextFree(text: string): PawpsNormalizedRow[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -252,7 +312,10 @@ export function parsePricelistTextFree(text: string): PawpsNormalizedRow[] {
   const fromCatalog = catalogRowsToPawps(catalogRows);
   if (fromCatalog.length > 0) return fromCatalog;
 
-  return parseGenericLines(trimmed);
+  const generic = parseGenericLines(trimmed);
+  if (generic.length > 0) return generic;
+
+  return parseOcrFallbackLines(trimmed);
 }
 
 export function isPdfUpload(file: { name: string; mimeType: string }) {
