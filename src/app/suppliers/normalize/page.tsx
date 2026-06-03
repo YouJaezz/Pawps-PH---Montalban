@@ -26,8 +26,10 @@ export default async function NormalizePricelistPage() {
           Pricelist normalizer
         </h1>
         <p className="mt-1 max-w-2xl text-sm" style={{ color: "#8888aa" }}>
-          Upload any supplier pricelist (PDF, image, or pasted text). AI extracts
-          products into the Pawps CSV schema, ready for catalog upload.
+          Upload supplier pricelists (PDF, photo, or pasted text).{" "}
+          <strong className="font-medium text-zinc-300">Smart scan</strong> uses
+          Claude AI plus your inventory and supplier catalog so brands, flavors,
+          and kg sizes land in the right columns — not just raw file text.
         </p>
 
         <div className="mt-6">

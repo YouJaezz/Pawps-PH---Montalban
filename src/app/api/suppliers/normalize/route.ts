@@ -6,6 +6,11 @@ import {
   normalizePricelistWithClaude,
 } from "@/lib/pricelist-normalize-ai";
 import { requireAuth } from "@/lib/auth-guard";
+import {
+  applyCatalogKnowledgeToRows,
+  buildCatalogKnowledge,
+  looksLikeBadPricelistParse,
+} from "@/lib/pricelist-catalog-knowledge";
 import { parsePdfBuffer } from "@/lib/pdf-parse-server";
 import {
   catalogRowsToPawps,
@@ -13,9 +18,7 @@ import {
   isPdfUpload,
   parsePricelistTextFree,
 } from "@/lib/pricelist-normalize-free";
-import {
-  extractTextFromImages,
-} from "@/lib/pricelist-normalize-ocr";
+import { extractTextFromImages } from "@/lib/pricelist-normalize-ocr";
 import type {
   NormalizeUploadFile,
   PawpsNormalizedRow,
@@ -110,6 +113,8 @@ export async function POST(request: Request) {
   const files = body.files ?? [];
   const pastedText = body.pastedText ?? "";
   const hasImages = files.some(isImageUpload);
+  const hasPdf = files.some(isPdfUpload);
+  const hasMessyUpload = hasImages || hasPdf;
 
   if (files.length === 0 && !pastedText.trim()) {
     return NextResponse.json(
@@ -131,12 +136,32 @@ export async function POST(request: Request) {
 
   const aiAvailable = isAnthropicApiConfigured();
   const preferAi = body.preferAi === true && aiAvailable;
+  const knowledge = await buildCatalogKnowledge(supplierName);
+
+  const finalize = (rows: PawpsNormalizedRow[]) =>
+    applyCatalogKnowledgeToRows(rows, knowledge);
 
   try {
     if (!preferAi) {
-      const freeRows = await parseFreeUploads(files, pastedText);
-      if (freeRows.length > 0) {
-        return NextResponse.json({ rows: freeRows, method: "free" });
+      const freeRows = finalize(await parseFreeUploads(files, pastedText));
+      const bad = looksLikeBadPricelistParse(freeRows);
+
+      if (freeRows.length > 0 && (!bad || !aiAvailable || !hasMessyUpload)) {
+        return NextResponse.json({
+          rows: freeRows,
+          method: "free",
+          catalogMatched: knowledge.productCount,
+        });
+      }
+
+      if (freeRows.length > 0 && bad && !aiAvailable) {
+        return NextResponse.json({
+          rows: freeRows,
+          method: "free",
+          catalogMatched: knowledge.productCount,
+          warning:
+            "Results may be incomplete. Add ANTHROPIC_API_KEY and use Smart scan for photos/PDFs.",
+        });
       }
     }
 
@@ -144,7 +169,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Could not read product lines from the photo. Try a clearer screenshot, paste the pricelist text, upload a PDF, or add ANTHROPIC_API_KEY for AI photo scanning.",
+            "Could not read product lines from the photo. Try a clearer screenshot, paste the pricelist text, upload a PDF, or add ANTHROPIC_API_KEY for Smart scan.",
           code: "FREE_PARSE_FAILED",
         },
         { status: 422 },
@@ -152,6 +177,15 @@ export async function POST(request: Request) {
     }
 
     if (!aiAvailable) {
+      const freeRows = finalize(await parseFreeUploads(files, pastedText));
+      if (freeRows.length > 0) {
+        return NextResponse.json({
+          rows: freeRows,
+          method: "free",
+          catalogMatched: knowledge.productCount,
+        });
+      }
+
       return NextResponse.json(
         {
           error:
@@ -167,13 +201,23 @@ export async function POST(request: Request) {
       pastedText,
       supplierName,
       extraInstructions: body.extraInstructions ?? "",
+      catalogContext: knowledge.promptBlock,
     });
-    return NextResponse.json({ ...result, method: "ai" });
+
+    return NextResponse.json({
+      rows: finalize(result.rows),
+      method: "ai",
+      catalogMatched: knowledge.productCount,
+    });
   } catch (err) {
     if (err instanceof AnthropicNotConfiguredError) {
-      const freeRows = await parseFreeUploads(files, pastedText);
+      const freeRows = finalize(await parseFreeUploads(files, pastedText));
       if (freeRows.length > 0) {
-        return NextResponse.json({ rows: freeRows, method: "free" });
+        return NextResponse.json({
+          rows: freeRows,
+          method: "free",
+          catalogMatched: knowledge.productCount,
+        });
       }
       return NextResponse.json(
         {

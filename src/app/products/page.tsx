@@ -143,6 +143,7 @@ export default async function ProductsPage() {
                   <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
                     <tr>
                       <th className="px-2 py-2">Item</th>
+                      <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
                       <th className="px-2 py-2">Flavor</th>
                       <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
                       <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
@@ -160,17 +161,20 @@ export default async function ProductsPage() {
                   <tbody className="divide-y divide-white/10">
                     {rows.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-5 text-zinc-400" colSpan={13}>
+                        <td className="px-3 py-5 text-zinc-400" colSpan={14}>
                           No inventory — pick a supplier catalog item to add.
                         </td>
                       </tr>
                     ) : (
                       rows.map((p) => {
-                        const item = displayCatalogItem(p.brand, p.name);
+                        const item = displayCatalogItem(null, p.name);
+                        const brand = p.brand
+                          ? displayCatalogItem(null, p.brand)
+                          : "—";
                         const flavor =
-                          displayCatalogFlavor(p.variant, p.name) !== "—"
+                          p.variant?.trim()
                             ? displayCatalogFlavor(p.variant, p.name)
-                            : (p.variant ?? "—");
+                            : "—";
                         const profit =
                           Math.max(0, p.retailPrice - p.costPrice) *
                           p.stockQuantity;
@@ -180,6 +184,9 @@ export default async function ProductsPage() {
                           <tr key={p.id} className="hover:bg-white/5">
                             <td className="px-2 py-2 font-medium text-zinc-50">
                               {item}
+                            </td>
+                            <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
+                              {brand}
                             </td>
                             <td className="px-2 py-2 text-zinc-300">{flavor}</td>
                             <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">

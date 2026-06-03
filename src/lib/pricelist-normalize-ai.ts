@@ -180,6 +180,7 @@ export async function normalizePricelistWithClaude(params: {
   pastedText: string;
   supplierName: string;
   extraInstructions: string;
+  catalogContext?: string;
 }): Promise<PawpsNormalizeAiResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
@@ -203,7 +204,9 @@ export async function normalizePricelistWithClaude(params: {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
+      system: params.catalogContext
+        ? `${SYSTEM_PROMPT}\n\n${params.catalogContext}`
+        : SYSTEM_PROMPT,
       messages: [
         {
           role: "user",

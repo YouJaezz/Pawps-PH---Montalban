@@ -13,8 +13,8 @@ export function FreeParseTips() {
         </li>
         <li>
           <strong className="text-zinc-200">Photos (PNG/JPG)</strong> — OCR runs in your
-          browser (works on Vercel free tier). Use clear, straight photos. Claude AI is
-          optional for messy images.
+          browser, then results are matched to your catalog. For messy photos, use{" "}
+          <strong className="text-zinc-200">Smart scan</strong> (Claude + catalog).
         </li>
       </ul>
       <p className="text-[10px] text-zinc-500">
@@ -45,9 +45,9 @@ export function AnthropicSetupHelp(props: { compact?: boolean }) {
     <div className="space-y-3 text-xs leading-relaxed text-zinc-400">
       <FreeParseTips />
       <div className="border-t border-white/10 pt-3">
-        <p className="font-medium text-zinc-300">Optional: AI for photos</p>
+        <p className="font-medium text-zinc-300">Smart scan (recommended for PDF/photos)</p>
         <p className="mt-1">
-          If you later want to scan pricelist <em>photos</em>, add a Claude key from{" "}
+          Add a Claude key from{" "}
           <a
             href="https://console.anthropic.com/settings/keys"
             target="_blank"
@@ -56,7 +56,10 @@ export function AnthropicSetupHelp(props: { compact?: boolean }) {
           >
             console.anthropic.com
           </a>{" "}
-          to <code className="rounded bg-black/40 px-1">.env.local</code> or Vercel env vars.
+          to <code className="rounded bg-black/40 px-1">.env.local</code> or Vercel as{" "}
+          <code className="rounded bg-black/40 px-1">ANTHROPIC_API_KEY</code>.
+          Smart scan reads the document and sorts rows using your shop&apos;s known
+          brands, items, flavors, and pack sizes — not just what the PDF OCR guessed.
         </p>
       </div>
     </div>

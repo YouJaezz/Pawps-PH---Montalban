@@ -164,10 +164,10 @@ export function NormalizePricelistClient(props: {
 
       appendLog(
         useAi
-          ? "Scanning with Claude AI…"
+          ? "Smart scan — Claude AI + your catalog…"
           : textForParse
-            ? "Parsing extracted pricelist text…"
-            : "Parsing pricelist (free mode)…",
+            ? "Parsing extracted text + catalog matching…"
+            : "Quick parse + catalog matching…",
       );
       setProgress(82);
 
@@ -191,6 +191,8 @@ export function NormalizePricelistClient(props: {
         error?: string;
         code?: string;
         method?: "free" | "ai";
+        catalogMatched?: number;
+        warning?: string;
       };
 
       if (!res.ok) {
@@ -204,8 +206,16 @@ export function NormalizePricelistClient(props: {
       setRows(data.rows);
       setProgress(100);
       appendLog(
-        `Done — ${data.rows.length} products extracted (${data.method === "ai" ? "AI" : "free parser"})`,
+        `Done — ${data.rows.length} products (${data.method === "ai" ? "Smart scan" : "Quick parse"})`,
       );
+      if (data.catalogMatched) {
+        appendLog(
+          `Matched against ${data.catalogMatched} known brands/products in your catalog`,
+        );
+      }
+      if (data.warning) {
+        appendLog(`Note: ${data.warning}`);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Scan failed";
       setError(msg);
@@ -244,19 +254,33 @@ export function NormalizePricelistClient(props: {
 
   return (
     <div className="max-w-5xl space-y-6">
-      {!props.aiConfigured ? (
+      {props.aiConfigured ? (
+        <div
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"
+          style={{ borderWidth: 1, borderStyle: "solid" }}
+        >
+          <div className="text-sm font-medium text-amber-100">
+            Smart scan available
+          </div>
+          <p className="mt-1 text-xs text-amber-100/80">
+            For PDFs and photos, use <strong>Smart scan</strong> — it reads the file
+            with Claude and matches brands, flavors, and kg sizes against your
+            inventory and supplier catalog.
+          </p>
+        </div>
+      ) : (
         <div
           className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4"
           style={{ borderWidth: 1, borderStyle: "solid" }}
         >
           <div className="text-sm font-medium text-emerald-100">
-            Free mode — no API key needed
+            Free mode — catalog matching enabled
           </div>
           <div className="mt-2">
             <AnthropicSetupHelp />
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Step indicator */}
       <div className="flex flex-wrap gap-2 text-xs">
@@ -420,7 +444,7 @@ export function NormalizePricelistClient(props: {
 
           <label className="mt-4 block">
             <span className="text-[11px] text-zinc-500">
-              Extra instructions for AI (optional)
+              Extra instructions for Smart scan (optional)
             </span>
             <textarea
               value={extraInstructions}
@@ -445,27 +469,33 @@ export function NormalizePricelistClient(props: {
             >
               ← Back
             </button>
-            <button
-              type="button"
-              disabled={!supplierName.trim()}
-              className={btnPrimary}
-              style={{ background: accent, color: "#0f0f14" }}
-              onClick={() => void runScan(false)}
-            >
-              Parse pricelist
-            </button>
             {props.aiConfigured ? (
               <button
                 type="button"
                 disabled={!supplierName.trim()}
-                className={btnSecondary}
-                style={{ borderColor: "#1e1e30" }}
+                className={btnPrimary}
+                style={{ background: accent, color: "#0f0f14" }}
                 onClick={() => void runScan(true)}
-                title="Use Claude for photos or messy layouts"
+                title="Claude reads the file and uses your inventory + supplier catalog to fix names, flavors, and sizes"
               >
-                Scan with AI
+                Smart scan (recommended)
               </button>
             ) : null}
+            <button
+              type="button"
+              disabled={!supplierName.trim()}
+              className={
+                props.aiConfigured ? btnSecondary : btnPrimary
+              }
+              style={
+                props.aiConfigured
+                  ? { borderColor: "#1e1e30" }
+                  : { background: accent, color: "#0f0f14" }
+              }
+              onClick={() => void runScan(false)}
+            >
+              {props.aiConfigured ? "Quick parse (free)" : "Parse pricelist"}
+            </button>
           </div>
         </section>
       ) : null}
