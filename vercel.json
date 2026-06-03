@@ -3,9 +3,6 @@
     "src/app/api/suppliers/normalize/route.ts": {
       "maxDuration": 120,
       "memory": 1024
-    },
-    "src/app/**/*.ts": {
-      "maxDuration": 60
     }
   }
 }
