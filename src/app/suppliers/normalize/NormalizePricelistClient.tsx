@@ -113,9 +113,43 @@ export function NormalizePricelistClient(props: {
       appendLog("Preparing files…");
       setProgress(15);
 
+      const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+      const nonImageFiles = files.filter((f) => !f.type.startsWith("image/"));
+      let textForParse = pastedText.trim();
+      const useAi = preferAi && props.aiConfigured;
+
       const uploadFiles: NormalizeUploadFile[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i]!;
+
+      if (!useAi && imageFiles.length > 0) {
+        appendLog(
+          `Reading ${imageFiles.length} photo(s) with OCR in your browser…`,
+        );
+        setProgress(35);
+        const { extractTextFromImageFiles } = await import(
+          "@/lib/pricelist-normalize-ocr-client"
+        );
+        const ocrParts: string[] = [];
+        for (let i = 0; i < imageFiles.length; i++) {
+          const f = imageFiles[i]!;
+          appendLog(`OCR: ${f.name} (${i + 1}/${imageFiles.length})…`);
+          const text = await extractTextFromImageFiles([f]);
+          if (text.trim()) ocrParts.push(text.trim());
+          setProgress(
+            35 + Math.round(((i + 1) / Math.max(imageFiles.length, 1)) * 30),
+          );
+        }
+        textForParse = [textForParse, ...ocrParts].filter(Boolean).join("\n\n");
+        if (!textForParse) {
+          throw new Error(
+            "Could not read text from the photo. Try a clearer image or paste the pricelist text.",
+          );
+        }
+        appendLog(`OCR extracted ${textForParse.length.toLocaleString()} characters`);
+      }
+
+      const filesToUpload = useAi ? files : nonImageFiles;
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const f = filesToUpload[i]!;
         appendLog(`Encoding ${f.name}…`);
         const base64 = await fileToBase64(f);
         uploadFiles.push({
@@ -123,27 +157,29 @@ export function NormalizePricelistClient(props: {
           mimeType: f.type,
           base64,
         });
-        setProgress(15 + Math.round(((i + 1) / Math.max(files.length, 1)) * 25));
+        setProgress(
+          65 + Math.round(((i + 1) / Math.max(filesToUpload.length, 1)) * 15),
+        );
       }
 
       appendLog(
-        preferAi && props.aiConfigured
+        useAi
           ? "Scanning with Claude AI…"
-          : files.some((f) => f.type.startsWith("image/"))
-            ? "Reading photos with OCR (free)…"
+          : textForParse
+            ? "Parsing extracted pricelist text…"
             : "Parsing pricelist (free mode)…",
       );
-      setProgress(50);
+      setProgress(82);
 
       const res = await fetch("/api/suppliers/normalize", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           files: uploadFiles,
-          pastedText,
+          pastedText: textForParse,
           supplierName: supplierName.trim(),
           extraInstructions,
-          preferAi: preferAi && props.aiConfigured,
+          preferAi: useAi,
         }),
       });
 

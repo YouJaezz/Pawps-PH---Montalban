@@ -69,7 +69,7 @@ async function parseFreeUploads(
     .filter(isImageUpload)
     .map((file) => decodeBase64(file.base64));
 
-  if (imageBuffers.length > 0) {
+  if (imageBuffers.length > 0 && !pastedText.trim()) {
     try {
       const ocrText = await extractTextFromImages(imageBuffers);
       if (ocrText.trim()) {

@@ -12,9 +12,9 @@ export function FreeParseTips() {
           work automatically.
         </li>
         <li>
-          <strong className="text-zinc-200">Photos (PNG/JPG)</strong> — free OCR reads
-          screenshots automatically (best with clear, straight photos). Claude AI is optional
-          for messy images.
+          <strong className="text-zinc-200">Photos (PNG/JPG)</strong> — OCR runs in your
+          browser (works on Vercel free tier). Use clear, straight photos. Claude AI is
+          optional for messy images.
         </li>
       </ul>
       <p className="text-[10px] text-zinc-500">
