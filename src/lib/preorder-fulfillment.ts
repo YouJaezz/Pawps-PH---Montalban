@@ -9,7 +9,7 @@ import {
   supplierCatalogItems,
 } from "@/db/schema";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 
 export type PreOrderFulfillResult = {
   kind: "order" | "restock" | "already";
@@ -23,8 +23,24 @@ function effectiveQty(item: PreOrderItemRow) {
   return item.receivedQty > 0 ? item.receivedQty : item.quantity;
 }
 
-async function findProductForCatalogItem(catalogItemId: number | null) {
-  if (!catalogItemId) return null;
+async function findProductForPreOrderItem(item: PreOrderItemRow) {
+  if (item.productId) {
+    const [product] = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        costPrice: products.costPrice,
+        retailPrice: products.retailPrice,
+        bulkPrice: products.bulkPrice,
+        stockQuantity: products.stockQuantity,
+      })
+      .from(products)
+      .where(and(eq(products.id, item.productId), eq(products.archived, false)))
+      .limit(1);
+    return product ?? null;
+  }
+
+  if (!item.supplierCatalogItemId) return null;
 
   const [product] = await db
     .select({
@@ -38,7 +54,7 @@ async function findProductForCatalogItem(catalogItemId: number | null) {
     .from(products)
     .where(
       and(
-        eq(products.supplierCatalogItemId, catalogItemId),
+        eq(products.supplierCatalogItemId, item.supplierCatalogItemId),
         eq(products.archived, false),
       ),
     )
@@ -47,7 +63,75 @@ async function findProductForCatalogItem(catalogItemId: number | null) {
   return product ?? null;
 }
 
-async function restockPreOrderItems(
+async function loadPreOrderItems(preOrderId: number) {
+  return db
+    .select()
+    .from(preOrderItems)
+    .where(eq(preOrderItems.preOrderId, preOrderId));
+}
+
+async function preOrderHasStockForAllLines(items: PreOrderItemRow[]) {
+  for (const item of items) {
+    const qty = effectiveQty(item);
+    if (qty <= 0) continue;
+
+    const product = await findProductForPreOrderItem(item);
+    if (!product || product.stockQuantity < qty) return false;
+  }
+  return items.some((item) => effectiveQty(item) > 0);
+}
+
+async function reserveStockForOrder(orderId: number, note: string) {
+  const [order] = await db
+    .select({ stockDeducted: orders.stockDeducted })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order || order.stockDeducted) return;
+
+  const lines = await db
+    .select({
+      productId: orderItems.productId,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  for (const line of lines) {
+    const [product] = await db
+      .select({
+        id: products.id,
+        stockQuantity: products.stockQuantity,
+      })
+      .from(products)
+      .where(eq(products.id, line.productId))
+      .limit(1);
+
+    if (!product) continue;
+
+    await db
+      .update(products)
+      .set({ stockQuantity: product.stockQuantity - line.quantity })
+      .where(eq(products.id, product.id));
+
+    await db.insert(stockMovements).values({
+      productId: product.id,
+      movementType: "Sale",
+      quantityDelta: -line.quantity,
+      relatedOrderId: orderId,
+      note,
+    });
+  }
+
+  await db
+    .update(orders)
+    .set({ stockDeducted: true })
+    .where(eq(orders.id, orderId));
+}
+
+/** Shop stock orders only — customer pre-orders rely on inventory restock from any source. */
+async function restockShopPreOrderItems(
   preOrderId: number,
   items: PreOrderItemRow[],
 ) {
@@ -55,7 +139,7 @@ async function restockPreOrderItems(
     const qty = effectiveQty(item);
     if (qty <= 0) continue;
 
-    const product = await findProductForCatalogItem(item.supplierCatalogItemId);
+    const product = await findProductForPreOrderItem(item);
     if (!product) continue;
 
     await db
@@ -97,14 +181,20 @@ async function createCustomerOrderFromPreOrder(
   }> = [];
 
   const missing: string[] = [];
+  const shortStock: string[] = [];
 
   for (const item of items) {
     const qty = effectiveQty(item);
     if (qty <= 0) continue;
 
-    const product = await findProductForCatalogItem(item.supplierCatalogItemId);
+    const product = await findProductForPreOrderItem(item);
     if (!product) {
       missing.push(item.itemName);
+      continue;
+    }
+
+    if (product.stockQuantity < qty) {
+      shortStock.push(`${item.itemName} (need ${qty}, have ${product.stockQuantity})`);
       continue;
     }
 
@@ -134,8 +224,14 @@ async function createCustomerOrderFromPreOrder(
     );
   }
 
+  if (shortStock.length > 0) {
+    throw new Error(
+      `Not enough inventory yet: ${shortStock.join("; ")}. Restock in Inventory first — any supplier is fine.`,
+    );
+  }
+
   if (lines.length === 0) {
-    throw new Error("No received quantities to convert into an order.");
+    throw new Error("No quantities to convert into an order.");
   }
 
   const totalAmount = lines.reduce((sum, line) => sum + line.lineTotal, 0);
@@ -179,6 +275,11 @@ async function createCustomerOrderFromPreOrder(
     })),
   );
 
+  await reserveStockForOrder(
+    orderId,
+    `Reserved for pre-order #${preOrder.id}`,
+  );
+
   if (customerId && amountPaid > 0) {
     await bumpCustomerSpend(customerId, amountPaid);
   }
@@ -205,15 +306,11 @@ export async function fulfillPreOrder(
     };
   }
 
-  const items = await db
-    .select()
-    .from(preOrderItems)
-    .where(eq(preOrderItems.preOrderId, preOrderId));
-
-  await restockPreOrderItems(preOrderId, items);
-
+  const items = await loadPreOrderItems(preOrderId);
   const customerName = preOrder.customerName?.trim();
+
   if (!customerName) {
+    await restockShopPreOrderItems(preOrderId, items);
     return {
       kind: "restock",
       message: "Stock restocked to inventory (shop order, no customer).",
@@ -224,13 +321,13 @@ export async function fulfillPreOrder(
 
   await db
     .update(preOrders)
-    .set({ fulfillmentOrderId: orderId })
+    .set({ status: "Received", fulfillmentOrderId: orderId })
     .where(eq(preOrders.id, preOrderId));
 
   return {
     kind: "order",
     orderId,
-    message: `Created sales order #${orderId} for ${customerName}. Track payment and delivery in Sales & Orders.`,
+    message: `Created sales order #${orderId} for ${customerName}. Stock reserved from inventory.`,
   };
 }
 
@@ -253,4 +350,69 @@ export async function syncPreOrderReceiveStatus(preOrderId: number) {
   if (fullyReceived) return "Received" as const;
   if (partiallyReceived) return "Partial" as const;
   return null;
+}
+
+/** When inventory restocks, auto-move waiting customer pre-orders to Sales & Orders. */
+export async function tryAutoFulfillPreOrdersForProduct(productId: number) {
+  const itemRows = await db
+    .select({
+      preOrderId: preOrderItems.preOrderId,
+    })
+    .from(preOrderItems)
+    .where(eq(preOrderItems.productId, productId));
+
+  const preOrderIds = [...new Set(itemRows.map((row) => row.preOrderId))];
+  if (preOrderIds.length === 0) return [];
+
+  const openPreOrders = await db
+    .select({
+      id: preOrders.id,
+      customerName: preOrders.customerName,
+      fulfillmentOrderId: preOrders.fulfillmentOrderId,
+      status: preOrders.status,
+      createdAt: preOrders.createdAt,
+    })
+    .from(preOrders)
+    .where(
+      and(
+        inArray(preOrders.id, preOrderIds),
+        isNotNull(preOrders.customerName),
+        isNull(preOrders.fulfillmentOrderId),
+        ne(preOrders.status, "Cancelled"),
+      ),
+    )
+    .orderBy(asc(preOrders.createdAt));
+
+  const results: PreOrderFulfillResult[] = [];
+
+  for (const preOrder of openPreOrders) {
+    if (!preOrder.customerName?.trim()) continue;
+
+    const items = await loadPreOrderItems(preOrder.id);
+    const ready = await preOrderHasStockForAllLines(items);
+    if (!ready) continue;
+
+    try {
+      const result = await fulfillPreOrder(preOrder.id);
+      results.push(result);
+    } catch (err) {
+      console.error(`Auto-fulfill pre-order #${preOrder.id} failed:`, err);
+    }
+  }
+
+  return results;
+}
+
+export async function getPreOrderStockHints(productIds: number[]) {
+  if (productIds.length === 0) return new Map<number, number>();
+
+  const rows = await db
+    .select({
+      id: products.id,
+      stockQuantity: products.stockQuantity,
+    })
+    .from(products)
+    .where(and(inArray(products.id, productIds), eq(products.archived, false)));
+
+  return new Map(rows.map((row) => [row.id, row.stockQuantity]));
 }

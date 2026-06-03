@@ -6,12 +6,9 @@ import { db } from "@/db";
 import {
   preOrderItems,
   preOrders,
-  supplierCatalogItems,
+  products,
+  suppliers,
 } from "@/db/schema";
-import {
-  displayCatalogFlavor,
-  displayCatalogItem,
-} from "@/lib/catalog-item-display";
 import { requireAuth } from "@/lib/auth-guard";
 import {
   fulfillPreOrder,
@@ -53,15 +50,28 @@ function revalidatePreOrderPaths() {
   revalidatePath("/");
 }
 
+async function resolveSupplierId(
+  productSupplierId: number | null,
+  formSupplierId: number | null,
+) {
+  if (formSupplierId && formSupplierId > 0) return formSupplierId;
+  if (productSupplierId && productSupplierId > 0) return productSupplierId;
+
+  const [fallback] = await db
+    .select({ id: suppliers.id })
+    .from(suppliers)
+    .limit(1);
+
+  if (!fallback) throw new Error("Add a supplier first (used for internal tracking only).");
+  return fallback.id;
+}
+
 export async function createPreOrder(formData: FormData) {
   await requireAuth();
 
-  const supplierId = Number.parseInt(
+  const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+  const formSupplierId = Number.parseInt(
     String(formData.get("supplierId") ?? ""),
-    10,
-  );
-  const catalogItemId = Number.parseInt(
-    String(formData.get("catalogItemId") ?? ""),
     10,
   );
   const quantity = parseIntOr(formData.get("quantity"), 0);
@@ -71,34 +81,38 @@ export async function createPreOrder(formData: FormData) {
   const expectedRaw = String(formData.get("expectedDate") ?? "").trim();
   const expectedDate = expectedRaw ? new Date(expectedRaw) : null;
 
-  if (!Number.isFinite(supplierId) || supplierId <= 0) {
-    throw new Error("Select a supplier.");
-  }
-  if (!Number.isFinite(catalogItemId) || catalogItemId <= 0) {
-    throw new Error("Select a catalog item.");
+  if (!Number.isFinite(productId) || productId <= 0) {
+    throw new Error("Select an inventory product.");
   }
   if (quantity <= 0) throw new Error("Quantity must be at least 1.");
 
-  const [catalog] = await db
+  const [product] = await db
     .select({
-      itemName: supplierCatalogItems.itemName,
-      brand: supplierCatalogItems.brand,
-      variant: supplierCatalogItems.variant,
-      unitCost: supplierCatalogItems.unitCost,
+      id: products.id,
+      name: products.name,
+      brand: products.brand,
+      variant: products.variant,
+      costPrice: products.costPrice,
+      supplierId: products.supplierId,
+      supplierCatalogItemId: products.supplierCatalogItemId,
     })
-    .from(supplierCatalogItems)
-    .where(eq(supplierCatalogItems.id, catalogItemId))
+    .from(products)
+    .where(eq(products.id, productId))
     .limit(1);
 
-  if (!catalog) throw new Error("Catalog item not found.");
+  if (!product) throw new Error("Product not found in inventory.");
 
-  const unitCostCents = catalog.unitCost ?? 0;
+  const supplierId = await resolveSupplierId(
+    product.supplierId,
+    Number.isFinite(formSupplierId) && formSupplierId > 0
+      ? formSupplierId
+      : null,
+  );
+
+  const unitCostCents = product.costPrice;
   const lineTotalCents = unitCostCents * quantity;
-  const itemName = displayCatalogItem(catalog.brand, catalog.itemName);
-  const variant =
-    displayCatalogFlavor(catalog.variant, catalog.itemName) !== "—"
-      ? displayCatalogFlavor(catalog.variant, catalog.itemName)
-      : null;
+  const itemName = product.name;
+  const variant = product.variant?.trim() || null;
 
   const inserted = await db
     .insert(preOrders)
@@ -118,9 +132,10 @@ export async function createPreOrder(formData: FormData) {
 
   await db.insert(preOrderItems).values({
     preOrderId,
-    supplierCatalogItemId: catalogItemId,
+    productId: product.id,
+    supplierCatalogItemId: product.supplierCatalogItemId,
     itemName,
-    brand: catalog.brand,
+    brand: product.brand,
     variant,
     quantity,
     unitCostCents,

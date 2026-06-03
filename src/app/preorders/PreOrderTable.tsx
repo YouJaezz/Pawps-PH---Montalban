@@ -24,12 +24,14 @@ export type PreOrderRow = {
   createdAt: Date;
   items: {
     id: number;
+    productId: number | null;
     itemName: string;
     variant: string | null;
     quantity: number;
     unitCostCents: number;
     lineTotalCents: number;
     receivedQty: number;
+    stockOnHand: number | null;
   }[];
 };
 
@@ -122,13 +124,17 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <div className="font-medium text-zinc-50">
-                    #{row.id} · {row.supplierName}
+                    #{row.id}
+                    {row.items[0]?.itemName ? ` · ${row.items[0].itemName}` : ""}
                   </div>
                   <div className="text-xs text-zinc-400">
                     {row.customerName ? `For ${row.customerName} · ` : "Shop stock · "}
                     {formatPhpFromCents(row.totalCostCents)} cost
                     {row.depositCents > 0
                       ? ` · ${formatPhpFromCents(row.depositCents)} deposit`
+                      : ""}
+                    {row.supplierName !== "—"
+                      ? ` · PO ref: ${row.supplierName}`
                       : ""}
                   </div>
                   {row.fulfillmentOrderId ? (
@@ -141,9 +147,17 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                         sales order #{row.fulfillmentOrderId}
                       </Link>
                     </div>
-                  ) : row.customerName && row.status !== "Received" ? (
+                  ) : row.customerName &&
+                    row.status !== "Received" &&
+                    row.status !== "Cancelled" ? (
                     <div className="mt-1 text-[10px] text-zinc-500">
-                      Set status to Received to create a sales order automatically.
+                      {row.items.some(
+                        (item) =>
+                          item.stockOnHand != null &&
+                          item.stockOnHand >= item.quantity,
+                      )
+                        ? "Inventory ready — auto moves to Sales & Orders when restocked, or set status to Received."
+                        : "Waiting for inventory stock (restock from any supplier in Inventory)."}
                     </div>
                   ) : null}
                 </div>
@@ -210,30 +224,43 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                           {item.quantity} × {formatPhpFromCents(item.unitCostCents)} ={" "}
                           {formatPhpFromCents(item.lineTotalCents)}
                         </div>
+                        {item.stockOnHand != null ? (
+                          <div
+                            className={
+                              item.stockOnHand >= item.quantity
+                                ? "text-emerald-400/90"
+                                : "text-amber-300/90"
+                            }
+                          >
+                            Inventory: {item.stockOnHand} / need {item.quantity}
+                          </div>
+                        ) : null}
                       </div>
-                      <form
-                        action={receiveAction}
-                        className="flex items-center gap-1"
-                      >
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <span className="text-[10px] text-zinc-500">Received</span>
-                        <input
-                          name="receivedQty"
-                          type="number"
-                          min={0}
-                          max={item.quantity}
-                          defaultValue={item.receivedQty}
-                          disabled={receivePending || !!row.fulfillmentOrderId}
-                          className="w-12 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs disabled:opacity-50"
-                        />
-                        <button
-                          type="submit"
-                          disabled={receivePending || !!row.fulfillmentOrderId}
-                          className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-300 disabled:opacity-50"
+                      {!row.customerName ? (
+                        <form
+                          action={receiveAction}
+                          className="flex items-center gap-1"
                         >
-                          Save
-                        </button>
-                      </form>
+                          <input type="hidden" name="itemId" value={item.id} />
+                          <span className="text-[10px] text-zinc-500">Received</span>
+                          <input
+                            name="receivedQty"
+                            type="number"
+                            min={0}
+                            max={item.quantity}
+                            defaultValue={item.receivedQty}
+                            disabled={receivePending || !!row.fulfillmentOrderId}
+                            className="w-12 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs disabled:opacity-50"
+                          />
+                          <button
+                            type="submit"
+                            disabled={receivePending || !!row.fulfillmentOrderId}
+                            className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-300 disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                        </form>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

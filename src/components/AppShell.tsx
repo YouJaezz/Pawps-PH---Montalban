@@ -52,7 +52,7 @@ export async function AppShell(props: {
               <NavItem href="/products" label="Inventory" hint="CRUD" />
               <NavItem href="/orders" label="Sales & Orders" hint="next" />
               <NavItem href="/customers" label="Customers" hint="next" />
-              <NavItem href="/preorders" label="Pre-orders" hint="supplier" />
+              <NavItem href="/preorders" label="Pre-orders" hint="customers" />
               <NavItem
                 href="/delivery"
                 label="Delivery Log"

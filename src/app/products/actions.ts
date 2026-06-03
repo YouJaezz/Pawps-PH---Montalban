@@ -13,6 +13,7 @@ import {
   displayCatalogItem,
 } from "@/lib/catalog-item-display";
 import { requireAuth } from "@/lib/auth-guard";
+import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
 import { and, eq } from "drizzle-orm";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
@@ -157,9 +158,12 @@ export async function createProduct(
       quantityDelta: stockQuantity,
       note: "Initial stock",
     });
+    await tryAutoFulfillPreOrdersForProduct(productId);
   }
 
   revalidatePath("/products");
+  revalidatePath("/preorders");
+  revalidatePath("/orders");
   revalidatePath("/");
 
   const retailProfitPerUnitCents = Math.max(0, retailPrice - costPrice);
@@ -221,6 +225,10 @@ export async function restockProduct(formData: FormData) {
     note: noteRaw.length ? noteRaw : "Manual restock",
   });
 
+  await tryAutoFulfillPreOrdersForProduct(productId);
+
   revalidatePath("/products");
+  revalidatePath("/preorders");
+  revalidatePath("/orders");
   revalidatePath("/");
 }

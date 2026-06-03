@@ -137,6 +137,7 @@ export const preOrders = sqliteTable("pre_orders", {
 export const preOrderItems = sqliteTable("pre_order_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   preOrderId: integer("pre_order_id").notNull(),
+  productId: integer("product_id"),
   supplierCatalogItemId: integer("supplier_catalog_item_id"),
   itemName: text("item_name").notNull(),
   brand: text("brand"),
