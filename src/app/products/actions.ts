@@ -10,7 +10,11 @@ import {
   STOCK_UNITS,
   type StockUnit,
 } from "@/db/schema";
-import { parseStockQuantityInput } from "@/lib/product-stock";
+import {
+  displayStockQuantity,
+  parseKgPerSackFromInput,
+  parseStockQuantityInput,
+} from "@/lib/product-stock";
 import {
   displayCatalogFlavor,
   displayCatalogItem,
@@ -38,6 +42,7 @@ export type CreateProductResult = {
   error?: string;
   itemLabel?: string;
   stockQuantity?: number;
+  stockUnit?: StockUnit;
   costPerUnitCents?: number;
   totalPurchaseCents?: number;
   retailPriceCents?: number;
@@ -86,6 +91,9 @@ export async function createProduct(
         variant: supplierCatalogItems.variant,
         unitCost: supplierCatalogItems.unitCost,
         retailPrice: supplierCatalogItems.retailPrice,
+        perKiloPrice: supplierCatalogItems.perKiloPrice,
+        packSize: supplierCatalogItems.packSize,
+        packUnit: supplierCatalogItems.packUnit,
       })
       .from(supplierCatalogItems)
       .where(eq(supplierCatalogItems.id, catalogItemId))
@@ -103,10 +111,15 @@ export async function createProduct(
           : null);
 
       if (!formData.get("costPrice")) {
-        costPrice =
-          purchaseTier === "Retail"
-            ? (catalogRow.retailPrice ?? catalogRow.unitCost ?? 0)
-            : (catalogRow.unitCost ?? 0);
+        const trackInKg = formData.get("trackInKg") === "on";
+        if (trackInKg && catalogRow.perKiloPrice != null && catalogRow.perKiloPrice > 0) {
+          costPrice = catalogRow.perKiloPrice;
+        } else {
+          costPrice =
+            purchaseTier === "Retail"
+              ? (catalogRow.retailPrice ?? catalogRow.unitCost ?? 0)
+              : (catalogRow.unitCost ?? 0);
+        }
       }
       if (!formData.get("supplierRetailPrice") && catalogRow.retailPrice != null) {
         supplierRetailPrice = catalogRow.retailPrice;
@@ -127,7 +140,18 @@ export async function createProduct(
 
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
-  const stockQuantity = parseIntOr(formData.get("stockQuantity"), 0);
+
+  const trackInKg = formData.get("trackInKg") === "on";
+  const stockEntryMode =
+    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
+  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
+
+  const stockUnit: StockUnit = trackInKg ? "Kilogram" : "Piece";
+  const stockQuantity =
+    parseStockQuantityInput(String(formData.get("stockQuantity") ?? "0"), stockUnit, {
+      stockEntryMode,
+      kgPerSack,
+    }) ?? 0;
 
   const inserted = await db
     .insert(products)
@@ -139,6 +163,8 @@ export async function createProduct(
       retailPrice,
       bulkPrice,
       stockQuantity,
+      stockUnit,
+      kgPerSack: trackInKg ? kgPerSack : null,
       expiryDate: null,
       supplierId,
       supplierCatalogItemId:
@@ -169,6 +195,7 @@ export async function createProduct(
   revalidatePath("/orders");
   revalidatePath("/");
 
+  const effectiveQty = displayStockQuantity(stockUnit, stockQuantity);
   const retailProfitPerUnitCents = Math.max(0, retailPrice - costPrice);
   const bulkProfitPerUnitCents =
     bulkPrice > 0 ? Math.max(0, bulkPrice - costPrice) : null;
@@ -176,17 +203,18 @@ export async function createProduct(
   return {
     ok: true,
     itemLabel: variant ? `${name} (${variant})` : name,
-    stockQuantity,
+    stockQuantity: effectiveQty,
+    stockUnit,
     costPerUnitCents: costPrice,
-    totalPurchaseCents: costPrice * stockQuantity,
+    totalPurchaseCents: Math.round(costPrice * effectiveQty),
     retailPriceCents: retailPrice,
     bulkPriceCents: bulkPrice,
     retailProfitPerUnitCents,
     bulkProfitPerUnitCents,
-    totalRetailProfitCents: retailProfitPerUnitCents * stockQuantity,
+    totalRetailProfitCents: Math.round(retailProfitPerUnitCents * effectiveQty),
     totalBulkProfitCents:
       bulkProfitPerUnitCents != null
-        ? bulkProfitPerUnitCents * stockQuantity
+        ? Math.round(bulkProfitPerUnitCents * effectiveQty)
         : null,
   };
 }
@@ -255,6 +283,9 @@ export async function updateProduct(formData: FormData) {
   const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
     ? (stockUnitRaw as StockUnit)
     : ("Piece" as const);
+  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
+  const stockEntryMode =
+    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
 
   if (!name || !brand) {
     throw new Error("Product name and brand are required.");
@@ -262,9 +293,12 @@ export async function updateProduct(formData: FormData) {
 
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
+  const unitForParse =
+    stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
   const newStockStored = parseStockQuantityInput(
     String(formData.get("stockQuantity") ?? ""),
-    stockUnit,
+    unitForParse,
+    { stockEntryMode, kgPerSack },
   );
 
   if (retailPrice <= 0) throw new Error("Retail sell price is required.");
@@ -292,7 +326,9 @@ export async function updateProduct(formData: FormData) {
       brand,
       variant,
       packSize,
-      stockUnit,
+      stockUnit: stockUnit === "Sack" ? "Kilogram" : stockUnit,
+      kgPerSack:
+        stockUnit === "Kilogram" || stockUnit === "Sack" ? kgPerSack : null,
       stockQuantity: newStockStored,
       retailPrice,
       bulkPrice,

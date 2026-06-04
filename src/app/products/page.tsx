@@ -1,7 +1,7 @@
 import Link from "next/link";
 
+import { ProductAddButton } from "@/app/products/ProductAddButton";
 import { ProductEditButton } from "@/app/products/ProductEditButton";
-import { ProductForm } from "@/app/products/ProductForm";
 import { deleteProduct } from "@/app/products/delete-actions";
 import { restockProduct } from "@/app/products/actions";
 import { AppShell } from "@/components/AppShell";
@@ -16,9 +16,10 @@ import {
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
 import {
-  displayStockQuantity,
-  formatStockLabel,
-} from "@/lib/product-stock";
+  computeInventoryValuation,
+  effectiveStockQty,
+} from "@/lib/inventory-valuation";
+import { formatStockLabel } from "@/lib/product-stock";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -37,6 +38,7 @@ export default async function ProductsPage() {
         variant: products.variant,
         packSize: products.packSize,
         stockUnit: products.stockUnit,
+        kgPerSack: products.kgPerSack,
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
@@ -61,6 +63,9 @@ export default async function ProductsPage() {
     variant: c.variant,
     unitCost: c.unitCost,
     retailPrice: c.retailPrice,
+    perKiloPrice: c.perKiloPrice,
+    packSize: c.packSize,
+    packUnit: c.packUnit,
   }));
 
   const suppliersForForm = supplierRows.map((s) => ({
@@ -71,15 +76,13 @@ export default async function ProductsPage() {
 
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
 
-  const totalUnits = rows.reduce((acc, p) => acc + p.stockQuantity, 0);
-  const totalCostValueCents = rows.reduce(
-    (acc, p) => acc + p.costPrice * p.stockQuantity,
-    0,
-  );
-  const totalPotentialProfitCents = rows.reduce(
-    (acc, p) =>
-      acc + Math.max(0, p.retailPrice - p.costPrice) * p.stockQuantity,
-    0,
+  const valuation = computeInventoryValuation(
+    rows.map((p) => ({
+      costPrice: p.costPrice,
+      retailPrice: p.retailPrice,
+      stockQuantity: p.stockQuantity,
+      stockUnit: p.stockUnit as StockUnit,
+    })),
   );
 
   return (
@@ -92,7 +95,11 @@ export default async function ProductsPage() {
               Stock &amp; pricing
             </h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ProductAddButton
+              suppliers={suppliersForForm}
+              catalogItems={catalogPickItems}
+            />
             <Link
               href="/suppliers"
               className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
@@ -108,39 +115,28 @@ export default async function ProductsPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:max-w-lg">
-          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
-            <div className="text-[10px] text-zinc-500">Units</div>
-            <div className="text-sm font-semibold">{totalUnits}</div>
-          </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:max-w-2xl">
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
             <div className="text-[10px] text-zinc-500">Stock value</div>
             <div className="text-sm font-semibold">
-              {formatPhpFromCents(totalCostValueCents)}
+              {formatPhpFromCents(valuation.stockValueCents)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+            <div className="text-[10px] text-zinc-500">Potential income</div>
+            <div className="text-sm font-semibold">
+              {formatPhpFromCents(valuation.potentialIncomeCents)}
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
             <div className="text-[10px] text-zinc-500">Profit potential</div>
             <div className="text-sm font-semibold text-emerald-300">
-              {formatPhpFromCents(totalPotentialProfitCents)}
+              {formatPhpFromCents(valuation.profitPotentialCents)}
             </div>
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-5">
-          <div className="xl:col-span-1 xl:max-w-[280px]">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-medium text-zinc-100">Add item</div>
-              <div className="mt-3">
-                <ProductForm
-                  suppliers={suppliersForForm}
-                  catalogItems={catalogPickItems}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="xl:col-span-4">
+        <div className="mt-5">
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="mb-3 text-sm font-medium text-zinc-100">
                 Inventory ({rows.length})
@@ -183,10 +179,15 @@ export default async function ProductsPage() {
                           p.variant?.trim()
                             ? displayCatalogFlavor(p.variant, p.name)
                             : "—";
+                        const effectiveQty = effectiveStockQty({
+                          costPrice: p.costPrice,
+                          retailPrice: p.retailPrice,
+                          stockQuantity: p.stockQuantity,
+                          stockUnit: p.stockUnit as StockUnit,
+                        });
                         const profit =
-                          Math.max(0, p.retailPrice - p.costPrice) *
-                          p.stockQuantity;
-                        const totalCost = p.costPrice * p.stockQuantity;
+                          Math.max(0, p.retailPrice - p.costPrice) * effectiveQty;
+                        const totalCost = p.costPrice * effectiveQty;
 
                         return (
                           <tr key={p.id} className="hover:bg-white/5">
@@ -227,6 +228,7 @@ export default async function ProductsPage() {
                               {formatStockLabel(
                                 p.stockUnit as StockUnit,
                                 p.stockQuantity,
+                                p.kgPerSack,
                               )}
                               {p.packSize ? (
                                 <div className="text-[9px] text-zinc-600">
@@ -247,10 +249,13 @@ export default async function ProductsPage() {
                                     variant: p.variant,
                                     packSize: p.packSize,
                                     stockUnit: p.stockUnit as StockUnit,
-                                    stockQuantity: displayStockQuantity(
-                                      p.stockUnit as StockUnit,
-                                      p.stockQuantity,
-                                    ),
+                                    stockQuantity: effectiveStockQty({
+                                      costPrice: p.costPrice,
+                                      retailPrice: p.retailPrice,
+                                      stockQuantity: p.stockQuantity,
+                                      stockUnit: p.stockUnit as StockUnit,
+                                    }),
+                                    kgPerSack: p.kgPerSack,
                                     retailPrice: p.retailPrice,
                                     bulkPrice: p.bulkPrice,
                                   }}
@@ -290,7 +295,6 @@ export default async function ProductsPage() {
                 </table>
               </ScrollableTable>
             </div>
-          </div>
         </div>
       </div>
     </AppShell>

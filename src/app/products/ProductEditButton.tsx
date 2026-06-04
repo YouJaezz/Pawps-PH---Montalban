@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 
 import { updateProduct } from "@/app/products/actions";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
+import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
+import { stockQtyLabel } from "@/lib/product-stock";
 
 export type ProductEditRow = {
   id: number;
@@ -14,6 +16,7 @@ export type ProductEditRow = {
   packSize: string | null;
   stockUnit: StockUnit;
   stockQuantity: number;
+  kgPerSack: number | null;
   retailPrice: number;
   bulkPrice: number;
 };
@@ -25,15 +28,15 @@ function centsToInput(cents: number) {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }
 
-function stockQtyLabel(unit: StockUnit) {
-  if (unit === "Kilogram") return "Stock (kg)";
-  if (unit === "Pack") return "Stock (packs)";
-  return "Stock (pcs)";
-}
-
 export function ProductEditButton(props: { product: ProductEditRow }) {
   const [open, setOpen] = useState(false);
   const [stockUnit, setStockUnit] = useState<StockUnit>(props.product.stockUnit);
+  const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg">("kg");
+  const [kgPerSackInput, setKgPerSackInput] = useState(
+    props.product.kgPerSack != null
+      ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
+      : "",
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +53,8 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   }, [open]);
 
   const p = props.product;
+  const isWeight =
+    stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null;
 
   return (
     <>
@@ -57,6 +62,11 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
         type="button"
         onClick={() => {
           setStockUnit(props.product.stockUnit);
+          setKgPerSackInput(
+            props.product.kgPerSack != null
+              ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
+              : "",
+          );
           setOpen(true);
         }}
         className="text-[10px] text-[#e8a44a]/90 hover:text-[#e8a44a]"
@@ -156,28 +166,65 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 </label>
               </div>
 
+              {isWeight ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">Kg per sack</span>
+                    <input
+                      name="kgPerSack"
+                      value={kgPerSackInput}
+                      onChange={(e) => setKgPerSackInput(e.target.value)}
+                      inputMode="decimal"
+                      step="0.1"
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">Stock entry</span>
+                    <select
+                      name="stockEntryMode"
+                      value={stockEntryMode}
+                      onChange={(e) =>
+                        setStockEntryMode(e.target.value as "sacks" | "kg")
+                      }
+                      className={inputClass}
+                    >
+                      <option value="sacks">Sacks</option>
+                      <option value="kg">Kilograms</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+
               <label className="block space-y-1">
                 <span className="text-xs text-zinc-400">
-                  {stockQtyLabel(stockUnit)}
+                  {stockQtyLabel(
+                    stockUnit === "Sack" ? "Kilogram" : stockUnit,
+                    isWeight ? stockEntryMode : undefined,
+                  )}
                 </span>
                 <input
                   name="stockQuantity"
                   type="number"
                   min={0}
-                  step={stockUnit === "Kilogram" ? "0.1" : "1"}
+                  step={
+                    stockUnit === "Kilogram" || stockUnit === "Sack" ? "0.1" : "1"
+                  }
                   required
                   defaultValue={String(p.stockQuantity)}
                   className={inputClass}
                 />
                 <span className="text-[10px] text-zinc-600">
-                  Use whole numbers for pieces/packs. For kg you can use
-                  decimals (e.g. 12.5).
+                  Weight items are stored as kg. Use sacks + kg/sack when receiving
+                  by sack.
                 </span>
               </label>
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Sell retail (₱)</span>
+                  <span className="text-xs text-zinc-400">
+                    {isWeight ? "Sell retail (per kg)" : "Sell retail (₱)"}
+                  </span>
                   <input
                     name="retailPrice"
                     required
@@ -186,7 +233,9 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Sell bulk (₱)</span>
+                  <span className="text-xs text-zinc-400">
+                    {isWeight ? "Sell bulk (per kg)" : "Sell bulk (₱)"}
+                  </span>
                   <input
                     name="bulkPrice"
                     defaultValue={centsToInput(p.bulkPrice)}
@@ -222,6 +271,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               Current sell retail:{" "}
               <span className="text-zinc-200">
                 {formatPhpFromCents(p.retailPrice)}
+                {isWeight ? " / kg" : ""}
               </span>
               {p.bulkPrice > 0 ? (
                 <>
@@ -229,6 +279,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   · bulk{" "}
                   <span className="text-zinc-200">
                     {formatPhpFromCents(p.bulkPrice)}
+                    {isWeight ? " / kg" : ""}
                   </span>
                 </>
               ) : null}

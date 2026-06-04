@@ -10,8 +10,11 @@ import {
   lineTotalCents,
   parseQuantityInput,
   stockDeductQuantity,
+  unitPriceForSale,
+  stockRestockQuantity,
   type SaleUnit,
 } from "@/lib/order-line-math";
+import { formatStockLabel } from "@/lib/product-stock";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -76,22 +79,24 @@ async function deductStockForOrder(orderId: number) {
     .where(eq(orderItems.orderId, orderId));
 
   for (const line of lines) {
-    const deductQty = stockDeductQuantity(
-      line.saleUnit as SaleUnit,
-      line.quantity,
-      line.quantityTenths,
-    );
-
     const [product] = await db
       .select({
         id: products.id,
         stockQuantity: products.stockQuantity,
+        kgPerSack: products.kgPerSack,
       })
       .from(products)
       .where(eq(products.id, line.productId))
       .limit(1);
 
     if (!product) continue;
+
+    const deductQty = stockDeductQuantity(
+      line.saleUnit as SaleUnit,
+      line.quantity,
+      line.quantityTenths,
+      product.kgPerSack,
+    );
 
     await db
       .update(products)
@@ -186,20 +191,38 @@ export async function quickSell(
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
         stockQuantity: products.stockQuantity,
+        stockUnit: products.stockUnit,
+        kgPerSack: products.kgPerSack,
       })
       .from(products)
       .where(and(eq(products.id, productId), eq(products.archived, false)))
       .limit(1);
 
     if (!p) return actionError("Product not found.");
-    const deductQty = stockDeductQuantity(saleUnit, quantity, quantityTenths);
+    const deductQty = stockDeductQuantity(
+      saleUnit,
+      quantity,
+      quantityTenths,
+      p.kgPerSack,
+    );
     if (deductStock && p.stockQuantity < deductQty) {
+      const stockLabel = formatStockLabel(
+        p.stockUnit as import("@/db/schema").StockUnit,
+        p.stockQuantity,
+        p.kgPerSack,
+      );
       return actionError(
-        `Not enough stock (${p.stockQuantity} available). Uncheck "Deduct stock" or restock first.`,
+        `Not enough stock (${stockLabel} on hand). Uncheck "Deduct stock" or restock first.`,
       );
     }
 
-    const unitPrice = priceTier === "Bulk" ? p.bulkPrice : p.retailPrice;
+    const unitPrice = unitPriceForSale(
+      saleUnit,
+      priceTier,
+      p.retailPrice,
+      p.bulkPrice,
+      p.kgPerSack,
+    );
     const lineTotal = lineTotalCents(
       unitPrice,
       saleUnit,
@@ -341,6 +364,7 @@ export async function createBulkOrder(
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
+        kgPerSack: products.kgPerSack,
       })
       .from(products)
       .where(and(inArray(products.id, productIds), eq(products.archived, false)));
@@ -367,7 +391,13 @@ export async function createBulkOrder(
       if (!qtyParsed) continue;
       const prod = priceById.get(id);
       if (!prod) continue;
-      const unitPrice = priceTier === "Bulk" ? prod.bulkPrice : prod.retailPrice;
+      const unitPrice = unitPriceForSale(
+        saleUnit,
+        priceTier,
+        prod.retailPrice,
+        prod.bulkPrice,
+        prod.kgPerSack,
+      );
       const lineTotal = lineTotalCents(
         unitPrice,
         saleUnit,
@@ -488,6 +518,8 @@ export async function cancelOrder(formData: FormData) {
     .select({
       productId: orderItems.productId,
       quantity: orderItems.quantity,
+      quantityTenths: orderItems.quantityTenths,
+      saleUnit: orderItems.saleUnit,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
@@ -510,9 +542,20 @@ export async function cancelOrder(formData: FormData) {
 
   if (order.stockDeducted) {
     for (const l of lines) {
+      const [p] = await db
+        .select({ kgPerSack: products.kgPerSack })
+        .from(products)
+        .where(eq(products.id, l.productId))
+        .limit(1);
+      const qty = stockRestockQuantity(
+        l.saleUnit as SaleUnit,
+        l.quantity,
+        l.quantityTenths,
+        p?.kgPerSack,
+      );
       restockByProduct.set(
         l.productId,
-        (restockByProduct.get(l.productId) ?? 0) + l.quantity,
+        (restockByProduct.get(l.productId) ?? 0) + qty,
       );
     }
   } else if (saleMovements.length > 0) {
@@ -749,6 +792,7 @@ export async function updateOrderLineItem(formData: FormData) {
       costPrice: products.costPrice,
       retailPrice: products.retailPrice,
       bulkPrice: products.bulkPrice,
+      kgPerSack: products.kgPerSack,
     })
     .from(products)
     .where(eq(products.id, line.productId))
@@ -759,9 +803,13 @@ export async function updateOrderLineItem(formData: FormData) {
   const unitPrice =
     unitPriceOverride > 0
       ? unitPriceOverride
-      : priceTier === "Bulk"
-        ? product.bulkPrice
-        : product.retailPrice;
+      : unitPriceForSale(
+          saleUnit,
+          priceTier,
+          product.retailPrice,
+          product.bulkPrice,
+          product.kgPerSack,
+        );
 
   const lineTotal = lineTotalCents(
     unitPrice,

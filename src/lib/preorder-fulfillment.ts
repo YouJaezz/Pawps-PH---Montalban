@@ -9,6 +9,7 @@ import {
   supplierCatalogItems,
 } from "@/db/schema";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
+import { stockDeductQuantity, type SaleUnit } from "@/lib/order-line-math";
 import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 
 export type PreOrderFulfillResult = {
@@ -94,6 +95,8 @@ async function reserveStockForOrder(orderId: number, note: string) {
     .select({
       productId: orderItems.productId,
       quantity: orderItems.quantity,
+      quantityTenths: orderItems.quantityTenths,
+      saleUnit: orderItems.saleUnit,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
@@ -103,6 +106,7 @@ async function reserveStockForOrder(orderId: number, note: string) {
       .select({
         id: products.id,
         stockQuantity: products.stockQuantity,
+        kgPerSack: products.kgPerSack,
       })
       .from(products)
       .where(eq(products.id, line.productId))
@@ -110,15 +114,22 @@ async function reserveStockForOrder(orderId: number, note: string) {
 
     if (!product) continue;
 
+    const deductQty = stockDeductQuantity(
+      line.saleUnit as SaleUnit,
+      line.quantity,
+      line.quantityTenths,
+      product.kgPerSack,
+    );
+
     await db
       .update(products)
-      .set({ stockQuantity: product.stockQuantity - line.quantity })
+      .set({ stockQuantity: product.stockQuantity - deductQty })
       .where(eq(products.id, product.id));
 
     await db.insert(stockMovements).values({
       productId: product.id,
       movementType: "Sale",
-      quantityDelta: -line.quantity,
+      quantityDelta: -deductQty,
       relatedOrderId: orderId,
       note,
     });

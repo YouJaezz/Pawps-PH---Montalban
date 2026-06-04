@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { AddCatalogItemButton } from "@/app/suppliers/AddCatalogItemButton";
 import { CatalogItemEditButton } from "@/app/suppliers/CatalogItemEditButton";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import {
@@ -113,6 +114,14 @@ export function SupplierSearch(props: {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search…"
           className="w-28 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none sm:w-36"
+        />
+        <AddCatalogItemButton
+          suppliers={props.suppliers.map((s) => ({ id: s.id, name: s.name }))}
+          defaultSupplierId={
+            supplierFilter !== "all"
+              ? Number.parseInt(supplierFilter, 10)
+              : undefined
+          }
         />
       </div>
 

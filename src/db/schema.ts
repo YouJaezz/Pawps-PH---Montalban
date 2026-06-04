@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const STOCK_UNITS = ["Piece", "Kilogram", "Pack"] as const;
+export const STOCK_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
 export const products = sqliteTable("products", {
@@ -13,6 +13,8 @@ export const products = sqliteTable("products", {
   stockUnit: text("stock_unit", { enum: STOCK_UNITS })
     .notNull()
     .default("Piece"),
+  /** Tenths of kg per sack (e.g. 70 = 7.0 kg). Used when stocking/selling by sack. */
+  kgPerSack: integer("kg_per_sack"),
   // Store money as integer cents to avoid floating point issues.
   costPrice: integer("cost_price").notNull(),
   retailPrice: integer("retail_price").notNull(),
@@ -77,7 +79,7 @@ export const orders = sqliteTable("orders", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-export const SALE_UNITS = ["Piece", "Kilogram", "Pack"] as const;
+export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
 export type SaleUnit = (typeof SALE_UNITS)[number];
 
 export const orderItems = sqliteTable("order_items", {

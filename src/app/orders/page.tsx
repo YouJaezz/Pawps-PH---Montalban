@@ -47,6 +47,8 @@ export default async function OrdersPage() {
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
         stockQuantity: products.stockQuantity,
+        stockUnit: products.stockUnit,
+        kgPerSack: products.kgPerSack,
       })
       .from(products)
       .where(eq(products.archived, false)),
@@ -83,6 +85,8 @@ export default async function OrdersPage() {
             name: products.name,
             brand: products.brand,
             variant: products.variant,
+            stockUnit: products.stockUnit,
+            kgPerSack: products.kgPerSack,
           })
           .from(products)
           .where(inArray(products.id, productIdSet));
@@ -130,6 +134,8 @@ export default async function OrdersPage() {
         priceTier: l.priceTier as "Retail" | "Bulk",
         unitPrice: l.unitPrice,
         lineTotal: l.lineTotal,
+        stockUnit: p.stockUnit,
+        kgPerSack: p.kgPerSack,
       });
     }
   }

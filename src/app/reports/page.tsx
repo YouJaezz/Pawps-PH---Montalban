@@ -19,7 +19,7 @@ export default async function ReportsPage() {
               Business Insights
             </h1>
             <p className="mt-2 text-sm text-zinc-400">
-              Income, receivables, and top products.
+              Cash income, on-hand stock value, and top products.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -49,6 +49,27 @@ export default async function ReportsPage() {
             title="Receivables"
             value={formatPhpFromCents(insights.receivablesCents)}
             subtitle="Unpaid balance across orders"
+          />
+        </div>
+
+        <div className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          On-hand inventory
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <StatCard
+            title="Stock value (cost)"
+            value={formatPhpFromCents(insights.stockValueCents)}
+            subtitle="What you paid for existing stock"
+          />
+          <StatCard
+            title="Potential stock income"
+            value={formatPhpFromCents(insights.potentialStockIncomeCents)}
+            subtitle="If all stock sells at your retail price"
+          />
+          <StatCard
+            title="Profit potential (on hand)"
+            value={formatPhpFromCents(insights.profitPotentialCents)}
+            subtitle="Retail minus cost on existing qty"
           />
         </div>
 

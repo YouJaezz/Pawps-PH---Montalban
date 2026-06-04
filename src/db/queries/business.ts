@@ -2,6 +2,8 @@ import { and, eq, gte, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orderItems, orders, products } from "@/db/schema";
+import type { StockUnit } from "@/db/schema";
+import { computeInventoryValuation } from "@/lib/inventory-valuation";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -14,6 +16,25 @@ export async function getBusinessInsights() {
   const todayStart = startOfDay(now);
   const last7Start = new Date(todayStart.getTime() - 6 * MS_PER_DAY);
   const last30Start = new Date(todayStart.getTime() - 29 * MS_PER_DAY);
+
+  const inventoryProducts = await db
+    .select({
+      costPrice: products.costPrice,
+      retailPrice: products.retailPrice,
+      stockQuantity: products.stockQuantity,
+      stockUnit: products.stockUnit,
+    })
+    .from(products)
+    .where(eq(products.archived, false));
+
+  const inventoryValuation = computeInventoryValuation(
+    inventoryProducts.map((p) => ({
+      costPrice: p.costPrice,
+      retailPrice: p.retailPrice,
+      stockQuantity: p.stockQuantity,
+      stockUnit: p.stockUnit as StockUnit,
+    })),
+  );
 
   const [todayOrders, last7Orders, last30Orders, allOrders] = await Promise.all([
     db
@@ -141,6 +162,9 @@ export async function getBusinessInsights() {
     incomeLast30DaysCents: sumPaid(last30Orders),
     receivablesCents,
     topProductsLast30Days: topProducts,
+    stockValueCents: inventoryValuation.stockValueCents,
+    potentialStockIncomeCents: inventoryValuation.potentialIncomeCents,
+    profitPotentialCents: inventoryValuation.profitPotentialCents,
   };
 }
 

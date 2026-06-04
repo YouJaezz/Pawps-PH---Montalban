@@ -391,6 +391,53 @@ export async function updateSupplier(formData: FormData) {
   revalidatePath("/products");
 }
 
+export async function createSupplierCatalogItem(formData: FormData) {
+  await requireAuth();
+
+  const supplierId = Number.parseInt(String(formData.get("supplierId") ?? ""), 10);
+  if (!Number.isFinite(supplierId) || supplierId <= 0) {
+    throw new Error("Select a supplier.");
+  }
+
+  const [supplier] = await db
+    .select({ id: suppliers.id })
+    .from(suppliers)
+    .where(eq(suppliers.id, supplierId))
+    .limit(1);
+
+  if (!supplier) throw new Error("Supplier not found.");
+
+  const itemName = String(formData.get("itemName") ?? "").trim();
+  const brandRaw = String(formData.get("brand") ?? "").trim();
+  const variantRaw = String(formData.get("variant") ?? "").trim();
+  const packSizeRaw = String(formData.get("packSize") ?? "").trim();
+  const packUnitRaw = String(formData.get("packUnit") ?? "").trim();
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+
+  if (!itemName) throw new Error("Item name is required.");
+
+  const unitCost = parseMoneyToCents(formData.get("unitCost"));
+  const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
+  const perKiloPrice = parseMoneyToCents(formData.get("perKiloPrice"));
+
+  await db.insert(supplierCatalogItems).values({
+    supplierId,
+    itemName,
+    brand: brandRaw.length ? brandRaw : null,
+    variant: variantRaw.length ? variantRaw : null,
+    unitCost: unitCost || null,
+    retailPrice: retailPrice || null,
+    perKiloPrice: perKiloPrice || null,
+    packSize: packSizeRaw.length ? packSizeRaw : null,
+    packUnit: packUnitRaw.length ? packUnitRaw : null,
+    notes: notesRaw.length ? notesRaw : null,
+    documentId: null,
+  });
+
+  revalidatePath("/suppliers");
+  revalidatePath("/products");
+}
+
 export async function updateSupplierCatalogItem(formData: FormData) {
   await requireAuth();
 

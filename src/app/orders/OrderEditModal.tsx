@@ -8,7 +8,7 @@ import {
 } from "@/app/orders/actions";
 import {
   formatQuantityLabel,
-  SALE_UNITS,
+  saleUnitsForProduct,
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
@@ -23,6 +23,8 @@ export type OrderLineEdit = {
   priceTier: "Retail" | "Bulk";
   unitPrice: number;
   lineTotal: number;
+  stockUnit: string;
+  kgPerSack: number | null;
 };
 
 export type OrderEditPayload = {
@@ -132,7 +134,10 @@ export function OrderEditModal(props: {
                             defaultValue={line.saleUnit}
                             className={inputClass}
                           >
-                            {SALE_UNITS.map((u) => (
+                            {saleUnitsForProduct({
+                              stockUnit: line.stockUnit,
+                              kgPerSack: line.kgPerSack,
+                            }).map((u) => (
                               <option key={u} value={u}>
                                 {u}
                               </option>
@@ -172,8 +177,8 @@ export function OrderEditModal(props: {
                         </label>
                       </div>
                       <p className="text-[9px] text-zinc-600">
-                        Kilogram: enter weight (e.g. 2.5). Per-kg price uses retail/bulk
-                        or your override. Stock deducts rounded kg on completion.
+                        Kilogram: decimal kg (e.g. 2.5). Sack: whole sacks. Stock
+                        deducts exact kg from inventory.
                       </p>
                       <button
                         type="submit"

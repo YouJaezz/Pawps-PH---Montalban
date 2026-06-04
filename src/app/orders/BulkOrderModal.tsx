@@ -10,7 +10,14 @@ import {
   CustomerPicker,
   type CustomerOption,
 } from "@/app/orders/CustomerPicker";
-import { lineTotalCents, SALE_UNITS, type SaleUnit } from "@/lib/order-line-math";
+import {
+  lineTotalCents,
+  parseQuantityInput,
+  saleUnitsForProduct,
+  unitPriceForSale,
+  type SaleUnit,
+} from "@/lib/order-line-math";
+import type { StockUnit } from "@/db/schema";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type BulkOrderProduct = {
@@ -20,6 +27,8 @@ export type BulkOrderProduct = {
   variant: string | null;
   retailPrice: number;
   bulkPrice: number;
+  stockUnit: StockUnit;
+  kgPerSack: number | null;
 };
 
 type Line = { productId: number; quantity: string };
@@ -80,15 +89,39 @@ export function BulkOrderModal(props: {
     return lines.reduce((acc, l) => {
       const p = priceById.get(l.productId);
       if (!p) return acc;
-      const unit = priceTier === "Bulk" ? p.bulkPrice : p.retailPrice;
-      const qtyNum = Number(l.quantity) || 0;
-      const quantityTenths =
-        saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
-      const qtyWhole =
-        saleUnit === "Kilogram" ? Math.max(1, Math.round(qtyNum)) : Math.round(qtyNum);
-      return acc + lineTotalCents(unit, saleUnit, qtyWhole, quantityTenths);
+      const unit = unitPriceForSale(
+        saleUnit,
+        priceTier,
+        p.retailPrice,
+        p.bulkPrice,
+        p.kgPerSack,
+      );
+      const qtyParsed = parseQuantityInput(l.quantity, saleUnit);
+      if (!qtyParsed) return acc;
+      return (
+        acc +
+        lineTotalCents(
+          unit,
+          saleUnit,
+          qtyParsed.quantity,
+          qtyParsed.quantityTenths,
+        )
+      );
     }, 0);
   }, [lines, priceById, priceTier, saleUnit]);
+
+  const allowedSaleUnits = useMemo(() => {
+    const set = new Set<SaleUnit>();
+    for (const p of props.products) {
+      for (const u of saleUnitsForProduct({
+        stockUnit: p.stockUnit,
+        kgPerSack: p.kgPerSack,
+      })) {
+        set.add(u);
+      }
+    }
+    return set.size > 0 ? [...set] : (["Piece"] as SaleUnit[]);
+  }, [props.products]);
 
   const deposit = Math.round(total * 0.3);
 
@@ -179,7 +212,7 @@ export function BulkOrderModal(props: {
                     onChange={(e) => setSaleUnit(e.target.value as SaleUnit)}
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   >
-                    {SALE_UNITS.map((u) => (
+                    {allowedSaleUnits.map((u) => (
                       <option key={u} value={u}>
                         {u}
                       </option>
@@ -252,23 +285,23 @@ export function BulkOrderModal(props: {
                   {lines.map((l, idx) => {
                     const p = priceById.get(l.productId);
                     const unit = p
-                      ? priceTier === "Bulk"
-                        ? p.bulkPrice
-                        : p.retailPrice
+                      ? unitPriceForSale(
+                          saleUnit,
+                          priceTier,
+                          p.retailPrice,
+                          p.bulkPrice,
+                          p.kgPerSack,
+                        )
                       : 0;
-                    const qtyNum = Number(l.quantity) || 0;
-                    const quantityTenths =
-                      saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
-                    const qtyWhole =
-                      saleUnit === "Kilogram"
-                        ? Math.max(1, Math.round(qtyNum))
-                        : Math.round(qtyNum);
-                    const lineTotal = lineTotalCents(
-                      unit,
-                      saleUnit,
-                      qtyWhole,
-                      quantityTenths,
-                    );
+                    const qtyParsed = parseQuantityInput(l.quantity, saleUnit);
+                    const lineTotal = qtyParsed
+                      ? lineTotalCents(
+                          unit,
+                          saleUnit,
+                          qtyParsed.quantity,
+                          qtyParsed.quantityTenths,
+                        )
+                      : 0;
                     return (
                       <div
                         key={idx}
@@ -300,12 +333,18 @@ export function BulkOrderModal(props: {
 
                         <div className="sm:col-span-3">
                           <div className="text-xs text-zinc-400">
-                            {saleUnit === "Kilogram" ? "Weight (kg)" : "Qty"}
+                            {saleUnit === "Kilogram"
+                              ? "Weight (kg)"
+                              : saleUnit === "Sack"
+                                ? "Sacks"
+                                : "Qty"}
                           </div>
                           <input
                             name="quantity"
                             inputMode="decimal"
-                            step={saleUnit === "Kilogram" ? "0.1" : "1"}
+                            step={
+                              saleUnit === "Kilogram" ? "0.1" : "1"
+                            }
                             value={l.quantity}
                             onChange={(e) =>
                               updateLine(idx, {

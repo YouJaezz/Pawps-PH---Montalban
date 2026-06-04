@@ -1,0 +1,147 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { createSupplierCatalogItem } from "@/app/suppliers/actions";
+
+const inputClass =
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+
+export function AddCatalogItemButton(props: {
+  suppliers: { id: number; name: string }[];
+  defaultSupplierId?: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const defaultSupplier =
+    props.defaultSupplierId != null
+      ? String(props.defaultSupplierId)
+      : props.suppliers[0]
+        ? String(props.suppliers[0].id)
+        : "";
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={props.suppliers.length === 0}
+        className="rounded-md border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-2.5 py-1 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/15 disabled:opacity-50"
+      >
+        Add item
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-medium text-zinc-100">Add pricelist item</div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-xs text-zinc-500 hover:text-zinc-300"
+          >
+            Close
+          </button>
+        </div>
+
+        <form
+          className="mt-4 space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            const fd = new FormData(e.currentTarget);
+            startTransition(async () => {
+              try {
+                await createSupplierCatalogItem(fd);
+                setOpen(false);
+                router.refresh();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to add item.");
+              }
+            });
+          }}
+        >
+          <label className="block space-y-0.5">
+            <span className="text-[11px] text-zinc-400">Supplier *</span>
+            <select
+              name="supplierId"
+              required
+              defaultValue={defaultSupplier}
+              className={inputClass}
+            >
+              {props.suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <input
+            name="itemName"
+            required
+            placeholder="Item name *"
+            className={inputClass}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input name="brand" placeholder="Brand" className={inputClass} />
+            <input name="variant" placeholder="Flavor" className={inputClass} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input name="packSize" placeholder="Size (e.g. 7)" className={inputClass} />
+            <input name="packUnit" placeholder="Unit (kg)" className={inputClass} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <input name="unitCost" placeholder="WS ₱" inputMode="decimal" className={inputClass} />
+            <input
+              name="retailPrice"
+              placeholder="Retail ₱"
+              inputMode="decimal"
+              className={inputClass}
+            />
+            <input
+              name="perKiloPrice"
+              placeholder="Per kg ₱"
+              inputMode="decimal"
+              className={inputClass}
+            />
+          </div>
+
+          {error ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={pending}
+              className="flex-1 rounded-lg bg-zinc-50 py-2 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+            >
+              {pending ? "Adding…" : "Add to pricelist"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

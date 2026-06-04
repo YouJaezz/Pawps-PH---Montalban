@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
 import {
   quickSell,
@@ -10,12 +10,16 @@ import {
   CustomerPicker,
   type CustomerOption,
 } from "@/app/orders/CustomerPicker";
+import type { StockUnit } from "@/db/schema";
 import {
   lineTotalCents,
-  SALE_UNITS,
+  parseQuantityInput,
+  saleUnitsForProduct,
+  unitPriceForSale,
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
+import { formatStockLabel } from "@/lib/product-stock";
 
 export type QuickSellProduct = {
   id: number;
@@ -25,6 +29,8 @@ export type QuickSellProduct = {
   retailPrice: number;
   bulkPrice: number;
   stockQuantity: number;
+  stockUnit: StockUnit;
+  kgPerSack: number | null;
 };
 
 export function QuickSellPanel(props: {
@@ -72,13 +78,37 @@ export function QuickSellPanel(props: {
     [props.products, productId],
   );
 
-  const unitPrice =
-    priceTier === "Bulk" ? product?.bulkPrice ?? 0 : product?.retailPrice ?? 0;
-  const qtyNum = Number(quantity) || 0;
-  const quantityTenths =
-    saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
-  const qtyWhole = saleUnit === "Kilogram" ? Math.max(1, Math.round(qtyNum)) : Math.round(qtyNum);
-  const total = lineTotalCents(unitPrice, saleUnit, qtyWhole, quantityTenths);
+  const unitPrice = product
+    ? unitPriceForSale(
+        saleUnit,
+        priceTier,
+        product.retailPrice,
+        product.bulkPrice,
+        product.kgPerSack,
+      )
+    : 0;
+  const qtyParsed = parseQuantityInput(quantity, saleUnit);
+  const total = qtyParsed
+    ? lineTotalCents(
+        unitPrice,
+        saleUnit,
+        qtyParsed.quantity,
+        qtyParsed.quantityTenths,
+      )
+    : 0;
+
+  const allowedSaleUnits = product
+    ? saleUnitsForProduct({
+        stockUnit: product.stockUnit,
+        kgPerSack: product.kgPerSack,
+      })
+    : (["Piece"] as SaleUnit[]);
+
+  useEffect(() => {
+    if (product && !allowedSaleUnits.includes(saleUnit)) {
+      setSaleUnit(allowedSaleUnits[0] ?? "Piece");
+    }
+  }, [product, allowedSaleUnits, saleUnit]);
 
   return (
     <>
@@ -140,12 +170,14 @@ export function QuickSellPanel(props: {
                     setProductId(nextId);
                     const nextProduct = props.products.find((p) => p.id === nextId);
                     setDeductStock((nextProduct?.stockQuantity ?? 0) > 0);
+                    setSaleUnit("Piece");
                   }}
                 >
                   {props.products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} — {p.brand}
-                      {p.variant ? ` (${p.variant})` : ""} | stock {p.stockQuantity}
+                      {p.variant ? ` (${p.variant})` : ""} | stock{" "}
+                      {formatStockLabel(p.stockUnit, p.stockQuantity, p.kgPerSack)}
                     </option>
                   ))}
                 </select>
@@ -160,7 +192,7 @@ export function QuickSellPanel(props: {
                     value={saleUnit}
                     onChange={(e) => setSaleUnit(e.target.value as SaleUnit)}
                   >
-                    {SALE_UNITS.map((u) => (
+                    {allowedSaleUnits.map((u) => (
                       <option key={u} value={u}>
                         {u}
                       </option>
@@ -169,12 +201,18 @@ export function QuickSellPanel(props: {
                 </label>
                 <label className="space-y-1">
                   <div className="text-xs text-zinc-300">
-                    {saleUnit === "Kilogram" ? "Weight (kg) *" : "Qty *"}
+                    {saleUnit === "Kilogram"
+                      ? "Weight (kg) *"
+                      : saleUnit === "Sack"
+                        ? "Sacks *"
+                        : "Qty *"}
                   </div>
                   <input
                     name="quantity"
                     inputMode="decimal"
-                    step={saleUnit === "Kilogram" ? "0.1" : "1"}
+                    step={
+                      saleUnit === "Kilogram" ? "0.1" : "1"
+                    }
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
