@@ -127,6 +127,13 @@
       "when": 1780077000000,
       "tag": "0017_product_stock_unit",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1780078000000,
+      "tag": "0018_kg_per_sack",
+      "breakpoints": true
     }
   ]
 }
