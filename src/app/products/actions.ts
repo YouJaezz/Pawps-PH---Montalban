@@ -7,7 +7,10 @@ import {
   products,
   stockMovements,
   supplierCatalogItems,
+  STOCK_UNITS,
+  type StockUnit,
 } from "@/db/schema";
+import { parseStockQuantityInput } from "@/lib/product-stock";
 import {
   displayCatalogFlavor,
   displayCatalogItem,
@@ -245,35 +248,42 @@ export async function updateProduct(formData: FormData) {
   const brand = String(formData.get("brand") ?? "").trim();
   const variantRaw = String(formData.get("variant") ?? "").trim();
   const variant = variantRaw.length ? variantRaw : null;
+  const packSizeRaw = String(formData.get("packSize") ?? "").trim();
+  const packSize = packSizeRaw.length ? packSizeRaw : null;
+
+  const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
+  const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
+    ? (stockUnitRaw as StockUnit)
+    : ("Piece" as const);
 
   if (!name || !brand) {
     throw new Error("Product name and brand are required.");
   }
 
-  const costPrice = parseMoneyToCents(formData.get("costPrice"));
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
-  const supplierRetailPrice = parseMoneyToCents(formData.get("supplierRetailPrice"));
-  const supplierBulkPrice = parseMoneyToCents(formData.get("supplierBulkPrice"));
+  const newStockStored = parseStockQuantityInput(
+    String(formData.get("stockQuantity") ?? ""),
+    stockUnit,
+  );
 
-  if (costPrice <= 0) throw new Error("Unit cost must be greater than zero.");
-
-  const purchaseTierRaw = String(formData.get("purchaseTier") ?? "Wholesale");
-  const purchaseTier =
-    purchaseTierRaw === "Retail" ? ("Retail" as const) : ("Wholesale" as const);
-
-  const supplierIdRaw = String(formData.get("supplierId") ?? "").trim();
-  const supplierId = supplierIdRaw
-    ? Number.parseInt(supplierIdRaw, 10)
-    : null;
+  if (retailPrice <= 0) throw new Error("Retail sell price is required.");
+  if (newStockStored == null) throw new Error("Enter a valid stock quantity.");
 
   const [existing] = await db
-    .select({ id: products.id })
+    .select({
+      id: products.id,
+      stockQuantity: products.stockQuantity,
+      stockUnit: products.stockUnit,
+      costPrice: products.costPrice,
+    })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.archived, false)))
     .limit(1);
 
   if (!existing) throw new Error("Product not found.");
+
+  const stockDelta = newStockStored - existing.stockQuantity;
 
   await db
     .update(products)
@@ -281,18 +291,22 @@ export async function updateProduct(formData: FormData) {
       name,
       brand,
       variant,
-      costPrice,
+      packSize,
+      stockUnit,
+      stockQuantity: newStockStored,
       retailPrice,
       bulkPrice,
-      purchaseTier,
-      supplierId:
-        supplierId && Number.isFinite(supplierId) && supplierId > 0
-          ? supplierId
-          : null,
-      supplierRetailPrice: supplierRetailPrice || null,
-      supplierBulkPrice: supplierBulkPrice || null,
     })
     .where(eq(products.id, productId));
+
+  if (stockDelta !== 0) {
+    await db.insert(stockMovements).values({
+      productId,
+      movementType: "Adjustment",
+      quantityDelta: stockDelta,
+      note: "Manual edit — stock corrected",
+    });
+  }
 
   revalidatePath("/products");
   revalidatePath("/orders");

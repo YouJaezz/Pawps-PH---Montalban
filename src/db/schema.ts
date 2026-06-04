@@ -1,11 +1,18 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+export const STOCK_UNITS = ["Piece", "Kilogram", "Pack"] as const;
+export type StockUnit = (typeof STOCK_UNITS)[number];
+
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   brand: text("brand").notNull(),
   variant: text("variant"),
+  packSize: text("pack_size"),
+  stockUnit: text("stock_unit", { enum: STOCK_UNITS })
+    .notNull()
+    .default("Piece"),
   // Store money as integer cents to avoid floating point issues.
   costPrice: integer("cost_price").notNull(),
   retailPrice: integer("retail_price").notNull(),

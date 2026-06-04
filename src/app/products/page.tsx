@@ -15,6 +15,11 @@ import {
   formatMoneyOrDash,
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
+import {
+  displayStockQuantity,
+  formatStockLabel,
+} from "@/lib/product-stock";
+import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function ProductsPage() {
@@ -30,6 +35,8 @@ export default async function ProductsPage() {
         name: products.name,
         brand: products.brand,
         variant: products.variant,
+        packSize: products.packSize,
+        stockUnit: products.stockUnit,
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
@@ -216,15 +223,37 @@ export default async function ProductsPage() {
                             <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
                               {formatPhpFromCents(p.bulkPrice)}
                             </td>
-                            <td className="px-2 py-2 font-medium">{p.stockQuantity}</td>
+                            <td className="px-2 py-2 font-medium">
+                              {formatStockLabel(
+                                p.stockUnit as StockUnit,
+                                p.stockQuantity,
+                              )}
+                              {p.packSize ? (
+                                <div className="text-[9px] text-zinc-600">
+                                  {p.packSize}
+                                </div>
+                              ) : null}
+                            </td>
                             <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
                               +{formatPhpFromCents(profit)}
                             </td>
                             <td className="px-2 py-2">
                               <div className="flex flex-col gap-1">
                                 <ProductEditButton
-                                  product={p}
-                                  suppliers={supplierRows}
+                                  product={{
+                                    id: p.id,
+                                    name: p.name,
+                                    brand: p.brand,
+                                    variant: p.variant,
+                                    packSize: p.packSize,
+                                    stockUnit: p.stockUnit as StockUnit,
+                                    stockQuantity: displayStockQuantity(
+                                      p.stockUnit as StockUnit,
+                                      p.stockQuantity,
+                                    ),
+                                    retailPrice: p.retailPrice,
+                                    bulkPrice: p.bulkPrice,
+                                  }}
                                 />
                                 <form action={restockProduct} className="flex gap-1">
                                   <input type="hidden" name="productId" value={p.id} />
