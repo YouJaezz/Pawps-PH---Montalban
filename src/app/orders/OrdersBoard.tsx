@@ -8,6 +8,10 @@ import {
   markOrderPaid,
   updateOrderStatus,
 } from "@/app/orders/actions";
+import {
+  OrderEditModal,
+  type OrderEditPayload,
+} from "@/app/orders/OrderEditModal";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { ORDER_STATUSES } from "@/db/schema";
 import {
@@ -42,10 +46,14 @@ function formatWhen(iso: string) {
   });
 }
 
-export function OrdersBoard(props: { rows: OrderBoardRow[] }) {
+export function OrdersBoard(props: {
+  rows: OrderBoardRow[];
+  editableByOrderId: Record<number, OrderEditPayload>;
+}) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("open");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
+  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
   const stats = useMemo(() => {
     let open = 0;
@@ -89,8 +97,15 @@ export function OrdersBoard(props: { rows: OrderBoardRow[] }) {
     return list;
   }, [props.rows, query, statusFilter, paymentFilter]);
 
+  const editingOrder =
+    editingOrderId != null ? props.editableByOrderId[editingOrderId] ?? null : null;
+
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <OrderEditModal
+        order={editingOrder}
+        onClose={() => setEditingOrderId(null)}
+      />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
         <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
           <div className="text-[10px] text-zinc-500">Open orders</div>
@@ -260,19 +275,30 @@ export function OrdersBoard(props: { rows: OrderBoardRow[] }) {
                       )}
                     </td>
                     <td className="px-2 py-2">
-                      {canCancel ? (
-                        <form action={cancelOrder}>
-                          <input type="hidden" name="orderId" value={o.id} />
+                      <div className="flex flex-col gap-1">
+                        {props.editableByOrderId[o.id] ? (
                           <button
-                            type="submit"
-                            className="rounded border border-red-500/30 px-2 py-0.5 text-[9px] text-red-300"
+                            type="button"
+                            onClick={() => setEditingOrderId(o.id)}
+                            className="rounded border border-[#e8a44a]/30 px-2 py-0.5 text-[9px] text-[#e8a44a]"
                           >
-                            Cancel
+                            Edit
                           </button>
-                        </form>
-                      ) : (
-                        <span className="text-[9px] text-zinc-600">—</span>
-                      )}
+                        ) : null}
+                        {canCancel ? (
+                          <form action={cancelOrder}>
+                            <input type="hidden" name="orderId" value={o.id} />
+                            <button
+                              type="submit"
+                              className="rounded border border-red-500/30 px-2 py-0.5 text-[9px] text-red-300"
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="text-[9px] text-zinc-600">—</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

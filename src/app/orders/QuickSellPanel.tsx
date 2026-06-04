@@ -10,6 +10,11 @@ import {
   CustomerPicker,
   type CustomerOption,
 } from "@/app/orders/CustomerPicker";
+import {
+  lineTotalCents,
+  SALE_UNITS,
+  type SaleUnit,
+} from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type QuickSellProduct = {
@@ -36,7 +41,8 @@ export function QuickSellPanel(props: {
     props.products[0]?.id ?? 0,
   );
   const [priceTier, setPriceTier] = useState<"Retail" | "Bulk">("Retail");
-  const [quantity, setQuantity] = useState(1);
+  const [saleUnit, setSaleUnit] = useState<SaleUnit>("Piece");
+  const [quantity, setQuantity] = useState("1");
   const [deductStock, setDeductStock] = useState(
     () => (props.products[0]?.stockQuantity ?? 0) > 0,
   );
@@ -52,7 +58,8 @@ export function QuickSellPanel(props: {
     setContact("");
     setLocation("");
     setCustomerId("");
-    setQuantity(1);
+    setQuantity("1");
+    setSaleUnit("Piece");
   }
 
   function openModal() {
@@ -67,7 +74,11 @@ export function QuickSellPanel(props: {
 
   const unitPrice =
     priceTier === "Bulk" ? product?.bulkPrice ?? 0 : product?.retailPrice ?? 0;
-  const total = unitPrice * quantity;
+  const qtyNum = Number(quantity) || 0;
+  const quantityTenths =
+    saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
+  const qtyWhole = saleUnit === "Kilogram" ? Math.max(1, Math.round(qtyNum)) : Math.round(qtyNum);
+  const total = lineTotalCents(unitPrice, saleUnit, qtyWhole, quantityTenths);
 
   return (
     <>
@@ -140,17 +151,38 @@ export function QuickSellPanel(props: {
                 </select>
               </label>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Qty *</div>
+                  <div className="text-xs text-zinc-300">Sale unit</div>
+                  <select
+                    name="saleUnit"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                    value={saleUnit}
+                    onChange={(e) => setSaleUnit(e.target.value as SaleUnit)}
+                  >
+                    {SALE_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <div className="text-xs text-zinc-300">
+                    {saleUnit === "Kilogram" ? "Weight (kg) *" : "Qty *"}
+                  </div>
                   <input
                     name="quantity"
-                    inputMode="numeric"
+                    inputMode="decimal"
+                    step={saleUnit === "Kilogram" ? "0.1" : "1"}
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                     value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value || "1"))}
+                    onChange={(e) => setQuantity(e.target.value)}
                   />
                 </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
                   <div className="text-xs text-zinc-300">Price tier</div>
                   <select

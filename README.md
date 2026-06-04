@@ -2,25 +2,26 @@
 
 Pet supply ERP for inventory, orders, suppliers, delivery, and reports.
 
-## Getting Started
+## New PC?
 
-First, run the development server:
+See **[SETUP-NEW-PC.md](./SETUP-NEW-PC.md)** (Node, Git, `npm install`, `.env.local`).
+
+## Local run
 
 ```bash
+npm install
+npm run db:migrate
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-### Database
+## Deploy (Vercel + Turso)
 
-```bash
-npm run db:migrate
-```
+See **[DEPLOY.md](./DEPLOY.md)** for environment variables and redeploy steps.
 
-## Learn More
+## Manual edits (no AI required)
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Inventory** — Edit per product row
+- **Suppliers** — Edit supplier info and catalog rows
+- **Orders** — Edit sale unit (piece / kilogram / pack), quantities, and order details

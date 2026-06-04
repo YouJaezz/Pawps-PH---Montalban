@@ -44,7 +44,7 @@ You need **both** the URL above **and** this token.
 The project now runs migrations **automatically before each build**.
 
 ```powershell
-cd "E:\Programmed Applications\The PAWps PH\pet-pro-manager"
+cd "C:\Users\Pawps PH\Documents\SYSTEMS\The PAWps PH\pet-pro-manager"
 git add .
 git commit -m "Fix deploy: auto-migrate Turso before build"
 git push
@@ -70,7 +70,7 @@ If migrate fails with **DATABASE_AUTH_TOKEN is required**, go back to Step 2 and
 If you prefer to create tables before redeploying:
 
 ```powershell
-cd "E:\Programmed Applications\The PAWps PH\pet-pro-manager"
+cd "C:\Users\Pawps PH\Documents\SYSTEMS\The PAWps PH\pet-pro-manager"
 
 $env:DATABASE_URL="libsql://pawps-ph-youjaezz.aws-ap-northeast-1.turso.io"
 $env:DATABASE_AUTH_TOKEN="PASTE_YOUR_TURSO_TOKEN_HERE"

@@ -1,6 +1,8 @@
 import { BulkOrderModal } from "@/app/orders/BulkOrderModal";
+import type { OrderEditPayload } from "@/app/orders/OrderEditModal";
 import { OrdersBoard } from "@/app/orders/OrdersBoard";
 import { QuickSellPanel } from "@/app/orders/QuickSellPanel";
+import { formatQuantityLabel, type SaleUnit } from "@/lib/order-line-math";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { customers, orderItems, orders, products } from "@/db/schema";
@@ -30,6 +32,7 @@ export default async function OrdersPage() {
         paymentStatus: orders.paymentStatus,
         deliveryMethod: orders.deliveryMethod,
         storeType: orders.storeType,
+        notes: orders.notes,
         createdAt: orders.createdAt,
       })
       .from(orders)
@@ -55,9 +58,15 @@ export default async function OrdersPage() {
       ? []
       : await db
           .select({
+            id: orderItems.id,
             orderId: orderItems.orderId,
             productId: orderItems.productId,
             quantity: orderItems.quantity,
+            quantityTenths: orderItems.quantityTenths,
+            saleUnit: orderItems.saleUnit,
+            priceTier: orderItems.priceTier,
+            unitPrice: orderItems.unitPrice,
+            lineTotal: orderItems.lineTotal,
           })
           .from(orderItems)
           .where(inArray(orderItems.orderId, recentOrderIds));
@@ -80,13 +89,49 @@ export default async function OrdersPage() {
 
   const productById = new Map(productRows.map((p) => [p.id, p]));
   const linesByOrder = new Map<number, string[]>();
+  const editableByOrderId: Record<number, OrderEditPayload> = {};
+
+  for (const o of recentOrders) {
+    editableByOrderId[o.id] = {
+      id: o.id,
+      customerName: o.customerName,
+      contact: o.contact,
+      location: o.location,
+      deliveryMethod: o.deliveryMethod,
+      storeType: o.storeType,
+      notes: o.notes,
+      orderStatus: o.orderStatus,
+      lines: [],
+    };
+  }
+
   for (const l of recentLines) {
     const p = productById.get(l.productId);
     if (!p) continue;
-    const label = `${p.name}${p.variant ? ` (${p.variant})` : ""} × ${l.quantity}`;
+    const qtyLabel = formatQuantityLabel(
+      l.saleUnit as SaleUnit,
+      l.quantity,
+      l.quantityTenths,
+    );
+    const label = `${p.name}${p.variant ? ` (${p.variant})` : ""} · ${qtyLabel}`;
     const arr = linesByOrder.get(l.orderId) ?? [];
     arr.push(label);
     linesByOrder.set(l.orderId, arr);
+
+    const payload = editableByOrderId[l.orderId];
+    if (payload) {
+      payload.lines.push({
+        id: l.id,
+        productId: l.productId,
+        productLabel: `${p.name}${p.variant ? ` (${p.variant})` : ""}`,
+        quantity: l.quantity,
+        quantityTenths: l.quantityTenths,
+        saleUnit: l.saleUnit as SaleUnit,
+        priceTier: l.priceTier as "Retail" | "Bulk",
+        unitPrice: l.unitPrice,
+        lineTotal: l.lineTotal,
+      });
+    }
   }
 
   const boardRows = recentOrders.map((o) => {
@@ -138,7 +183,7 @@ export default async function OrdersPage() {
         </div>
 
         <div className="mt-3 min-h-0 flex-1">
-          <OrdersBoard rows={boardRows} />
+          <OrdersBoard rows={boardRows} editableByOrderId={editableByOrderId} />
         </div>
       </div>
     </AppShell>

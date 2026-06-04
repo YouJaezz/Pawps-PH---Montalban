@@ -5,6 +5,13 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-guard";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
 import { normalizeOrderStatus } from "@/lib/order-status";
+import {
+  isSaleUnit,
+  lineTotalCents,
+  parseQuantityInput,
+  stockDeductQuantity,
+  type SaleUnit,
+} from "@/lib/order-line-math";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -15,7 +22,7 @@ import {
   stockMovements,
   type OrderStatus,
 } from "@/db/schema";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray, and, sum } from "drizzle-orm";
 
 export type OrderActionResult = {
   ok?: boolean;
@@ -62,11 +69,19 @@ async function deductStockForOrder(orderId: number) {
     .select({
       productId: orderItems.productId,
       quantity: orderItems.quantity,
+      quantityTenths: orderItems.quantityTenths,
+      saleUnit: orderItems.saleUnit,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
 
   for (const line of lines) {
+    const deductQty = stockDeductQuantity(
+      line.saleUnit as SaleUnit,
+      line.quantity,
+      line.quantityTenths,
+    );
+
     const [product] = await db
       .select({
         id: products.id,
@@ -80,13 +95,13 @@ async function deductStockForOrder(orderId: number) {
 
     await db
       .update(products)
-      .set({ stockQuantity: product.stockQuantity - line.quantity })
+      .set({ stockQuantity: product.stockQuantity - deductQty })
       .where(eq(products.id, product.id));
 
     await db.insert(stockMovements).values({
       productId: product.id,
       movementType: "Sale",
-      quantityDelta: -line.quantity,
+      quantityDelta: -deductQty,
       relatedOrderId: orderId,
       note: "Order completed",
     });
@@ -98,6 +113,40 @@ async function deductStockForOrder(orderId: number) {
     .where(eq(orders.id, orderId));
 }
 
+async function recalcOrderTotal(orderId: number) {
+  const [sumRow] = await db
+    .select({
+      total: sum(orderItems.lineTotal),
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  const total = Number(sumRow?.total ?? 0);
+
+  const [order] = await db
+    .select({
+      amountPaid: orders.amountPaid,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) return;
+
+  const amountPaid = Math.min(order.amountPaid, total);
+  const paymentStatus =
+    amountPaid >= total
+      ? ("Paid" as const)
+      : amountPaid >= Math.round(total * 0.3)
+        ? ("30% Deposit" as const)
+        : ("Pending" as const);
+
+  await db
+    .update(orders)
+    .set({ totalAmount: total, amountPaid, paymentStatus })
+    .where(eq(orders.id, orderId));
+}
+
 export async function quickSell(
   _prev: OrderActionResult | null,
   formData: FormData,
@@ -106,7 +155,10 @@ export async function quickSell(
     await requireAuth();
 
     const productId = parseIntOr(formData.get("productId"), 0);
-    const quantity = parseIntOr(formData.get("quantity"), 1);
+    const quantityRaw = String(formData.get("quantity") ?? "1");
+    const saleUnitRaw = String(formData.get("saleUnit") ?? "Piece");
+    const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
+    const qtyParsed = parseQuantityInput(quantityRaw, saleUnit);
     const priceTier = String(formData.get("priceTier") ?? "Retail") as
       | "Retail"
       | "Bulk";
@@ -121,9 +173,11 @@ export async function quickSell(
       | "Walk-in";
     const deductStock = formData.get("deductStock") === "on";
 
-    if (!productId || !quantity || !customerName) {
+    if (!productId || !qtyParsed || !customerName) {
       return actionError("Product, quantity, and customer name are required.");
     }
+
+    const { quantity, quantityTenths } = qtyParsed;
 
     const [p] = await db
       .select({
@@ -138,14 +192,20 @@ export async function quickSell(
       .limit(1);
 
     if (!p) return actionError("Product not found.");
-    if (deductStock && p.stockQuantity < quantity) {
+    const deductQty = stockDeductQuantity(saleUnit, quantity, quantityTenths);
+    if (deductStock && p.stockQuantity < deductQty) {
       return actionError(
         `Not enough stock (${p.stockQuantity} available). Uncheck "Deduct stock" or restock first.`,
       );
     }
 
     const unitPrice = priceTier === "Bulk" ? p.bulkPrice : p.retailPrice;
-    const lineTotal = unitPrice * quantity;
+    const lineTotal = lineTotalCents(
+      unitPrice,
+      saleUnit,
+      quantity,
+      quantityTenths,
+    );
 
     const customerId = await resolveCustomerForOrder({
       customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
@@ -182,6 +242,8 @@ export async function quickSell(
       orderId,
       productId,
       quantity,
+      quantityTenths,
+      saleUnit,
       priceTier,
       unitCost: p.costPrice,
       unitPrice,
@@ -191,13 +253,13 @@ export async function quickSell(
     if (deductStock) {
       await db
         .update(products)
-        .set({ stockQuantity: p.stockQuantity - quantity })
+        .set({ stockQuantity: p.stockQuantity - deductQty })
         .where(eq(products.id, productId));
 
       await db.insert(stockMovements).values({
         productId,
         movementType: "Sale",
-        quantityDelta: -quantity,
+        quantityDelta: -deductQty,
         relatedOrderId: orderId,
         note: "Quick Sell",
       });
@@ -264,6 +326,9 @@ export async function createBulkOrder(
     const priceTier = String(formData.get("priceTier") ?? "Bulk") as
       | "Retail"
       | "Bulk";
+    const saleUnitRaw = String(formData.get("saleUnit") ?? "Piece");
+    const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
+    const quantitiesRaw = formData.getAll("quantity").map((v) => String(v));
 
     if (!customerName) return actionError("Customer name is required.");
     if (productIds.length === 0 || quantities.length === 0) {
@@ -286,6 +351,8 @@ export async function createBulkOrder(
     const lines: Array<{
       productId: number;
       quantity: number;
+      quantityTenths: number | null;
+      saleUnit: SaleUnit;
       unitCost: number;
       unitPrice: number;
       lineTotal: number;
@@ -293,16 +360,26 @@ export async function createBulkOrder(
 
     for (let i = 0; i < productIds.length; i++) {
       const id = productIds[i]!;
-      const qty = quantities[i] ?? 0;
-      if (!qty) continue;
+      const qtyParsed = parseQuantityInput(
+        quantitiesRaw[i] ?? String(quantities[i] ?? ""),
+        saleUnit,
+      );
+      if (!qtyParsed) continue;
       const prod = priceById.get(id);
       if (!prod) continue;
       const unitPrice = priceTier === "Bulk" ? prod.bulkPrice : prod.retailPrice;
-      const lineTotal = unitPrice * qty;
+      const lineTotal = lineTotalCents(
+        unitPrice,
+        saleUnit,
+        qtyParsed.quantity,
+        qtyParsed.quantityTenths,
+      );
       total += lineTotal;
       lines.push({
         productId: id,
-        quantity: qty,
+        quantity: qtyParsed.quantity,
+        quantityTenths: qtyParsed.quantityTenths,
+        saleUnit,
         unitCost: prod.costPrice,
         unitPrice,
         lineTotal,
@@ -345,6 +422,8 @@ export async function createBulkOrder(
         orderId,
         productId: l.productId,
         quantity: l.quantity,
+        quantityTenths: l.quantityTenths,
+        saleUnit: l.saleUnit,
         priceTier,
         unitCost: l.unitCost,
         unitPrice: l.unitPrice,
@@ -624,5 +703,134 @@ export async function addPayment(formData: FormData) {
 
   revalidatePath("/orders");
   revalidatePath("/customers");
+}
+
+export async function updateOrderLineItem(formData: FormData) {
+  await requireAuth();
+
+  const lineId = parseIntOr(formData.get("lineId"), 0);
+  const orderId = parseIntOr(formData.get("orderId"), 0);
+  const saleUnitRaw = String(formData.get("saleUnit") ?? "Piece");
+  const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
+  const priceTier = String(formData.get("priceTier") ?? "Retail") as
+    | "Retail"
+    | "Bulk";
+  const quantityRaw = String(formData.get("quantity") ?? "");
+  const unitPriceOverride = parseMoneyToCents(formData.get("unitPrice"));
+
+  if (!lineId || !orderId) throw new Error("Invalid order line.");
+  const qtyParsed = parseQuantityInput(quantityRaw, saleUnit);
+  if (!qtyParsed) throw new Error("Enter a valid quantity.");
+
+  const [order] = await db
+    .select({ orderStatus: orders.orderStatus })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) throw new Error("Order not found.");
+  if (normalizeOrderStatus(order.orderStatus) === "Cancelled") {
+    throw new Error("Cannot edit a cancelled order.");
+  }
+
+  const [line] = await db
+    .select({
+      id: orderItems.id,
+      productId: orderItems.productId,
+    })
+    .from(orderItems)
+    .where(and(eq(orderItems.id, lineId), eq(orderItems.orderId, orderId)))
+    .limit(1);
+
+  if (!line) throw new Error("Line item not found.");
+
+  const [product] = await db
+    .select({
+      costPrice: products.costPrice,
+      retailPrice: products.retailPrice,
+      bulkPrice: products.bulkPrice,
+    })
+    .from(products)
+    .where(eq(products.id, line.productId))
+    .limit(1);
+
+  if (!product) throw new Error("Product not found.");
+
+  const unitPrice =
+    unitPriceOverride > 0
+      ? unitPriceOverride
+      : priceTier === "Bulk"
+        ? product.bulkPrice
+        : product.retailPrice;
+
+  const lineTotal = lineTotalCents(
+    unitPrice,
+    saleUnit,
+    qtyParsed.quantity,
+    qtyParsed.quantityTenths,
+  );
+
+  await db
+    .update(orderItems)
+    .set({
+      quantity: qtyParsed.quantity,
+      quantityTenths: qtyParsed.quantityTenths,
+      saleUnit,
+      priceTier,
+      unitCost: product.costPrice,
+      unitPrice,
+      lineTotal,
+    })
+    .where(eq(orderItems.id, lineId));
+
+  await recalcOrderTotal(orderId);
+
+  revalidatePath("/orders");
+  revalidatePath("/customers");
+  revalidatePath("/");
+}
+
+export async function updateOrderDetails(formData: FormData) {
+  await requireAuth();
+
+  const orderId = parseIntOr(formData.get("orderId"), 0);
+  if (!orderId) throw new Error("Invalid order.");
+
+  const storeType = String(formData.get("storeType") ?? "Online") as
+    | "Online"
+    | "Walk-in";
+  const customerName = String(formData.get("customerName") ?? "").trim();
+  const contactRaw = String(formData.get("contact") ?? "").trim();
+  const locationRaw = String(formData.get("location") ?? "").trim();
+  const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+
+  if (!customerName) throw new Error("Customer name is required.");
+
+  const [order] = await db
+    .select({ orderStatus: orders.orderStatus })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) throw new Error("Order not found.");
+  if (normalizeOrderStatus(order.orderStatus) === "Cancelled") {
+    throw new Error("Cannot edit a cancelled order.");
+  }
+
+  await db
+    .update(orders)
+    .set({
+      storeType,
+      customerName,
+      contact: contactRaw.length ? contactRaw : null,
+      location: locationRaw.length ? locationRaw : null,
+      deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+    })
+    .where(eq(orders.id, orderId));
+
+  revalidatePath("/orders");
+  revalidatePath("/delivery");
 }
 

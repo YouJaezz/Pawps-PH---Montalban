@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ProductEditButton } from "@/app/products/ProductEditButton";
 import { ProductForm } from "@/app/products/ProductForm";
 import { deleteProduct } from "@/app/products/delete-actions";
 import { restockProduct } from "@/app/products/actions";
@@ -221,6 +222,10 @@ export default async function ProductsPage() {
                             </td>
                             <td className="px-2 py-2">
                               <div className="flex flex-col gap-1">
+                                <ProductEditButton
+                                  product={p}
+                                  suppliers={supplierRows}
+                                />
                                 <form action={restockProduct} className="flex gap-1">
                                   <input type="hidden" name="productId" value={p.id} />
                                   <input

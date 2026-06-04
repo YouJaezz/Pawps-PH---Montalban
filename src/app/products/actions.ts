@@ -232,3 +232,69 @@ export async function restockProduct(formData: FormData) {
   revalidatePath("/orders");
   revalidatePath("/");
 }
+
+export async function updateProduct(formData: FormData) {
+  await requireAuth();
+
+  const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+  if (!Number.isFinite(productId) || productId <= 0) {
+    throw new Error("Invalid product.");
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const brand = String(formData.get("brand") ?? "").trim();
+  const variantRaw = String(formData.get("variant") ?? "").trim();
+  const variant = variantRaw.length ? variantRaw : null;
+
+  if (!name || !brand) {
+    throw new Error("Product name and brand are required.");
+  }
+
+  const costPrice = parseMoneyToCents(formData.get("costPrice"));
+  const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
+  const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
+  const supplierRetailPrice = parseMoneyToCents(formData.get("supplierRetailPrice"));
+  const supplierBulkPrice = parseMoneyToCents(formData.get("supplierBulkPrice"));
+
+  if (costPrice <= 0) throw new Error("Unit cost must be greater than zero.");
+
+  const purchaseTierRaw = String(formData.get("purchaseTier") ?? "Wholesale");
+  const purchaseTier =
+    purchaseTierRaw === "Retail" ? ("Retail" as const) : ("Wholesale" as const);
+
+  const supplierIdRaw = String(formData.get("supplierId") ?? "").trim();
+  const supplierId = supplierIdRaw
+    ? Number.parseInt(supplierIdRaw, 10)
+    : null;
+
+  const [existing] = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.id, productId), eq(products.archived, false)))
+    .limit(1);
+
+  if (!existing) throw new Error("Product not found.");
+
+  await db
+    .update(products)
+    .set({
+      name,
+      brand,
+      variant,
+      costPrice,
+      retailPrice,
+      bulkPrice,
+      purchaseTier,
+      supplierId:
+        supplierId && Number.isFinite(supplierId) && supplierId > 0
+          ? supplierId
+          : null,
+      supplierRetailPrice: supplierRetailPrice || null,
+      supplierBulkPrice: supplierBulkPrice || null,
+    })
+    .where(eq(products.id, productId));
+
+  revalidatePath("/products");
+  revalidatePath("/orders");
+  revalidatePath("/");
+}

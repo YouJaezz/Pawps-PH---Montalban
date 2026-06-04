@@ -345,3 +345,94 @@ export async function deleteSupplierCatalogItem(formData: FormData) {
   await db.delete(supplierCatalogItems).where(eq(supplierCatalogItems.id, id));
   revalidatePath("/suppliers");
 }
+
+function parseMoneyToCents(value: FormDataEntryValue | null) {
+  const str = typeof value === "string" ? value.trim() : "";
+  if (!str) return 0;
+  const n = Number(str);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100);
+}
+
+export async function updateSupplier(formData: FormData) {
+  await requireAuth();
+
+  const supplierId = Number.parseInt(String(formData.get("supplierId") ?? ""), 10);
+  if (!Number.isFinite(supplierId) || supplierId <= 0) {
+    throw new Error("Invalid supplier.");
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const contactRaw = String(formData.get("contact") ?? "").trim();
+  const locationRaw = String(formData.get("location") ?? "").trim();
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+
+  if (!name) throw new Error("Supplier name is required.");
+
+  const [existing] = await db
+    .select({ id: suppliers.id })
+    .from(suppliers)
+    .where(eq(suppliers.id, supplierId))
+    .limit(1);
+
+  if (!existing) throw new Error("Supplier not found.");
+
+  await db
+    .update(suppliers)
+    .set({
+      name,
+      contact: contactRaw.length ? contactRaw : null,
+      location: locationRaw.length ? locationRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+    })
+    .where(eq(suppliers.id, supplierId));
+
+  revalidatePath("/suppliers");
+  revalidatePath("/products");
+}
+
+export async function updateSupplierCatalogItem(formData: FormData) {
+  await requireAuth();
+
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isFinite(id) || id <= 0) throw new Error("Invalid catalog item.");
+
+  const itemName = String(formData.get("itemName") ?? "").trim();
+  const brandRaw = String(formData.get("brand") ?? "").trim();
+  const variantRaw = String(formData.get("variant") ?? "").trim();
+  const packSizeRaw = String(formData.get("packSize") ?? "").trim();
+  const packUnitRaw = String(formData.get("packUnit") ?? "").trim();
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+
+  if (!itemName) throw new Error("Item name is required.");
+
+  const unitCost = parseMoneyToCents(formData.get("unitCost"));
+  const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
+  const perKiloPrice = parseMoneyToCents(formData.get("perKiloPrice"));
+
+  const [existing] = await db
+    .select({ id: supplierCatalogItems.id })
+    .from(supplierCatalogItems)
+    .where(eq(supplierCatalogItems.id, id))
+    .limit(1);
+
+  if (!existing) throw new Error("Catalog item not found.");
+
+  await db
+    .update(supplierCatalogItems)
+    .set({
+      itemName,
+      brand: brandRaw.length ? brandRaw : null,
+      variant: variantRaw.length ? variantRaw : null,
+      unitCost: unitCost || null,
+      retailPrice: retailPrice || null,
+      perKiloPrice: perKiloPrice || null,
+      packSize: packSizeRaw.length ? packSizeRaw : null,
+      packUnit: packUnitRaw.length ? packUnitRaw : null,
+      notes: notesRaw.length ? notesRaw : null,
+    })
+    .where(eq(supplierCatalogItems.id, id));
+
+  revalidatePath("/suppliers");
+  revalidatePath("/products");
+}

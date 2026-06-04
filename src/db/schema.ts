@@ -70,11 +70,18 @@ export const orders = sqliteTable("orders", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const SALE_UNITS = ["Piece", "Kilogram", "Pack"] as const;
+export type SaleUnit = (typeof SALE_UNITS)[number];
+
 export const orderItems = sqliteTable("order_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   orderId: integer("order_id").notNull(),
   productId: integer("product_id").notNull(),
   quantity: integer("quantity").notNull(),
+  quantityTenths: integer("quantity_tenths"),
+  saleUnit: text("sale_unit", { enum: SALE_UNITS })
+    .notNull()
+    .default("Piece"),
   priceTier: text("price_tier", { enum: ["Retail", "Bulk"] })
     .notNull()
     .default("Retail"),

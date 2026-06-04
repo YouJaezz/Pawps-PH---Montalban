@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createSupplier } from "@/app/suppliers/actions";
 import { SupplierDeleteButton } from "@/app/suppliers/SupplierDeleteButton";
+import { SupplierEditButton } from "@/app/suppliers/SupplierEditButton";
 import { SupplierPriceComparison } from "@/app/suppliers/SupplierPriceComparison";
 import { UploadCatalogForm } from "@/app/suppliers/UploadCatalogForm";
 import { SupplierInflationPanel } from "@/app/suppliers/SupplierInflationPanel";
@@ -28,6 +29,7 @@ export default async function SuppliersPage() {
       name: suppliers.name,
       contact: suppliers.contact,
       location: suppliers.location,
+      notes: suppliers.notes,
     })
     .from(suppliers)
     .orderBy(suppliers.name);
@@ -97,15 +99,25 @@ export default async function SuppliersPage() {
                   supplierRows.map((s) => (
                     <li
                       key={s.id}
-                      className="flex items-center justify-between gap-1 border-b border-white/5 py-1 last:border-0"
+                      className="border-b border-white/5 py-1 last:border-0"
                     >
-                      <div className="min-w-0 truncate">
-                        <span className="text-zinc-200">{s.name}</span>
-                        {s.location ? (
-                          <span className="text-zinc-600"> · {s.location}</span>
-                        ) : null}
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0 truncate">
+                          <span className="text-zinc-200">{s.name}</span>
+                          {s.location ? (
+                            <span className="text-zinc-600"> · {s.location}</span>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-1.5">
+                          <SupplierEditButton
+                            supplierId={s.id}
+                            name={s.name}
+                            contact={s.contact}
+                            location={s.location}
+                          />
+                          <SupplierDeleteButton supplierId={s.id} name={s.name} />
+                        </div>
                       </div>
-                      <SupplierDeleteButton supplierId={s.id} name={s.name} />
                     </li>
                   ))
                 )}

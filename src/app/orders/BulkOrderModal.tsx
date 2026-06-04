@@ -10,6 +10,7 @@ import {
   CustomerPicker,
   type CustomerOption,
 } from "@/app/orders/CustomerPicker";
+import { lineTotalCents, SALE_UNITS, type SaleUnit } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type BulkOrderProduct = {
@@ -21,7 +22,7 @@ export type BulkOrderProduct = {
   bulkPrice: number;
 };
 
-type Line = { productId: number; quantity: number };
+type Line = { productId: number; quantity: string };
 
 export function BulkOrderModal(props: {
   products: BulkOrderProduct[];
@@ -35,8 +36,9 @@ export function BulkOrderModal(props: {
   >(createBulkOrder, null);
   const [search, setSearch] = useState("");
   const [priceTier, setPriceTier] = useState<"Bulk" | "Retail">("Bulk");
+  const [saleUnit, setSaleUnit] = useState<SaleUnit>("Piece");
   const [lines, setLines] = useState<Line[]>([
-    { productId: props.products[0]?.id ?? 0, quantity: 1 },
+    { productId: props.products[0]?.id ?? 0, quantity: "1" },
   ]);
   const [customerName, setCustomerName] = useState("");
   const [contact, setContact] = useState("");
@@ -50,7 +52,8 @@ export function BulkOrderModal(props: {
     setContact("");
     setLocation("");
     setCustomerId("");
-    setLines([{ productId: props.products[0]?.id ?? 0, quantity: 1 }]);
+    setLines([{ productId: props.products[0]?.id ?? 0, quantity: "1" }]);
+    setSaleUnit("Piece");
   }
 
   function openModal() {
@@ -78,9 +81,14 @@ export function BulkOrderModal(props: {
       const p = priceById.get(l.productId);
       if (!p) return acc;
       const unit = priceTier === "Bulk" ? p.bulkPrice : p.retailPrice;
-      return acc + unit * (l.quantity || 0);
+      const qtyNum = Number(l.quantity) || 0;
+      const quantityTenths =
+        saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
+      const qtyWhole =
+        saleUnit === "Kilogram" ? Math.max(1, Math.round(qtyNum)) : Math.round(qtyNum);
+      return acc + lineTotalCents(unit, saleUnit, qtyWhole, quantityTenths);
     }, 0);
-  }, [lines, priceById, priceTier]);
+  }, [lines, priceById, priceTier, saleUnit]);
 
   const deposit = Math.round(total * 0.3);
 
@@ -93,7 +101,7 @@ export function BulkOrderModal(props: {
   function addLine() {
     setLines((prev) => [
       ...prev,
-      { productId: props.products[0]?.id ?? 0, quantity: 1 },
+      { productId: props.products[0]?.id ?? 0, quantity: "1" },
     ]);
   }
 
@@ -162,7 +170,22 @@ export function BulkOrderModal(props: {
                 onCustomerIdChange={setCustomerId}
               />
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <div className="text-xs text-zinc-300">Sale unit (all lines)</div>
+                  <select
+                    name="saleUnit"
+                    value={saleUnit}
+                    onChange={(e) => setSaleUnit(e.target.value as SaleUnit)}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                  >
+                    {SALE_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="space-y-1">
                   <div className="text-xs text-zinc-300">Price tier</div>
                   <select
@@ -177,6 +200,9 @@ export function BulkOrderModal(props: {
                     <option>Retail</option>
                   </select>
                 </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
                   <div className="text-xs text-zinc-300">Store type</div>
                   <select
@@ -230,6 +256,19 @@ export function BulkOrderModal(props: {
                         ? p.bulkPrice
                         : p.retailPrice
                       : 0;
+                    const qtyNum = Number(l.quantity) || 0;
+                    const quantityTenths =
+                      saleUnit === "Kilogram" ? Math.round(qtyNum * 10) : null;
+                    const qtyWhole =
+                      saleUnit === "Kilogram"
+                        ? Math.max(1, Math.round(qtyNum))
+                        : Math.round(qtyNum);
+                    const lineTotal = lineTotalCents(
+                      unit,
+                      saleUnit,
+                      qtyWhole,
+                      quantityTenths,
+                    );
                     return (
                       <div
                         key={idx}
@@ -260,20 +299,23 @@ export function BulkOrderModal(props: {
                         </div>
 
                         <div className="sm:col-span-3">
-                          <div className="text-xs text-zinc-400">Qty</div>
+                          <div className="text-xs text-zinc-400">
+                            {saleUnit === "Kilogram" ? "Weight (kg)" : "Qty"}
+                          </div>
                           <input
                             name="quantity"
-                            inputMode="numeric"
+                            inputMode="decimal"
+                            step={saleUnit === "Kilogram" ? "0.1" : "1"}
                             value={l.quantity}
                             onChange={(e) =>
                               updateLine(idx, {
-                                quantity: Number(e.target.value || "1"),
+                                quantity: e.target.value,
                               })
                             }
                             className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                           />
                           <div className="mt-1 text-xs text-zinc-500">
-                            Line: {formatPhpFromCents(unit * l.quantity)}
+                            Line: {formatPhpFromCents(lineTotal)}
                           </div>
                         </div>
 

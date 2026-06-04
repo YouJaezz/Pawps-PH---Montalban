@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { CatalogItemEditButton } from "@/app/suppliers/CatalogItemEditButton";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import {
   displayCatalogFlavor,
@@ -125,12 +126,13 @@ export function SupplierSearch(props: {
               <th className="hidden w-14 px-2 py-1.5 font-medium md:table-cell">Size</th>
               <th className="w-20 px-2 py-1.5 font-medium">WS</th>
               <th className="hidden w-16 px-2 py-1.5 font-medium lg:table-cell">Retail</th>
+              <th className="w-12 px-2 py-1.5 font-medium" />
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-zinc-500" colSpan={6}>
+                <td className="px-2 py-3 text-zinc-500" colSpan={7}>
                   {props.rows.length === 0
                     ? "No items — upload a price list."
                     : `No match for ${filterLabel}.`}
@@ -173,6 +175,19 @@ export function SupplierSearch(props: {
                     </td>
                     <td className="hidden px-2 py-1 text-zinc-400 lg:table-cell">
                       {formatMoneyOrDash(details.retailPrice)}
+                    </td>
+                    <td className="px-2 py-1 align-top">
+                      <CatalogItemEditButton
+                        id={r.id}
+                        itemName={r.itemName}
+                        brand={r.brand}
+                        variant={r.variant}
+                        unitCost={r.unitCost}
+                        retailPrice={r.retailPrice}
+                        perKiloPrice={r.perKiloPrice}
+                        packSize={details.packSize}
+                        packUnit={details.packUnit}
+                      />
                     </td>
                   </tr>
                 );

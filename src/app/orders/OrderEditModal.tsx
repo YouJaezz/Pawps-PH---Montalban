@@ -1,0 +1,251 @@
+"use client";
+
+import { useState } from "react";
+
+import {
+  updateOrderDetails,
+  updateOrderLineItem,
+} from "@/app/orders/actions";
+import {
+  formatQuantityLabel,
+  SALE_UNITS,
+  type SaleUnit,
+} from "@/lib/order-line-math";
+import { formatPhpFromCents } from "@/lib/money";
+
+export type OrderLineEdit = {
+  id: number;
+  productId: number;
+  productLabel: string;
+  quantity: number;
+  quantityTenths: number | null;
+  saleUnit: SaleUnit;
+  priceTier: "Retail" | "Bulk";
+  unitPrice: number;
+  lineTotal: number;
+};
+
+export type OrderEditPayload = {
+  id: number;
+  customerName: string;
+  contact: string | null;
+  location: string | null;
+  deliveryMethod: string | null;
+  storeType: string;
+  notes: string | null;
+  orderStatus: string;
+  lines: OrderLineEdit[];
+};
+
+const inputClass =
+  "w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-50 outline-none";
+
+function centsToInput(cents: number) {
+  return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+}
+
+function qtyInputValue(line: OrderLineEdit) {
+  if (line.saleUnit === "Kilogram" && line.quantityTenths != null) {
+    return String(line.quantityTenths / 10);
+  }
+  return String(line.quantity);
+}
+
+export function OrderEditModal(props: {
+  order: OrderEditPayload | null;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<"lines" | "details">("lines");
+
+  if (!props.order) return null;
+
+  const o = props.order;
+  const canEditLines =
+    o.orderStatus !== "Cancelled" && o.orderStatus !== "Completed";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#13131f] p-4 shadow-xl">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-xs text-zinc-500">Edit order</div>
+            <h2 className="text-lg font-semibold text-zinc-50">#{o.id}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={props.onClose}
+            className="rounded border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-3 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setTab("lines")}
+            className={`rounded px-2 py-0.5 text-[10px] ${tab === "lines" ? "bg-white/10 text-zinc-100" : "text-zinc-500"}`}
+          >
+            Items &amp; units
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("details")}
+            className={`rounded px-2 py-0.5 text-[10px] ${tab === "details" ? "bg-white/10 text-zinc-100" : "text-zinc-500"}`}
+          >
+            Order details
+          </button>
+        </div>
+
+        {tab === "lines" ? (
+          <div className="mt-3 space-y-3">
+            {!canEditLines ? (
+              <p className="text-[11px] text-amber-300/90">
+                Completed or cancelled orders cannot have line items changed.
+                Use Order details for customer info.
+              </p>
+            ) : null}
+            {o.lines.length === 0 ? (
+              <p className="text-[11px] text-zinc-500">No line items.</p>
+            ) : (
+              o.lines.map((line) => (
+                <div
+                  key={line.id}
+                  className="rounded-lg border border-white/10 bg-white/5 p-2"
+                >
+                  <div className="text-[11px] font-medium text-zinc-100">
+                    {line.productLabel}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-zinc-500">
+                    Current: {formatQuantityLabel(line.saleUnit, line.quantity, line.quantityTenths)}{" "}
+                    · {line.priceTier} · {formatPhpFromCents(line.lineTotal)}
+                  </div>
+                  {canEditLines ? (
+                    <form action={updateOrderLineItem} className="mt-2 space-y-1.5">
+                      <input type="hidden" name="orderId" value={o.id} />
+                      <input type="hidden" name="lineId" value={line.id} />
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="text-[9px] text-zinc-500">
+                          Sale unit
+                          <select
+                            name="saleUnit"
+                            defaultValue={line.saleUnit}
+                            className={inputClass}
+                          >
+                            {SALE_UNITS.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-[9px] text-zinc-500">
+                          Qty
+                          <input
+                            name="quantity"
+                            required
+                            defaultValue={qtyInputValue(line)}
+                            step="0.1"
+                            className={inputClass}
+                          />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="text-[9px] text-zinc-500">
+                          Price tier
+                          <select
+                            name="priceTier"
+                            defaultValue={line.priceTier}
+                            className={inputClass}
+                          >
+                            <option value="Retail">Retail</option>
+                            <option value="Bulk">Bulk</option>
+                          </select>
+                        </label>
+                        <label className="text-[9px] text-zinc-500">
+                          Unit price override (₱)
+                          <input
+                            name="unitPrice"
+                            placeholder={centsToInput(line.unitPrice)}
+                            className={inputClass}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[9px] text-zinc-600">
+                        Kilogram: enter weight (e.g. 2.5). Per-kg price uses retail/bulk
+                        or your override. Stock deducts rounded kg on completion.
+                      </p>
+                      <button
+                        type="submit"
+                        className="rounded border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-200"
+                      >
+                        Save line
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <form action={updateOrderDetails} className="mt-3 space-y-2">
+            <input type="hidden" name="orderId" value={o.id} />
+            <label className="block text-[10px] text-zinc-500">
+              Customer
+              <input
+                name="customerName"
+                required
+                defaultValue={o.customerName}
+                className={inputClass}
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                name="contact"
+                defaultValue={o.contact ?? ""}
+                placeholder="Contact"
+                className={inputClass}
+              />
+              <input
+                name="location"
+                defaultValue={o.location ?? ""}
+                placeholder="Location"
+                className={inputClass}
+              />
+            </div>
+            <label className="block text-[10px] text-zinc-500">
+              Store type
+              <select
+                name="storeType"
+                defaultValue={o.storeType}
+                className={inputClass}
+              >
+                <option value="Online">Online</option>
+                <option value="Walk-in">Walk-in</option>
+              </select>
+            </label>
+            <input
+              name="deliveryMethod"
+              defaultValue={o.deliveryMethod ?? ""}
+              placeholder="Delivery method"
+              className={inputClass}
+            />
+            <textarea
+              name="notes"
+              defaultValue={o.notes ?? ""}
+              placeholder="Notes"
+              rows={2}
+              className={inputClass}
+            />
+            <button
+              type="submit"
+              className="w-full rounded-md bg-zinc-50 py-1.5 text-[11px] font-medium text-zinc-900"
+            >
+              Save order details
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
