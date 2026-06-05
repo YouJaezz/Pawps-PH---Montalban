@@ -5,6 +5,12 @@ import { useState, useTransition } from "react";
 
 import { createSupplierCatalogItem } from "@/app/suppliers/actions";
 import type { PriceUnit } from "@/db/schema";
+import {
+  CATALOG_ITEM_TYPES,
+  defaultPackUnitForItemType,
+  defaultPriceUnitForItemType,
+  packSizeHintForItemType,
+} from "@/lib/catalog-item-types";
 import { priceUnitLabel } from "@/lib/price-units";
 
 const inputClass =
@@ -18,7 +24,15 @@ export function AddCatalogItemButton(props: {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [itemType, setItemType] = useState<string>(CATALOG_ITEM_TYPES[0]!.value);
   const [priceUnit, setPriceUnit] = useState<PriceUnit>("Sack");
+  const [packUnit, setPackUnit] = useState("kg");
+
+  function handleItemTypeChange(next: string) {
+    setItemType(next);
+    setPriceUnit(defaultPriceUnitForItemType(next));
+    setPackUnit(defaultPackUnitForItemType(next));
+  }
 
   const defaultSupplier =
     props.defaultSupplierId != null
@@ -101,13 +115,47 @@ export function AddCatalogItemButton(props: {
             placeholder="Item name *"
             className={inputClass}
           />
+          <label className="block space-y-0.5">
+            <span className="text-[11px] text-zinc-400">Item type *</span>
+            <select
+              name="itemType"
+              required
+              value={itemType}
+              onChange={(e) => handleItemTypeChange(e.target.value)}
+              className={inputClass}
+            >
+              {CATALOG_ITEM_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <div className="grid grid-cols-2 gap-2">
             <input name="brand" placeholder="Brand" className={inputClass} />
             <input name="variant" placeholder="Flavor" className={inputClass} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input name="packSize" placeholder="Size (e.g. 7)" className={inputClass} />
-            <input name="packUnit" placeholder="Unit (kg, g)" className={inputClass} />
+
+          <div className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2">
+            <div className="text-[10px] font-medium text-zinc-500">Pack size</div>
+            <p className="mt-0.5 text-[10px] text-zinc-600">
+              {packSizeHintForItemType(itemType)}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input
+                name="packSize"
+                placeholder="Number (7, 400…)"
+                className={inputClass}
+              />
+              <input
+                name="packUnit"
+                value={packUnit}
+                onChange={(e) => setPackUnit(e.target.value)}
+                placeholder="Unit"
+                className={inputClass}
+              />
+            </div>
           </div>
 
           <label className="block space-y-0.5">

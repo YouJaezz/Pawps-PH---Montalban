@@ -16,6 +16,8 @@ export const products = sqliteTable("products", {
   brand: text("brand").notNull(),
   variant: text("variant"),
   packSize: text("pack_size"),
+  /** Dog Dry Food, Cat Wet Food (Can), Toys, etc. */
+  itemType: text("item_type"),
   stockUnit: text("stock_unit", { enum: STOCK_UNITS })
     .notNull()
     .default("Piece"),

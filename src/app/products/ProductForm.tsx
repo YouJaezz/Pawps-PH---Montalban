@@ -12,6 +12,11 @@ import {
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
 import {
+  CATALOG_ITEM_TYPES,
+  displayCatalogItemType,
+  normalizeCatalogItemType,
+} from "@/lib/catalog-item-types";
+import {
   formatSupplierPrice,
   isPieceProduct,
   isWeightProduct,
@@ -114,6 +119,9 @@ export function ProductForm(props: {
     "sacks" | "kg" | "cases" | "pcs"
   >("sacks");
   const [unitsPerCaseInput, setUnitsPerCaseInput] = useState("24");
+  const [manualItemType, setManualItemType] = useState<string>(
+    CATALOG_ITEM_TYPES[0]!.value,
+  );
 
   useEffect(() => {
     if (state?.ok) props.onSuccess?.();
@@ -150,6 +158,7 @@ export function ProductForm(props: {
         priceUnit: selectedCatalog.priceUnit,
         packUnit: selectedCatalog.packUnit,
         kgPerSack: kgPerSackTenths,
+        itemType: selectedCatalog.itemType,
       })
     : trackInKg;
 
@@ -157,6 +166,7 @@ export function ProductForm(props: {
     ? isPieceProduct({
         priceUnit: selectedCatalog.priceUnit,
         packUnit: selectedCatalog.packUnit,
+        itemType: selectedCatalog.itemType,
       })
     : !trackInKg;
 
@@ -337,6 +347,21 @@ export function ProductForm(props: {
             <span className="text-[11px] text-zinc-400">Flavor</span>
             <input name="variant" className={fieldClass} placeholder="Tuna" />
           </label>
+          <label className="col-span-2 space-y-0.5">
+            <span className="text-[11px] text-zinc-400">Item type *</span>
+            <select
+              name="itemType"
+              value={manualItemType}
+              onChange={(e) => setManualItemType(e.target.value)}
+              className={fieldClass}
+            >
+              {CATALOG_ITEM_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
 
@@ -359,8 +384,19 @@ export function ProductForm(props: {
       {selectedCatalog ? (
         <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11px]">
           <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-            Supplier prices (from pricelist)
+            From supplier pricelist
           </div>
+          <div className="mt-1 text-zinc-300">
+            Type:{" "}
+            <span className="text-zinc-100">
+              {displayCatalogItemType(selectedCatalog.itemType)}
+            </span>
+          </div>
+          <input
+            type="hidden"
+            name="itemType"
+            value={normalizeCatalogItemType(selectedCatalog.itemType)}
+          />
           <div className="mt-1.5 grid grid-cols-2 gap-2 text-zinc-300">
             <div>
               <span className="text-zinc-500">WS </span>

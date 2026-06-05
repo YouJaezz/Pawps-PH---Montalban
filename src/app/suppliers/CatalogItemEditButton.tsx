@@ -4,6 +4,13 @@ import { useState } from "react";
 
 import { updateSupplierCatalogItem } from "@/app/suppliers/actions";
 import type { PriceUnit } from "@/db/schema";
+import {
+  CATALOG_ITEM_TYPES,
+  defaultPackUnitForItemType,
+  defaultPriceUnitForItemType,
+  normalizeCatalogItemType,
+  packSizeHintForItemType,
+} from "@/lib/catalog-item-types";
 import { priceUnitLabel } from "@/lib/price-units";
 
 const inputClass =
@@ -24,12 +31,15 @@ export function CatalogItemEditButton(props: {
   perKiloPrice: number | null;
   packSize: string | null;
   packUnit: string | null;
+  itemType?: string | null;
   priceUnit?: string | null;
   unitsPerCase?: number | null;
 }) {
   const [open, setOpen] = useState(false);
+  const normalizedType = normalizeCatalogItemType(props.itemType);
+  const [itemType, setItemType] = useState<string>(normalizedType);
   const [priceUnit, setPriceUnit] = useState<PriceUnit>(
-    (props.priceUnit as PriceUnit) ?? "Sack",
+    (props.priceUnit as PriceUnit) ?? defaultPriceUnitForItemType(normalizedType),
   );
 
   if (!open) {
@@ -73,16 +83,32 @@ export function CatalogItemEditButton(props: {
           <input
             name="packSize"
             defaultValue={props.packSize ?? ""}
-            placeholder="Size (e.g. 20)"
+            placeholder="Pack #"
             className={inputClass}
           />
           <input
             name="packUnit"
-            defaultValue={props.packUnit ?? ""}
-            placeholder="Unit (kg)"
+            defaultValue={props.packUnit ?? defaultPackUnitForItemType(itemType)}
+            placeholder="kg, g…"
             className={inputClass}
           />
         </div>
+        <p className="text-[9px] text-zinc-600">{packSizeHintForItemType(itemType)}</p>
+        <select
+          name="itemType"
+          value={itemType}
+          onChange={(e) => {
+            setItemType(e.target.value);
+            setPriceUnit(defaultPriceUnitForItemType(e.target.value));
+          }}
+          className={inputClass}
+        >
+          {CATALOG_ITEM_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
         <select
           name="priceUnit"
           value={priceUnit}

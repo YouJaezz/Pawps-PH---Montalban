@@ -15,6 +15,9 @@ import {
 import { parseSupplierFile } from "@/lib/supplier-parse";
 import { requireAuth } from "@/lib/auth-guard";
 import { inferPriceUnit } from "@/lib/price-units";
+import {
+  normalizeCatalogItemType,
+} from "@/lib/catalog-item-types";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
 import { eq } from "drizzle-orm";
 
@@ -220,7 +223,7 @@ export async function uploadSupplierCatalog(
       packUnit: row.packUnit ?? null,
       perKiloPrice: row.perKiloCents ?? null,
       retailPrice: row.retailPriceCents ?? null,
-      itemType: row.itemType ?? null,
+      itemType: normalizeCatalogItemType(row.itemType),
       productName: row.productName ?? null,
       notes: row.notes ?? null,
       priceUnit: inferPriceUnit({
@@ -418,6 +421,7 @@ export async function createSupplierCatalogItem(formData: FormData) {
   const itemName = String(formData.get("itemName") ?? "").trim();
   const brandRaw = String(formData.get("brand") ?? "").trim();
   const variantRaw = String(formData.get("variant") ?? "").trim();
+  const itemTypeRaw = String(formData.get("itemType") ?? "").trim();
   const packSizeRaw = String(formData.get("packSize") ?? "").trim();
   const packUnitRaw = String(formData.get("packUnit") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
@@ -437,6 +441,7 @@ export async function createSupplierCatalogItem(formData: FormData) {
     itemName,
     brand: brandRaw.length ? brandRaw : null,
     variant: variantRaw.length ? variantRaw : null,
+    itemType: normalizeCatalogItemType(itemTypeRaw),
     unitCost: unitCost || null,
     retailPrice: retailPrice || null,
     perKiloPrice: perKiloPrice || null,
@@ -461,6 +466,7 @@ export async function updateSupplierCatalogItem(formData: FormData) {
   const itemName = String(formData.get("itemName") ?? "").trim();
   const brandRaw = String(formData.get("brand") ?? "").trim();
   const variantRaw = String(formData.get("variant") ?? "").trim();
+  const itemTypeRaw = String(formData.get("itemType") ?? "").trim();
   const packSizeRaw = String(formData.get("packSize") ?? "").trim();
   const packUnitRaw = String(formData.get("packUnit") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
@@ -489,6 +495,7 @@ export async function updateSupplierCatalogItem(formData: FormData) {
       itemName,
       brand: brandRaw.length ? brandRaw : null,
       variant: variantRaw.length ? variantRaw : null,
+      itemType: normalizeCatalogItemType(itemTypeRaw),
       unitCost: unitCost || null,
       retailPrice: retailPrice || null,
       perKiloPrice: perKiloPrice || null,

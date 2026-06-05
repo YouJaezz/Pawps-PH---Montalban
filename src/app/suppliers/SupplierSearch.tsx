@@ -12,6 +12,7 @@ import {
   formatPackLabel,
   resolveCatalogItemDetails,
 } from "@/lib/catalog-item-display";
+import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { formatSupplierPrice } from "@/lib/price-units";
 
 export type SupplierCatalogRow = {
@@ -134,7 +135,10 @@ export function SupplierSearch(props: {
               <th className="px-2 py-1.5 font-medium">Supplier</th>
               <th className="px-2 py-1.5 font-medium">Item</th>
               <th className="hidden px-2 py-1.5 font-medium sm:table-cell">Flavor</th>
-              <th className="hidden w-14 px-2 py-1.5 font-medium md:table-cell">Size</th>
+              <th className="hidden px-2 py-1.5 font-medium md:table-cell">Type</th>
+              <th className="hidden w-14 px-2 py-1.5 font-medium lg:table-cell">
+                Pack size
+              </th>
               <th className="w-20 px-2 py-1.5 font-medium">WS</th>
               <th className="hidden w-16 px-2 py-1.5 font-medium lg:table-cell">
                 Sup. retail
@@ -145,7 +149,7 @@ export function SupplierSearch(props: {
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-zinc-500" colSpan={7}>
+                <td className="px-2 py-3 text-zinc-500" colSpan={8}>
                   {props.rows.length === 0
                     ? "No items — upload a price list."
                     : `No match for ${filterLabel}.`}
@@ -173,7 +177,10 @@ export function SupplierSearch(props: {
                     <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-400 sm:table-cell">
                       {flavor}
                     </td>
-                    <td className="hidden px-2 py-1 text-zinc-400 md:table-cell">
+                    <td className="hidden max-w-[120px] truncate px-2 py-1 text-zinc-400 md:table-cell">
+                      {displayCatalogItemType(r.itemType)}
+                    </td>
+                    <td className="hidden px-2 py-1 text-zinc-400 lg:table-cell">
                       {sizeLabel}
                     </td>
                     <td className="px-2 py-1">
@@ -200,6 +207,7 @@ export function SupplierSearch(props: {
                         perKiloPrice={r.perKiloPrice}
                         packSize={details.packSize}
                         packUnit={details.packUnit}
+                        itemType={r.itemType}
                         priceUnit={r.priceUnit}
                         unitsPerCase={r.unitsPerCase}
                       />

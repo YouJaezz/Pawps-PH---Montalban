@@ -19,6 +19,7 @@ import {
   displayCatalogFlavor,
   displayCatalogItem,
 } from "@/lib/catalog-item-display";
+import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
 import { and, eq } from "drizzle-orm";
@@ -75,6 +76,8 @@ export async function createProduct(
   let name = String(formData.get("name") ?? "").trim();
   let brand = String(formData.get("brand") ?? "").trim();
   let variant = String(formData.get("variant") ?? "").trim() || null;
+  let itemType = normalizeCatalogItemType(String(formData.get("itemType") ?? ""));
+  let packSize: string | null = null;
   let costPrice = parseMoneyToCents(formData.get("costPrice"));
   let supplierRetailPrice = parseMoneyToCents(formData.get("supplierRetailPrice"));
   let supplierBulkPrice = parseMoneyToCents(formData.get("supplierBulkPrice"));
@@ -109,6 +112,7 @@ export async function createProduct(
         perKiloPrice: supplierCatalogItems.perKiloPrice,
         packSize: supplierCatalogItems.packSize,
         packUnit: supplierCatalogItems.packUnit,
+        itemType: supplierCatalogItems.itemType,
         priceUnit: supplierCatalogItems.priceUnit,
         unitsPerCase: supplierCatalogItems.unitsPerCase,
       })
@@ -129,6 +133,12 @@ export async function createProduct(
 
       supplierRetailPrice = catalogRow.retailPrice ?? 0;
       supplierBulkPrice = catalogRow.unitCost ?? 0;
+      itemType = normalizeCatalogItemType(catalogRow.itemType);
+      if (catalogRow.packSize && catalogRow.packUnit) {
+        packSize = `${catalogRow.packSize} ${catalogRow.packUnit}`;
+      } else if (catalogRow.packSize) {
+        packSize = catalogRow.packSize;
+      }
 
       const ws = catalogRow.unitCost ?? 0;
       const supRetail = catalogRow.retailPrice ?? ws;
@@ -177,6 +187,8 @@ export async function createProduct(
       name,
       brand,
       variant,
+      itemType,
+      packSize,
       costPrice,
       retailPrice,
       bulkPrice,
@@ -297,6 +309,7 @@ export async function updateProduct(formData: FormData) {
   const variant = variantRaw.length ? variantRaw : null;
   const packSizeRaw = String(formData.get("packSize") ?? "").trim();
   const packSize = packSizeRaw.length ? packSizeRaw : null;
+  const itemType = normalizeCatalogItemType(String(formData.get("itemType") ?? ""));
 
   const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
   const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
@@ -344,6 +357,7 @@ export async function updateProduct(formData: FormData) {
       name,
       brand,
       variant,
+      itemType,
       packSize,
       stockUnit: stockUnit === "Sack" ? "Kilogram" : stockUnit,
       kgPerSack:

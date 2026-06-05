@@ -16,6 +16,7 @@ import {
 import { formatPhpFromCents } from "@/lib/money";
 import { computeInventoryValuation } from "@/lib/inventory-valuation";
 import { formatDualStock } from "@/lib/product-stock";
+import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { formatSupplierPrice } from "@/lib/price-units";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -33,6 +34,7 @@ export default async function ProductsPage() {
         name: products.name,
         brand: products.brand,
         variant: products.variant,
+        itemType: products.itemType,
         packSize: products.packSize,
         stockUnit: products.stockUnit,
         kgPerSack: products.kgPerSack,
@@ -150,8 +152,9 @@ export default async function ProductsPage() {
                   <tr>
                     <th className="px-2 py-2">Item</th>
                     <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
-                    <th className="px-2 py-2">Flavor</th>
-                    <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
+                      <th className="px-2 py-2">Flavor</th>
+                      <th className="hidden px-2 py-2 md:table-cell">Type</th>
+                      <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
                     <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
                     <th className="hidden px-2 py-2 lg:table-cell">Sup. WS</th>
                     <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
@@ -166,7 +169,7 @@ export default async function ProductsPage() {
                 <tbody className="divide-y divide-white/10">
                   {rows.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-5 text-zinc-400" colSpan={13}>
+                      <td className="px-3 py-5 text-zinc-400" colSpan={14}>
                         No inventory — pick a supplier catalog item to add.
                       </td>
                     </tr>
@@ -183,6 +186,8 @@ export default async function ProductsPage() {
                       const catalog = p.supplierCatalogItemId
                         ? catalogById.get(p.supplierCatalogItemId)
                         : undefined;
+                      const itemType =
+                        p.itemType ?? catalog?.itemType ?? null;
                       const priceUnit = catalog?.priceUnit ?? "Sack";
                       const stock = formatDualStock(
                         p.stockUnit as StockUnit,
@@ -209,8 +214,11 @@ export default async function ProductsPage() {
                           <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
                             {brand}
                           </td>
-                          <td className="px-2 py-2 text-zinc-300">{flavor}</td>
-                          <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                            <td className="px-2 py-2 text-zinc-300">{flavor}</td>
+                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                              {displayCatalogItemType(itemType)}
+                            </td>
+                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
                             {p.supplierId
                               ? (supplierById.get(p.supplierId) ?? "—")
                               : "—"}
@@ -269,6 +277,7 @@ export default async function ProductsPage() {
                                 name: p.name,
                                 brand: p.brand,
                                 variant: p.variant,
+                                itemType: p.itemType,
                                 packSize: p.packSize,
                                 stockUnit: p.stockUnit as StockUnit,
                                 stockQuantity: p.stockQuantity,

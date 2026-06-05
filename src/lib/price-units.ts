@@ -1,4 +1,5 @@
 import type { PriceUnit } from "@/db/schema";
+import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
 import { DEFAULT_UNITS_PER_CASE } from "@/db/schema";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -8,6 +9,19 @@ export function inferPriceUnit(opts: {
   packSize?: string | null;
   itemName?: string | null;
 }): PriceUnit {
+  const normalized = normalizeCatalogItemType(opts.itemType);
+  if (normalized.includes("Dry Food") || normalized === "Cat Litter") {
+    return "Sack";
+  }
+  if (
+    normalized.includes("Can") ||
+    normalized.includes("Pouch") ||
+    normalized.includes("Treats") ||
+    normalized === "Toys"
+  ) {
+    return "Piece";
+  }
+
   const type = (opts.itemType ?? "").toLowerCase();
   const unit = (opts.packUnit ?? "").toLowerCase();
   const name = (opts.itemName ?? "").toLowerCase();
@@ -91,7 +105,10 @@ export function isWeightProduct(opts: {
   priceUnit?: string | null;
   packUnit?: string | null;
   kgPerSack?: number | null;
+  itemType?: string | null;
 }) {
+  const type = normalizeCatalogItemType(opts.itemType).toLowerCase();
+  if (type.includes("dry food") || type.includes("litter")) return true;
   if (opts.kgPerSack != null && opts.kgPerSack > 0) return true;
   const unit = (opts.packUnit ?? "").toLowerCase();
   return unit === "kg" || opts.priceUnit === "Sack";
@@ -100,7 +117,18 @@ export function isWeightProduct(opts: {
 export function isPieceProduct(opts: {
   priceUnit?: string | null;
   packUnit?: string | null;
+  itemType?: string | null;
 }) {
+  const type = normalizeCatalogItemType(opts.itemType).toLowerCase();
+  if (
+    type.includes("can") ||
+    type.includes("pouch") ||
+    type.includes("treat") ||
+    type === "toys" ||
+    type.includes("medicine")
+  ) {
+    return true;
+  }
   const unit = (opts.packUnit ?? "").toLowerCase();
   return (
     opts.priceUnit === "Piece" ||

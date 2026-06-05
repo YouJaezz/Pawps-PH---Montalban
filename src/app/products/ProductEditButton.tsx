@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { updateProduct } from "@/app/products/actions";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
+import { CATALOG_ITEM_TYPES, displayCatalogItemType } from "@/lib/catalog-item-types";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
 import { displayStockQuantity, stockQtyLabel } from "@/lib/product-stock";
@@ -14,6 +15,7 @@ export type ProductEditRow = {
   name: string;
   brand: string;
   variant: string | null;
+  itemType: string | null;
   packSize: string | null;
   stockUnit: StockUnit;
   stockQuantity: number;
@@ -166,6 +168,20 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
+                  <span className="text-xs text-zinc-400">Item type</span>
+                  <select
+                    name="itemType"
+                    defaultValue={p.itemType ?? CATALOG_ITEM_TYPES[0]!.value}
+                    className={inputClass}
+                  >
+                    {CATALOG_ITEM_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block space-y-1">
                   <span className="text-xs text-zinc-400">Pack size</span>
                   <input
                     name="packSize"
@@ -174,6 +190,9 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                     className={inputClass}
                   />
                 </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
                   <span className="text-xs text-zinc-400">Stock unit</span>
                   <select
