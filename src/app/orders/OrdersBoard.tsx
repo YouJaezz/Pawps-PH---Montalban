@@ -34,6 +34,7 @@ export type OrderBoardRow = {
   storeType: string;
   createdAt: string;
   itemsSummary: string;
+  itemsSearchText: string;
   itemCount: number;
 };
 
@@ -89,7 +90,7 @@ export function OrdersBoard(props: {
 
     if (q) {
       list = list.filter((o) => {
-        const hay = `${o.customerName} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSummary} #${o.id}`.toLowerCase();
+        const hay = `${o.customerName} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSearchText} ${o.itemsSummary} #${o.id}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -207,9 +208,11 @@ export function OrdersBoard(props: {
                       </div>
                     </td>
                     <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                      {o.itemsSummary}
+                      <div>{o.itemsSummary}</div>
                       {o.itemCount > 1 ? (
-                        <span className="text-zinc-600"> (+{o.itemCount - 1} more)</span>
+                        <div className="text-[9px] text-zinc-600">
+                          {o.itemCount} items total
+                        </div>
                       ) : null}
                     </td>
                     <td className="px-2 py-2">

@@ -8,6 +8,13 @@ import { db } from "@/db";
 import { customers, orderItems, orders, products } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 
+function formatItemsSummary(items: string[]) {
+  if (items.length === 0) return "—";
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return items.join(" · ");
+  return `${items[0]} · ${items[1]} · +${items.length - 2} more`;
+}
+
 export default async function OrdersPage() {
   const [customerRows, recentOrders, quickSellProducts] = await Promise.all([
     db
@@ -157,7 +164,8 @@ export default async function OrdersPage() {
       deliveryMethod: o.deliveryMethod,
       storeType: o.storeType,
       createdAt: o.createdAt.toISOString(),
-      itemsSummary: items[0] ?? "—",
+      itemsSummary: formatItemsSummary(items),
+      itemsSearchText: items.join(" "),
       itemCount: items.length,
     };
   });

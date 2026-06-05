@@ -15,6 +15,7 @@ import {
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { formatStockLabel } from "@/lib/product-stock";
+import { formatPhpFromCents } from "@/lib/money";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -161,14 +162,6 @@ export async function quickSell(
   try {
     await requireAuth();
 
-    const productId = parseIntOr(formData.get("productId"), 0);
-    const quantityRaw = String(formData.get("quantity") ?? "1");
-    const saleUnitRaw = String(formData.get("saleUnit") ?? "Piece");
-    const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
-    const qtyParsed = parseQuantityInput(quantityRaw, saleUnit);
-    const priceTier = String(formData.get("priceTier") ?? "Retail") as
-      | "Retail"
-      | "Bulk";
     const customerName = String(formData.get("customerName") ?? "").trim();
     const contactRaw = String(formData.get("contact") ?? "").trim();
     const locationRaw = String(formData.get("location") ?? "").trim();
@@ -180,15 +173,35 @@ export async function quickSell(
       | "Walk-in";
     const deductStock = formData.get("deductStock") === "on";
 
-    if (!productId || !qtyParsed || !customerName) {
-      return actionError("Product, quantity, and customer name are required.");
+    const productIds = formData
+      .getAll("productId")
+      .map((v) => Number.parseInt(String(v), 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const quantitiesRaw = formData.getAll("quantity").map((v) => String(v));
+    const saleUnitsRaw = formData.getAll("saleUnit").map((v) => String(v));
+    const priceTiersRaw = formData.getAll("priceTier").map((v) => String(v));
+
+    if (productIds.length === 0) {
+      const singleId = parseIntOr(formData.get("productId"), 0);
+      if (singleId > 0) {
+        productIds.push(singleId);
+        quantitiesRaw.push(String(formData.get("quantity") ?? "1"));
+        saleUnitsRaw.push(String(formData.get("saleUnit") ?? "Piece"));
+        priceTiersRaw.push(String(formData.get("priceTier") ?? "Retail"));
+      }
     }
 
-    const { quantity, quantityTenths } = qtyParsed;
+    if (!customerName) {
+      return actionError("Customer name is required.");
+    }
+    if (productIds.length === 0) {
+      return actionError("Add at least one item to the cart.");
+    }
 
-    const [p] = await db
+    const selected = await db
       .select({
         id: products.id,
+        name: products.name,
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
@@ -198,43 +211,98 @@ export async function quickSell(
         unitsPerCase: products.unitsPerCase,
       })
       .from(products)
-      .where(and(eq(products.id, productId), eq(products.archived, false)))
-      .limit(1);
+      .where(and(inArray(products.id, productIds), eq(products.archived, false)));
 
-    if (!p) return actionError("Product not found.");
-    const deductQty = stockDeductQuantity(
-      saleUnit,
-      quantity,
-      quantityTenths,
-      p.kgPerSack,
-      p.unitsPerCase,
-    );
-    if (deductStock && p.stockQuantity < deductQty) {
-      const stockLabel = formatStockLabel(
-        p.stockUnit as import("@/db/schema").StockUnit,
-        p.stockQuantity,
+    const productById = new Map(selected.map((p) => [p.id, p]));
+
+    let totalAmount = 0;
+    const lines: Array<{
+      productId: number;
+      quantity: number;
+      quantityTenths: number | null;
+      saleUnit: SaleUnit;
+      priceTier: "Retail" | "Bulk";
+      unitCost: number;
+      unitPrice: number;
+      lineTotal: number;
+    }> = [];
+
+    const deductByProduct = new Map<number, number>();
+
+    for (let i = 0; i < productIds.length; i++) {
+      const productId = productIds[i]!;
+      const saleUnitRaw = saleUnitsRaw[i] ?? "Piece";
+      const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
+      const priceTier = priceTiersRaw[i] === "Bulk" ? "Bulk" : "Retail";
+      const qtyParsed = parseQuantityInput(quantitiesRaw[i] ?? "", saleUnit);
+      const p = productById.get(productId);
+
+      if (!p || !qtyParsed) {
+        return actionError("Invalid cart item. Check product and quantity.");
+      }
+
+      const { quantity, quantityTenths } = qtyParsed;
+      const deductQty = stockDeductQuantity(
+        saleUnit,
+        quantity,
+        quantityTenths,
         p.kgPerSack,
         p.unitsPerCase,
       );
-      return actionError(
-        `Not enough stock (${stockLabel} on hand). Uncheck "Deduct stock" or restock first.`,
+      deductByProduct.set(
+        productId,
+        (deductByProduct.get(productId) ?? 0) + deductQty,
       );
+
+      const unitPrice = unitPriceForSale(
+        saleUnit,
+        priceTier,
+        p.retailPrice,
+        p.bulkPrice,
+        p.kgPerSack,
+        p.unitsPerCase,
+      );
+      const lineTotal = lineTotalCents(
+        unitPrice,
+        saleUnit,
+        quantity,
+        quantityTenths,
+      );
+
+      totalAmount += lineTotal;
+      lines.push({
+        productId,
+        quantity,
+        quantityTenths,
+        saleUnit,
+        priceTier,
+        unitCost: p.costPrice,
+        unitPrice,
+        lineTotal,
+      });
     }
 
-    const unitPrice = unitPriceForSale(
-      saleUnit,
-      priceTier,
-      p.retailPrice,
-      p.bulkPrice,
-      p.kgPerSack,
-      p.unitsPerCase,
-    );
-    const lineTotal = lineTotalCents(
-      unitPrice,
-      saleUnit,
-      quantity,
-      quantityTenths,
-    );
+    if (lines.length === 0) {
+      return actionError("Add at least one valid item to the cart.");
+    }
+
+    if (deductStock) {
+      for (const [productId, neededQty] of deductByProduct) {
+        const p = productById.get(productId);
+        if (!p) continue;
+        if (p.stockQuantity < neededQty) {
+          const stockLabel = formatStockLabel(
+            p.stockUnit as import("@/db/schema").StockUnit,
+            p.stockQuantity,
+            p.kgPerSack,
+            p.unitsPerCase,
+          );
+          return actionError(
+            `Not enough stock for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock" or restock first.`,
+          );
+        }
+      }
+    }
 
     const customerId = await resolveCustomerForOrder({
       customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
@@ -255,8 +323,8 @@ export async function quickSell(
         location: locationRaw.length ? locationRaw : null,
         notes: notesRaw.length ? notesRaw : null,
         orderStatus: fulfillmentStatus,
-        totalAmount: lineTotal,
-        amountPaid: lineTotal,
+        totalAmount,
+        amountPaid: totalAmount,
         paymentStatus: "Paid",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
@@ -267,31 +335,38 @@ export async function quickSell(
     const orderId = insertedOrder[0]?.id;
     if (!orderId) return actionError("Failed to create order.");
 
-    await db.insert(orderItems).values({
-      orderId,
-      productId,
-      quantity,
-      quantityTenths,
-      saleUnit,
-      priceTier,
-      unitCost: p.costPrice,
-      unitPrice,
-      lineTotal,
-    });
+    await db.insert(orderItems).values(
+      lines.map((line) => ({
+        orderId,
+        productId: line.productId,
+        quantity: line.quantity,
+        quantityTenths: line.quantityTenths,
+        saleUnit: line.saleUnit,
+        priceTier: line.priceTier,
+        unitCost: line.unitCost,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      })),
+    );
 
     if (deductStock) {
-      await db
-        .update(products)
-        .set({ stockQuantity: p.stockQuantity - deductQty })
-        .where(eq(products.id, productId));
+      for (const [productId, deductQty] of deductByProduct) {
+        const p = productById.get(productId);
+        if (!p) continue;
 
-      await db.insert(stockMovements).values({
-        productId,
-        movementType: "Sale",
-        quantityDelta: -deductQty,
-        relatedOrderId: orderId,
-        note: "Quick Sell",
-      });
+        await db
+          .update(products)
+          .set({ stockQuantity: p.stockQuantity - deductQty })
+          .where(eq(products.id, productId));
+
+        await db.insert(stockMovements).values({
+          productId,
+          movementType: "Sale",
+          quantityDelta: -deductQty,
+          relatedOrderId: orderId,
+          note: "Quick Sell",
+        });
+      }
     }
 
     if (deliveryMethodRaw.length) {
@@ -311,7 +386,7 @@ export async function quickSell(
     }
 
     if (customerId) {
-      await bumpCustomerSpend(customerId, lineTotal);
+      await bumpCustomerSpend(customerId, totalAmount);
     }
 
     revalidatePath("/orders");
@@ -320,7 +395,10 @@ export async function quickSell(
     revalidatePath("/products");
     revalidatePath("/delivery");
 
-    return actionSuccess("Quick sell recorded.");
+    const itemLabel = lines.length === 1 ? "1 item" : `${lines.length} items`;
+    return actionSuccess(
+      `Sale recorded — ${itemLabel}, ${formatPhpFromCents(totalAmount)} paid.`,
+    );
   } catch (err) {
     console.error("quickSell failed:", err);
     return actionError(formatActionError(err));
