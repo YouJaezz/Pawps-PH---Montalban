@@ -4,7 +4,6 @@ import { CustomerPricelistExport } from "@/app/products/CustomerPricelistExport"
 import { ProductAddButton } from "@/app/products/ProductAddButton";
 import { ProductEditButton } from "@/app/products/ProductEditButton";
 import { deleteProduct } from "@/app/products/delete-actions";
-import { restockProduct } from "@/app/products/actions";
 import { AppShell } from "@/components/AppShell";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { db } from "@/db";
@@ -191,14 +190,13 @@ export default async function ProductsPage() {
                     <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
                     <th className="px-2 py-2">Stock</th>
                     <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
-                    <th className="w-20 px-2 py-2">Edit</th>
-                    <th className="w-24 px-2 py-2">Restock</th>
+                    <th className="w-24 px-2 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {rows.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-5 text-zinc-400" colSpan={14}>
+                      <td className="px-3 py-5 text-zinc-400" colSpan={13}>
                         No inventory — pick a supplier catalog item to add.
                       </td>
                     </tr>
@@ -303,48 +301,30 @@ export default async function ProductsPage() {
                             ) : null}
                           </td>
                           <td className="px-2 py-2 align-top">
-                            <ProductEditButton
-                              product={{
-                                id: p.id,
-                                name: p.name,
-                                brand: p.brand,
-                                variant: p.variant,
-                                itemType: p.itemType,
-                                packSize: p.packSize,
-                                stockUnit: p.stockUnit as StockUnit,
-                                stockQuantity: p.stockQuantity,
-                                kgPerSack: p.kgPerSack,
-                                unitsPerCase: p.unitsPerCase,
-                                retailPrice: p.retailPrice,
-                                bulkPrice: p.bulkPrice,
-                              }}
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <div className="flex flex-col gap-1">
-                              <form action={restockProduct} className="flex gap-1">
-                                <input type="hidden" name="productId" value={p.id} />
-                                <input
-                                  name="quantity"
-                                  type="number"
-                                  min={1}
-                                  placeholder="+"
-                                  className="w-10 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs outline-none"
-                                />
-                                <button
-                                  type="submit"
-                                  className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200"
-                                >
-                                  Add
-                                </button>
-                              </form>
+                            <div className="flex flex-col gap-1.5">
+                              <ProductEditButton
+                                product={{
+                                  id: p.id,
+                                  name: p.name,
+                                  brand: p.brand,
+                                  variant: p.variant,
+                                  itemType: p.itemType,
+                                  packSize: p.packSize,
+                                  stockUnit: p.stockUnit as StockUnit,
+                                  stockQuantity: p.stockQuantity,
+                                  kgPerSack: p.kgPerSack,
+                                  unitsPerCase: p.unitsPerCase,
+                                  retailPrice: p.retailPrice,
+                                  bulkPrice: p.bulkPrice,
+                                }}
+                              />
                               <form action={deleteProduct}>
                                 <input type="hidden" name="productId" value={p.id} />
                                 <button
                                   type="submit"
                                   className="text-[10px] text-red-400/80 hover:text-red-300"
                                 >
-                                  Remove
+                                  Delete
                                 </button>
                               </form>
                             </div>
