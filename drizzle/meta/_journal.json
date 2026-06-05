@@ -148,6 +148,13 @@
       "when": 1780080000000,
       "tag": "0020_product_item_type",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1780081000000,
+      "tag": "0021_excess_sale_and_kg_precision",
+      "breakpoints": true
     }
   ]
 }

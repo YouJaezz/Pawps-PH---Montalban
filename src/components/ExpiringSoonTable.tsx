@@ -10,7 +10,7 @@ export type ExpiringSoonRow = {
   id: number;
   name: string;
   subtitle: string;
-  stockQuantity: number;
+  stockQuantity: string;
   expiryLabel: string;
   searchText: string;
 };

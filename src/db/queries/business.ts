@@ -1,9 +1,11 @@
 import { and, eq, gte, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { orderItems, orders, products } from "@/db/schema";
-import type { StockUnit } from "@/db/schema";
-import { computeInventoryValuation } from "@/lib/inventory-valuation";
+import { orderItems, orders } from "@/db/schema";
+import {
+  getActiveInventoryProducts,
+  inventoryValuationFromRows,
+} from "@/db/queries/inventory-products";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -17,53 +19,25 @@ export async function getBusinessInsights() {
   const last7Start = new Date(todayStart.getTime() - 6 * MS_PER_DAY);
   const last30Start = new Date(todayStart.getTime() - 29 * MS_PER_DAY);
 
-  const inventoryProducts = await db
-    .select({
-      costPrice: products.costPrice,
-      retailPrice: products.retailPrice,
-      stockQuantity: products.stockQuantity,
-      stockUnit: products.stockUnit,
-    })
-    .from(products)
-    .where(eq(products.archived, false));
-
-  const inventoryValuation = computeInventoryValuation(
-    inventoryProducts.map((p) => ({
-      costPrice: p.costPrice,
-      retailPrice: p.retailPrice,
-      stockQuantity: p.stockQuantity,
-      stockUnit: p.stockUnit as StockUnit,
-    })),
-  );
+  const inventoryProducts = await getActiveInventoryProducts();
+  const inventoryValuation = inventoryValuationFromRows(inventoryProducts);
 
   const [todayOrders, last7Orders, last30Orders, allOrders] = await Promise.all([
     db
       .select({
-        id: orders.id,
-        totalAmount: orders.totalAmount,
         amountPaid: orders.amountPaid,
-        paymentStatus: orders.paymentStatus,
-        createdAt: orders.createdAt,
       })
       .from(orders)
       .where(gte(orders.createdAt, todayStart)),
     db
       .select({
-        id: orders.id,
-        totalAmount: orders.totalAmount,
         amountPaid: orders.amountPaid,
-        paymentStatus: orders.paymentStatus,
-        createdAt: orders.createdAt,
       })
       .from(orders)
       .where(gte(orders.createdAt, last7Start)),
     db
       .select({
-        id: orders.id,
-        totalAmount: orders.totalAmount,
         amountPaid: orders.amountPaid,
-        paymentStatus: orders.paymentStatus,
-        createdAt: orders.createdAt,
       })
       .from(orders)
       .where(gte(orders.createdAt, last30Start)),
@@ -71,7 +45,6 @@ export async function getBusinessInsights() {
       .select({
         amountPaid: orders.amountPaid,
         totalAmount: orders.totalAmount,
-        paymentStatus: orders.paymentStatus,
       })
       .from(orders),
   ]);
@@ -81,15 +54,12 @@ export async function getBusinessInsights() {
   const sumTotal = (rows: Array<{ totalAmount: number }>) =>
     rows.reduce((acc, r) => acc + r.totalAmount, 0);
 
-  const receivablesCents =
-    sumTotal(allOrders) - sumPaid(allOrders);
+  const receivablesCents = sumTotal(allOrders) - sumPaid(allOrders);
 
-  // Per-product income/profit (last 30 days)
-  const since = last30Start;
   const last30PaidOrders = await db
     .select({ id: orders.id })
     .from(orders)
-    .where(and(gte(orders.createdAt, since), eq(orders.paymentStatus, "Paid")));
+    .where(and(gte(orders.createdAt, last30Start), eq(orders.paymentStatus, "Paid")));
   const paidOrderIds = last30PaidOrders.map((o) => o.id);
 
   const lines =
@@ -97,15 +67,15 @@ export async function getBusinessInsights() {
       ? []
       : await db
           .select({
-            orderId: orderItems.orderId,
             productId: orderItems.productId,
             quantity: orderItems.quantity,
-            unitPrice: orderItems.unitPrice,
-            unitCost: orderItems.unitCost,
             lineTotal: orderItems.lineTotal,
+            unitCost: orderItems.unitCost,
+            isExcessSale: orderItems.isExcessSale,
           })
           .from(orderItems)
           .where(inArray(orderItems.orderId, paidOrderIds));
+
   const productAgg = new Map<
     number,
     { quantity: number; revenue: number; cost: number }
@@ -119,30 +89,19 @@ export async function getBusinessInsights() {
     };
     cur.quantity += l.quantity;
     cur.revenue += l.lineTotal;
-    cur.cost += l.unitCost * l.quantity;
+    cur.cost += l.isExcessSale ? 0 : l.unitCost * l.quantity;
     productAgg.set(l.productId, cur);
   }
 
-  const productIds = Array.from(productAgg.keys());
-  const productMeta =
-    productIds.length === 0
-      ? []
-      : await db
-          .select({
-            id: products.id,
-            name: products.name,
-            brand: products.brand,
-            variant: products.variant,
-          })
-          .from(products)
-          .where(inArray(products.id, productIds));
+  const metaById = new Map(
+    inventoryProducts
+      .filter((p) => productAgg.has(p.id))
+      .map((p) => [p.id, p]),
+  );
 
-  const metaById = new Map(productMeta.map((p) => [p.id, p]));
-  const topProducts = productIds
-    .map((id) => {
-      const agg = productAgg.get(id)!;
+  const topProducts = [...productAgg.entries()]
+    .map(([id, agg]) => {
       const meta = metaById.get(id);
-      const profit = agg.revenue - agg.cost;
       return {
         productId: id,
         label: meta
@@ -150,7 +109,7 @@ export async function getBusinessInsights() {
           : `#${id}`,
         quantity: agg.quantity,
         revenueCents: agg.revenue,
-        profitCents: profit,
+        profitCents: agg.revenue - agg.cost,
       };
     })
     .sort((a, b) => b.revenueCents - a.revenueCents)
@@ -167,4 +126,3 @@ export async function getBusinessInsights() {
     profitPotentialCents: inventoryValuation.profitPotentialCents,
   };
 }
-

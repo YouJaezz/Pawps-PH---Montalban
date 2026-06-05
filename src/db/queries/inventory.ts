@@ -1,7 +1,4 @@
-import { eq } from "drizzle-orm";
-
-import { db } from "@/db";
-import { products } from "@/db/schema";
+import { getActiveInventoryProducts, inventoryValuationFromRows } from "@/db/queries/inventory-products";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -9,23 +6,8 @@ export async function getInventoryAtAGlance(opts?: { daysUntilExpiry?: number })
   const daysUntilExpiry = opts?.daysUntilExpiry ?? 30;
   const cutoff = new Date(Date.now() + daysUntilExpiry * MS_PER_DAY);
 
-  const allProducts = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brand: products.brand,
-      variant: products.variant,
-      costPrice: products.costPrice,
-      stockQuantity: products.stockQuantity,
-      expiryDate: products.expiryDate,
-    })
-    .from(products)
-    .where(eq(products.archived, false));
-
-  const totalStockValueCents = allProducts.reduce(
-    (acc, p) => acc + p.costPrice * p.stockQuantity,
-    0,
-  );
+  const allProducts = await getActiveInventoryProducts();
+  const { stockValueCents } = inventoryValuationFromRows(allProducts);
 
   const expiringSoon = allProducts
     .filter((p) => p.expiryDate && p.expiryDate <= cutoff)
@@ -33,7 +15,7 @@ export async function getInventoryAtAGlance(opts?: { daysUntilExpiry?: number })
     .slice(0, 8);
 
   return {
-    totalStockValueCents,
+    totalStockValueCents: stockValueCents,
     expiringSoon,
     expiringSoonCount: expiringSoon.length,
     cutoff,

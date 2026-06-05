@@ -5,6 +5,8 @@ import { getInventoryAtAGlance } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
+import { formatStockLabel } from "@/lib/product-stock";
+import type { StockUnit } from "@/db/schema";
 import Link from "next/link";
 
 function formatDateShort(d: Date) {
@@ -25,7 +27,12 @@ export default async function Home() {
     id: p.id,
     name: p.name,
     subtitle: [p.brand, p.variant].filter(Boolean).join(" • "),
-    stockQuantity: p.stockQuantity,
+    stockQuantity: formatStockLabel(
+      p.stockUnit as StockUnit,
+      p.stockQuantity,
+      p.kgPerSack,
+      p.unitsPerCase,
+    ),
     expiryLabel: p.expiryDate ? formatDateShort(p.expiryDate) : "—",
     searchText: rowSearchText([p.name, p.brand, p.variant]),
   }));
@@ -65,7 +72,7 @@ export default async function Home() {
           <StatCard
             title="Total stock value (cost basis)"
             value={formatPhpFromCents(glance.totalStockValueCents)}
-            subtitle="Sum of costPrice × stockQuantity"
+            subtitle="Cost × on-hand qty (kg, pcs, cases adjusted)"
           />
           <StatCard
             title="Items expiring soon"
