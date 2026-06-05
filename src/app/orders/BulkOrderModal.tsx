@@ -18,6 +18,7 @@ import {
   type SaleUnit,
 } from "@/lib/order-line-math";
 import type { StockUnit } from "@/db/schema";
+import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type BulkOrderProduct = {
@@ -29,6 +30,7 @@ export type BulkOrderProduct = {
   bulkPrice: number;
   stockUnit: StockUnit;
   kgPerSack: number | null;
+  unitsPerCase: number | null;
 };
 
 type Line = { productId: number; quantity: string };
@@ -95,6 +97,7 @@ export function BulkOrderModal(props: {
         p.retailPrice,
         p.bulkPrice,
         p.kgPerSack,
+        p.unitsPerCase,
       );
       const qtyParsed = parseQuantityInput(l.quantity, saleUnit);
       if (!qtyParsed) return acc;
@@ -116,6 +119,7 @@ export function BulkOrderModal(props: {
       for (const u of saleUnitsForProduct({
         stockUnit: p.stockUnit,
         kgPerSack: p.kgPerSack,
+        unitsPerCase: p.unitsPerCase,
       })) {
         set.add(u);
       }
@@ -214,7 +218,7 @@ export function BulkOrderModal(props: {
                   >
                     {allowedSaleUnits.map((u) => (
                       <option key={u} value={u}>
-                        {u}
+                        {saleUnitLabel(u)}
                       </option>
                     ))}
                   </select>
@@ -291,6 +295,7 @@ export function BulkOrderModal(props: {
                           p.retailPrice,
                           p.bulkPrice,
                           p.kgPerSack,
+                          p.unitsPerCase,
                         )
                       : 0;
                     const qtyParsed = parseQuantityInput(l.quantity, saleUnit);
@@ -337,7 +342,9 @@ export function BulkOrderModal(props: {
                               ? "Weight (kg)"
                               : saleUnit === "Sack"
                                 ? "Sacks"
-                                : "Qty"}
+                                : saleUnit === "Case"
+                                  ? "Cases"
+                                  : "Qty (pcs)"}
                           </div>
                           <input
                             name="quantity"

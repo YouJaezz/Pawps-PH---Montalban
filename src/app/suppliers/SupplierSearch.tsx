@@ -9,10 +9,10 @@ import {
   displayCatalogFlavor,
   displayCatalogItem,
   formatBulkTierNote,
-  formatMoneyOrDash,
   formatPackLabel,
   resolveCatalogItemDetails,
 } from "@/lib/catalog-item-display";
+import { formatSupplierPrice } from "@/lib/price-units";
 
 export type SupplierCatalogRow = {
   id: number;
@@ -29,6 +29,8 @@ export type SupplierCatalogRow = {
   packUnit: string | null;
   perKiloPrice: number | null;
   retailPrice: number | null;
+  priceUnit: string | null;
+  unitsPerCase: number | null;
   notes: string | null;
   fileName: string | null;
 };
@@ -134,7 +136,9 @@ export function SupplierSearch(props: {
               <th className="hidden px-2 py-1.5 font-medium sm:table-cell">Flavor</th>
               <th className="hidden w-14 px-2 py-1.5 font-medium md:table-cell">Size</th>
               <th className="w-20 px-2 py-1.5 font-medium">WS</th>
-              <th className="hidden w-16 px-2 py-1.5 font-medium lg:table-cell">Retail</th>
+              <th className="hidden w-16 px-2 py-1.5 font-medium lg:table-cell">
+                Sup. retail
+              </th>
               <th className="w-12 px-2 py-1.5 font-medium" />
             </tr>
           </thead>
@@ -174,7 +178,7 @@ export function SupplierSearch(props: {
                     </td>
                     <td className="px-2 py-1">
                       <div className="font-medium text-zinc-100">
-                        {formatMoneyOrDash(r.unitCost)}
+                        {formatSupplierPrice(r.unitCost, r.priceUnit)}
                       </div>
                       {bulkTiers ? (
                         <div className="truncate text-[9px] text-zinc-600">
@@ -183,7 +187,7 @@ export function SupplierSearch(props: {
                       ) : null}
                     </td>
                     <td className="hidden px-2 py-1 text-zinc-400 lg:table-cell">
-                      {formatMoneyOrDash(details.retailPrice)}
+                      {formatSupplierPrice(details.retailPrice, r.priceUnit)}
                     </td>
                     <td className="px-2 py-1 align-top">
                       <CatalogItemEditButton
@@ -196,6 +200,8 @@ export function SupplierSearch(props: {
                         perKiloPrice={r.perKiloPrice}
                         packSize={details.packSize}
                         packUnit={details.packUnit}
+                        priceUnit={r.priceUnit}
+                        unitsPerCase={r.unitsPerCase}
                       />
                     </td>
                   </tr>

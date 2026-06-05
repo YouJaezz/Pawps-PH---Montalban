@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { parseSupplierFile } from "@/lib/supplier-parse";
 import { requireAuth } from "@/lib/auth-guard";
+import { inferPriceUnit } from "@/lib/price-units";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
 import { eq } from "drizzle-orm";
 
@@ -222,6 +223,13 @@ export async function uploadSupplierCatalog(
       itemType: row.itemType ?? null,
       productName: row.productName ?? null,
       notes: row.notes ?? null,
+      priceUnit: inferPriceUnit({
+        itemType: row.itemType,
+        packUnit: row.packUnit,
+        packSize: row.packSize,
+        itemName: row.itemName,
+      }),
+      unitsPerCase: 24,
     }));
 
     const historyRows = parsed.map((row) => ({
@@ -419,6 +427,10 @@ export async function createSupplierCatalogItem(formData: FormData) {
   const unitCost = parseMoneyToCents(formData.get("unitCost"));
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const perKiloPrice = parseMoneyToCents(formData.get("perKiloPrice"));
+  const priceUnitRaw = String(formData.get("priceUnit") ?? "Sack");
+  const priceUnit =
+    priceUnitRaw === "Piece" || priceUnitRaw === "Case" ? priceUnitRaw : "Sack";
+  const unitsPerCase = Number.parseInt(String(formData.get("unitsPerCase") ?? "24"), 10);
 
   await db.insert(supplierCatalogItems).values({
     supplierId,
@@ -432,6 +444,8 @@ export async function createSupplierCatalogItem(formData: FormData) {
     packUnit: packUnitRaw.length ? packUnitRaw : null,
     notes: notesRaw.length ? notesRaw : null,
     documentId: null,
+    priceUnit,
+    unitsPerCase: Number.isFinite(unitsPerCase) && unitsPerCase > 0 ? unitsPerCase : 24,
   });
 
   revalidatePath("/suppliers");
@@ -456,6 +470,10 @@ export async function updateSupplierCatalogItem(formData: FormData) {
   const unitCost = parseMoneyToCents(formData.get("unitCost"));
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const perKiloPrice = parseMoneyToCents(formData.get("perKiloPrice"));
+  const priceUnitRaw = String(formData.get("priceUnit") ?? "Sack");
+  const priceUnit =
+    priceUnitRaw === "Piece" || priceUnitRaw === "Case" ? priceUnitRaw : "Sack";
+  const unitsPerCase = Number.parseInt(String(formData.get("unitsPerCase") ?? "24"), 10);
 
   const [existing] = await db
     .select({ id: supplierCatalogItems.id })
@@ -477,6 +495,8 @@ export async function updateSupplierCatalogItem(formData: FormData) {
       packSize: packSizeRaw.length ? packSizeRaw : null,
       packUnit: packUnitRaw.length ? packUnitRaw : null,
       notes: notesRaw.length ? notesRaw : null,
+      priceUnit,
+      unitsPerCase: Number.isFinite(unitsPerCase) && unitsPerCase > 0 ? unitsPerCase : 24,
     })
     .where(eq(supplierCatalogItems.id, id));
 

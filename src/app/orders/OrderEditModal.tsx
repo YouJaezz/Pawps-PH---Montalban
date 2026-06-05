@@ -11,6 +11,7 @@ import {
   saleUnitsForProduct,
   type SaleUnit,
 } from "@/lib/order-line-math";
+import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
 
 export type OrderLineEdit = {
@@ -25,6 +26,7 @@ export type OrderLineEdit = {
   lineTotal: number;
   stockUnit: string;
   kgPerSack: number | null;
+  unitsPerCase: number | null;
 };
 
 export type OrderEditPayload = {
@@ -137,9 +139,10 @@ export function OrderEditModal(props: {
                             {saleUnitsForProduct({
                               stockUnit: line.stockUnit,
                               kgPerSack: line.kgPerSack,
+                              unitsPerCase: line.unitsPerCase,
                             }).map((u) => (
                               <option key={u} value={u}>
-                                {u}
+                                {saleUnitLabel(u)}
                               </option>
                             ))}
                           </select>

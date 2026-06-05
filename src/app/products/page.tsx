@@ -12,14 +12,11 @@ import { products, suppliers } from "@/db/schema";
 import {
   displayCatalogFlavor,
   displayCatalogItem,
-  formatMoneyOrDash,
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
-import {
-  computeInventoryValuation,
-  effectiveStockQty,
-} from "@/lib/inventory-valuation";
-import { formatStockLabel } from "@/lib/product-stock";
+import { computeInventoryValuation } from "@/lib/inventory-valuation";
+import { formatDualStock } from "@/lib/product-stock";
+import { formatSupplierPrice } from "@/lib/price-units";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -39,14 +36,14 @@ export default async function ProductsPage() {
         packSize: products.packSize,
         stockUnit: products.stockUnit,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
         stockQuantity: products.stockQuantity,
         purchaseTier: products.purchaseTier,
         supplierId: products.supplierId,
-        supplierRetailPrice: products.supplierRetailPrice,
-        supplierBulkPrice: products.supplierBulkPrice,
+        supplierCatalogItemId: products.supplierCatalogItemId,
       })
       .from(products)
       .where(eq(products.archived, false))
@@ -54,6 +51,8 @@ export default async function ProductsPage() {
   ]);
 
   const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
+
+  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
 
   const catalogPickItems = catalogItems.map((c) => ({
     id: c.id,
@@ -66,6 +65,9 @@ export default async function ProductsPage() {
     perKiloPrice: c.perKiloPrice,
     packSize: c.packSize,
     packUnit: c.packUnit,
+    priceUnit: c.priceUnit,
+    unitsPerCase: c.unitsPerCase,
+    itemType: c.itemType,
   }));
 
   const suppliersForForm = supplierRows.map((s) => ({
@@ -137,164 +139,183 @@ export default async function ProductsPage() {
         </div>
 
         <div className="mt-5">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="mb-3 text-sm font-medium text-zinc-100">
-                Inventory ({rows.length})
-              </div>
-
-              <ScrollableTable maxHeight="max-h-[min(75vh,800px)]">
-                <table className="w-full table-auto text-xs">
-                  <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
-                    <tr>
-                      <th className="px-2 py-2">Item</th>
-                      <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
-                      <th className="px-2 py-2">Flavor</th>
-                      <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
-                      <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
-                      <th className="hidden px-2 py-2 lg:table-cell">Sup. wholesale</th>
-                      <th className="px-2 py-2">Total cost</th>
-                      <th className="hidden px-2 py-2 sm:table-cell">Unit cost</th>
-                      <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
-                      <th className="hidden px-2 py-2 sm:table-cell">Retail</th>
-                      <th className="hidden px-2 py-2 sm:table-cell">Bulk</th>
-                      <th className="px-2 py-2">Stock</th>
-                      <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
-                      <th className="w-24 px-2 py-2">Restock</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {rows.length === 0 ? (
-                      <tr>
-                        <td className="px-3 py-5 text-zinc-400" colSpan={14}>
-                          No inventory — pick a supplier catalog item to add.
-                        </td>
-                      </tr>
-                    ) : (
-                      rows.map((p) => {
-                        const item = displayCatalogItem(null, p.name);
-                        const brand = p.brand
-                          ? displayCatalogItem(null, p.brand)
-                          : "—";
-                        const flavor =
-                          p.variant?.trim()
-                            ? displayCatalogFlavor(p.variant, p.name)
-                            : "—";
-                        const effectiveQty = effectiveStockQty({
-                          costPrice: p.costPrice,
-                          retailPrice: p.retailPrice,
-                          stockQuantity: p.stockQuantity,
-                          stockUnit: p.stockUnit as StockUnit,
-                        });
-                        const profit =
-                          Math.max(0, p.retailPrice - p.costPrice) * effectiveQty;
-                        const totalCost = p.costPrice * effectiveQty;
-
-                        return (
-                          <tr key={p.id} className="hover:bg-white/5">
-                            <td className="px-2 py-2 font-medium text-zinc-50">
-                              {item}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
-                              {brand}
-                            </td>
-                            <td className="px-2 py-2 text-zinc-300">{flavor}</td>
-                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                              {p.supplierId
-                                ? (supplierById.get(p.supplierId) ?? "—")
-                                : "—"}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                              {formatMoneyOrDash(p.supplierRetailPrice)}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                              {formatMoneyOrDash(p.supplierBulkPrice)}
-                            </td>
-                            <td className="px-2 py-2 font-medium text-amber-100">
-                              {formatPhpFromCents(totalCost)}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-400 sm:table-cell">
-                              {formatPhpFromCents(p.costPrice)}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                              {p.purchaseTier}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
-                              {formatPhpFromCents(p.retailPrice)}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
-                              {formatPhpFromCents(p.bulkPrice)}
-                            </td>
-                            <td className="px-2 py-2 font-medium">
-                              {formatStockLabel(
-                                p.stockUnit as StockUnit,
-                                p.stockQuantity,
-                                p.kgPerSack,
-                              )}
-                              {p.packSize ? (
-                                <div className="text-[9px] text-zinc-600">
-                                  {p.packSize}
-                                </div>
-                              ) : null}
-                            </td>
-                            <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
-                              +{formatPhpFromCents(profit)}
-                            </td>
-                            <td className="px-2 py-2">
-                              <div className="flex flex-col gap-1">
-                                <ProductEditButton
-                                  product={{
-                                    id: p.id,
-                                    name: p.name,
-                                    brand: p.brand,
-                                    variant: p.variant,
-                                    packSize: p.packSize,
-                                    stockUnit: p.stockUnit as StockUnit,
-                                    stockQuantity: effectiveStockQty({
-                                      costPrice: p.costPrice,
-                                      retailPrice: p.retailPrice,
-                                      stockQuantity: p.stockQuantity,
-                                      stockUnit: p.stockUnit as StockUnit,
-                                    }),
-                                    kgPerSack: p.kgPerSack,
-                                    retailPrice: p.retailPrice,
-                                    bulkPrice: p.bulkPrice,
-                                  }}
-                                />
-                                <form action={restockProduct} className="flex gap-1">
-                                  <input type="hidden" name="productId" value={p.id} />
-                                  <input
-                                    name="quantity"
-                                    type="number"
-                                    min={1}
-                                    placeholder="+"
-                                    className="w-10 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs outline-none"
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200"
-                                  >
-                                    Add
-                                  </button>
-                                </form>
-                                <form action={deleteProduct}>
-                                  <input type="hidden" name="productId" value={p.id} />
-                                  <button
-                                    type="submit"
-                                    className="text-[10px] text-red-400/80 hover:text-red-300"
-                                  >
-                                    Remove
-                                  </button>
-                                </form>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </ScrollableTable>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-3 text-sm font-medium text-zinc-100">
+              Inventory ({rows.length})
             </div>
+
+            <ScrollableTable maxHeight="max-h-[min(75vh,800px)]">
+              <table className="w-full table-auto text-xs">
+                <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+                  <tr>
+                    <th className="px-2 py-2">Item</th>
+                    <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
+                    <th className="px-2 py-2">Flavor</th>
+                    <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
+                    <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
+                    <th className="hidden px-2 py-2 lg:table-cell">Sup. WS</th>
+                    <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
+                    <th className="hidden px-2 py-2 sm:table-cell">Our retail</th>
+                    <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
+                    <th className="px-2 py-2">Stock</th>
+                    <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
+                    <th className="w-20 px-2 py-2">Edit</th>
+                    <th className="w-24 px-2 py-2">Restock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td className="px-3 py-5 text-zinc-400" colSpan={13}>
+                        No inventory — pick a supplier catalog item to add.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((p) => {
+                      const item = displayCatalogItem(null, p.name);
+                      const brand = p.brand
+                        ? displayCatalogItem(null, p.brand)
+                        : "—";
+                      const flavor =
+                        p.variant?.trim()
+                          ? displayCatalogFlavor(p.variant, p.name)
+                          : "—";
+                      const catalog = p.supplierCatalogItemId
+                        ? catalogById.get(p.supplierCatalogItemId)
+                        : undefined;
+                      const priceUnit = catalog?.priceUnit ?? "Sack";
+                      const stock = formatDualStock(
+                        p.stockUnit as StockUnit,
+                        p.stockQuantity,
+                        {
+                          kgPerSack: p.kgPerSack,
+                          unitsPerCase: p.unitsPerCase,
+                        },
+                      );
+                      const retailProfit = Math.max(0, p.retailPrice - p.costPrice);
+                      const bulkProfit =
+                        p.bulkPrice > 0
+                          ? Math.max(0, p.bulkPrice - p.costPrice)
+                          : null;
+                      const isWeight =
+                        p.stockUnit === "Kilogram" || p.kgPerSack != null;
+                      const unitSuffix = isWeight ? "/kg" : "/pc";
+
+                      return (
+                        <tr key={p.id} className="hover:bg-white/5">
+                          <td className="px-2 py-2 font-medium text-zinc-50">
+                            {item}
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
+                            {brand}
+                          </td>
+                          <td className="px-2 py-2 text-zinc-300">{flavor}</td>
+                          <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                            {p.supplierId
+                              ? (supplierById.get(p.supplierId) ?? "—")
+                              : "—"}
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                            {formatSupplierPrice(catalog?.retailPrice, priceUnit)}
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                            {formatSupplierPrice(catalog?.unitCost, priceUnit)}
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                            {p.purchaseTier}
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
+                            {formatPhpFromCents(p.retailPrice)}
+                            <span className="text-[9px] text-zinc-600">
+                              {unitSuffix}
+                            </span>
+                          </td>
+                          <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
+                            {p.bulkPrice > 0 ? (
+                              <>
+                                {formatPhpFromCents(p.bulkPrice)}
+                                <span className="text-[9px] text-zinc-600">
+                                  {unitSuffix}
+                                </span>
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-2 py-2 font-medium">
+                            <div>{stock.primary}</div>
+                            {stock.secondary !== "—" ? (
+                              <div className="text-[9px] font-normal text-zinc-500">
+                                {stock.secondary}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
+                            <div>
+                              R: +{formatPhpFromCents(retailProfit)}
+                              {unitSuffix}
+                            </div>
+                            {bulkProfit != null ? (
+                              <div className="text-[10px] text-emerald-500/80">
+                                W: +{formatPhpFromCents(bulkProfit)}
+                                {unitSuffix}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2 align-top">
+                            <ProductEditButton
+                              product={{
+                                id: p.id,
+                                name: p.name,
+                                brand: p.brand,
+                                variant: p.variant,
+                                packSize: p.packSize,
+                                stockUnit: p.stockUnit as StockUnit,
+                                stockQuantity: p.stockQuantity,
+                                kgPerSack: p.kgPerSack,
+                                unitsPerCase: p.unitsPerCase,
+                                retailPrice: p.retailPrice,
+                                bulkPrice: p.bulkPrice,
+                              }}
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-col gap-1">
+                              <form action={restockProduct} className="flex gap-1">
+                                <input type="hidden" name="productId" value={p.id} />
+                                <input
+                                  name="quantity"
+                                  type="number"
+                                  min={1}
+                                  placeholder="+"
+                                  className="w-10 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-center text-xs outline-none"
+                                />
+                                <button
+                                  type="submit"
+                                  className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200"
+                                >
+                                  Add
+                                </button>
+                              </form>
+                              <form action={deleteProduct}>
+                                <input type="hidden" name="productId" value={p.id} />
+                                <button
+                                  type="submit"
+                                  className="text-[10px] text-red-400/80 hover:text-red-300"
+                                >
+                                  Remove
+                                </button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </ScrollableTable>
+          </div>
         </div>
       </div>
     </AppShell>

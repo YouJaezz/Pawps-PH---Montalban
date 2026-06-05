@@ -11,7 +11,12 @@ import {
   displayCatalogItem,
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
-import { displayKgPerSack } from "@/lib/order-line-math";
+import {
+  formatSupplierPrice,
+  isPieceProduct,
+  isWeightProduct,
+  priceUnitLabel,
+} from "@/lib/price-units";
 
 export type CatalogPickOption = {
   id: number;
@@ -24,6 +29,9 @@ export type CatalogPickOption = {
   perKiloPrice: number | null;
   packSize: string | null;
   packUnit: string | null;
+  priceUnit?: string | null;
+  unitsPerCase?: number | null;
+  itemType?: string | null;
 };
 
 export type SupplierOption = {
@@ -102,7 +110,10 @@ export function ProductForm(props: {
   );
   const [trackInKg, setTrackInKg] = useState(false);
   const [kgPerSackInput, setKgPerSackInput] = useState("");
-  const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg">("sacks");
+  const [stockEntryMode, setStockEntryMode] = useState<
+    "sacks" | "kg" | "cases" | "pcs"
+  >("sacks");
+  const [unitsPerCaseInput, setUnitsPerCaseInput] = useState("24");
 
   useEffect(() => {
     if (state?.ok) props.onSuccess?.();
@@ -128,59 +139,126 @@ export function ProductForm(props: {
     ? displayCatalogFlavor(selectedCatalog.variant, selectedCatalog.itemName)
     : "";
 
-  const costPerUnitCents = useMemo(() => {
-    if (!selectedCatalog) return parseMoneyInput(manualCostInput);
-    if (trackInKg && selectedCatalog.perKiloPrice != null && selectedCatalog.perKiloPrice > 0) {
-      return selectedCatalog.perKiloPrice;
-    }
-    return purchaseTier === "Retail"
-      ? (selectedCatalog.retailPrice ?? selectedCatalog.unitCost ?? 0)
-      : (selectedCatalog.unitCost ?? 0);
-  }, [selectedCatalog, manualCostInput, purchaseTier, trackInKg]);
-
   const kgPerSackTenths = useMemo(() => {
     const n = Number(kgPerSackInput.trim());
     if (!Number.isFinite(n) || n <= 0) return null;
     return Math.round(n * 10);
   }, [kgPerSackInput]);
 
+  const isWeight = selectedCatalog
+    ? isWeightProduct({
+        priceUnit: selectedCatalog.priceUnit,
+        packUnit: selectedCatalog.packUnit,
+        kgPerSack: kgPerSackTenths,
+      })
+    : trackInKg;
+
+  const isPiece = selectedCatalog
+    ? isPieceProduct({
+        priceUnit: selectedCatalog.priceUnit,
+        packUnit: selectedCatalog.packUnit,
+      })
+    : !trackInKg;
+
+  const unitsPerCase = Number(unitsPerCaseInput) || 24;
+
+  const costPerUnitCents = useMemo(() => {
+    if (!selectedCatalog) return parseMoneyInput(manualCostInput);
+    const ws = selectedCatalog.unitCost ?? 0;
+    const supRetail = selectedCatalog.retailPrice ?? ws;
+    const base = purchaseTier === "Retail" ? supRetail : ws;
+
+    if (isWeight && trackInKg && selectedCatalog.perKiloPrice != null && selectedCatalog.perKiloPrice > 0) {
+      return selectedCatalog.perKiloPrice;
+    }
+    if (isPiece && selectedCatalog.priceUnit === "Case" && unitsPerCase > 0) {
+      return Math.round(base / unitsPerCase);
+    }
+    if (isWeight && trackInKg && kgPerSackTenths && kgPerSackTenths > 0) {
+      return Math.round(base / (kgPerSackTenths / 10));
+    }
+    return base;
+  }, [
+    selectedCatalog,
+    manualCostInput,
+    purchaseTier,
+    trackInKg,
+    isWeight,
+    isPiece,
+    kgPerSackTenths,
+    unitsPerCase,
+  ]);
+
   const stockQtyNum = Number(stockInput);
   const safeStock = useMemo(() => {
     if (!Number.isFinite(stockQtyNum) || stockQtyNum <= 0) return 0;
-    if (trackInKg) {
+    if (isWeight && trackInKg) {
       if (stockEntryMode === "sacks" && kgPerSackTenths) {
         return (stockQtyNum * kgPerSackTenths) / 10;
       }
       return stockQtyNum;
     }
+    if (isPiece && stockEntryMode === "cases") {
+      return stockQtyNum * unitsPerCase;
+    }
     return stockQtyNum;
-  }, [stockQtyNum, trackInKg, stockEntryMode, kgPerSackTenths]);
+  }, [
+    stockQtyNum,
+    isWeight,
+    isPiece,
+    trackInKg,
+    stockEntryMode,
+    kgPerSackTenths,
+    unitsPerCase,
+  ]);
 
-  const totalPurchaseCents = Math.round(costPerUnitCents * safeStock);
-  const stockUnitLabel = trackInKg ? "kg" : "pcs";
+  const stockUnitLabel = isWeight && trackInKg ? "kg" : "pcs";
+  const retailProfitPerUnit = Math.max(0, parseMoneyInput(retailInput) - costPerUnitCents);
+  const bulkProfitPerUnit =
+    bulkInput.trim().length > 0
+      ? Math.max(0, parseMoneyInput(bulkInput) - costPerUnitCents)
+      : null;
 
   function handleCatalogChange(id: string) {
     setCatalogItemId(id);
     const catalog = catalogForSupplier.find((c) => String(c.id) === id);
     if (catalog) {
-      const inferredKg = inferKgPerSackFromCatalog(catalog);
-      if (inferredKg) {
-        setKgPerSackInput(inferredKg);
-        setTrackInKg(true);
-        setStockEntryMode("sacks");
+      const piece = isPieceProduct({
+        priceUnit: catalog.priceUnit,
+        packUnit: catalog.packUnit,
+      });
+      const weight = isWeightProduct({
+        priceUnit: catalog.priceUnit,
+        packUnit: catalog.packUnit,
+      });
+
+      if (piece) {
+        setTrackInKg(false);
+        setStockEntryMode(catalog.priceUnit === "Case" ? "cases" : "pcs");
+        setUnitsPerCaseInput(String(catalog.unitsPerCase ?? 24));
+        setRetailInput("");
+        setBulkInput("");
+      } else if (weight) {
+        const inferredKg = inferKgPerSackFromCatalog(catalog);
+        if (inferredKg) {
+          setKgPerSackInput(inferredKg);
+          setTrackInKg(true);
+          setStockEntryMode("sacks");
+        }
+        if (catalog.perKiloPrice != null) {
+          setRetailInput(centsToInput(catalog.perKiloPrice));
+        } else {
+          setRetailInput("");
+        }
+        setBulkInput("");
       }
-      if (catalog.perKiloPrice != null) {
-        setRetailInput(centsToInput(catalog.perKiloPrice));
-      } else {
-        setRetailInput(centsToInput(catalog.retailPrice));
-      }
-      setBulkInput("");
     } else {
       setRetailInput("");
       setBulkInput("");
       setManualCostInput("");
       setKgPerSackInput("");
       setTrackInKg(false);
+      setStockEntryMode("pcs");
     }
   }
 
@@ -278,34 +356,43 @@ export function ProductForm(props: {
         </>
       ) : null}
 
+      {selectedCatalog ? (
+        <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Supplier prices (from pricelist)
+          </div>
+          <div className="mt-1.5 grid grid-cols-2 gap-2 text-zinc-300">
+            <div>
+              <span className="text-zinc-500">WS </span>
+              {formatSupplierPrice(
+                selectedCatalog.unitCost,
+                selectedCatalog.priceUnit,
+              )}
+            </div>
+            <div>
+              <span className="text-zinc-500">Retail </span>
+              {formatSupplierPrice(
+                selectedCatalog.retailPrice,
+                selectedCatalog.priceUnit,
+              )}
+            </div>
+            {selectedCatalog.perKiloPrice != null ? (
+              <div className="col-span-2 text-[10px] text-zinc-500">
+                Per kg WS: {formatPhpFromCents(selectedCatalog.perKiloPrice)}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
         <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-          Supplier · Your prices
+          Your shop prices &amp; stock
         </div>
-        <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">Sup. retail</span>
-          <input
-            name="supplierRetailPrice"
-            key={`sr-${catalogItemId}`}
-            defaultValue={centsToInput(selectedCatalog?.retailPrice)}
-            inputMode="decimal"
-            className={fieldClass}
-          />
-        </label>
-        <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">Sup. wholesale</span>
-          <input
-            name="supplierBulkPrice"
-            key={`sb-${catalogItemId}`}
-            defaultValue={centsToInput(selectedCatalog?.unitCost)}
-            inputMode="decimal"
-            className={fieldClass}
-          />
-        </label>
 
         {selectedCatalog ? (
           <label className="col-span-2 space-y-0.5">
-            <span className="text-[10px] text-zinc-500">How I bought this *</span>
+            <span className="text-[10px] text-zinc-500">Bought as *</span>
             <select
               name="purchaseTier"
               value={purchaseTier}
@@ -314,14 +401,18 @@ export function ProductForm(props: {
               }
               className={fieldClass}
             >
-              <option value="Wholesale">Wholesale (supplier bulk price)</option>
-              <option value="Retail">Retail (supplier retail price)</option>
+              <option value="Wholesale">
+                Wholesale ({priceUnitLabel(selectedCatalog.priceUnit ?? "Sack")})
+              </option>
+              <option value="Retail">
+                Retail ({priceUnitLabel(selectedCatalog.priceUnit ?? "Sack")})
+              </option>
             </select>
           </label>
         ) : (
           <>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">How I bought this *</span>
+              <span className="text-[10px] text-zinc-500">Bought as *</span>
               <select name="purchaseTier" defaultValue="Wholesale" className={fieldClass}>
                 <option value="Wholesale">Wholesale</option>
                 <option value="Retail">Retail</option>
@@ -341,19 +432,9 @@ export function ProductForm(props: {
           </>
         )}
 
-        <label className="col-span-2 flex items-center gap-2 text-[11px] text-zinc-300">
-          <input
-            type="checkbox"
-            name="trackInKg"
-            checked={trackInKg}
-            onChange={(e) => setTrackInKg(e.target.checked)}
-            className="rounded border-white/20"
-          />
-          Track stock by kilogram (sacks convert to kg)
-        </label>
-
-        {trackInKg ? (
+        {isWeight && selectedCatalog ? (
           <>
+            <input type="hidden" name="trackInKg" value="on" />
             <label className="space-y-0.5">
               <span className="text-[10px] text-zinc-500">Kg per sack *</span>
               <input
@@ -382,51 +463,79 @@ export function ProductForm(props: {
               </select>
             </label>
           </>
-        ) : null}
+        ) : isPiece && selectedCatalog ? (
+          <>
+            <input type="hidden" name="trackInKg" value="off" />
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">Cans per case</span>
+              <input
+                name="unitsPerCase"
+                value={unitsPerCaseInput}
+                onChange={(e) => setUnitsPerCaseInput(e.target.value)}
+                type="number"
+                min={1}
+                className={fieldClass}
+              />
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">Add stock as</span>
+              <select
+                name="stockEntryMode"
+                value={stockEntryMode}
+                onChange={(e) =>
+                  setStockEntryMode(e.target.value as "cases" | "pcs")
+                }
+                className={fieldClass}
+              >
+                <option value="cases">Cases</option>
+                <option value="pcs">Pieces</option>
+              </select>
+            </label>
+          </>
+        ) : (
+          <label className="col-span-2 flex items-center gap-2 text-[11px] text-zinc-300">
+            <input
+              type="checkbox"
+              name="trackInKg"
+              checked={trackInKg}
+              onChange={(e) => setTrackInKg(e.target.checked)}
+              className="rounded border-white/20"
+            />
+            Track stock by kilogram (sacks convert to kg)
+          </label>
+        )}
 
         <label className="space-y-0.5">
           <span className="text-[10px] text-zinc-500">
-            {trackInKg
+            {isWeight && trackInKg
               ? stockEntryMode === "sacks"
                 ? "Stock (sacks)"
                 : "Stock (kg)"
-              : "Stock"}
+              : isPiece
+                ? stockEntryMode === "cases"
+                  ? "Stock (cases)"
+                  : "Stock (pcs)"
+                : "Stock"}
           </span>
           <input
             name="stockQuantity"
             inputMode="decimal"
-            step={trackInKg ? "0.1" : "1"}
+            step={isWeight && trackInKg ? "0.1" : "1"}
             value={stockInput}
             onChange={(e) => setStockInput(e.target.value)}
             className={fieldClass}
           />
-          {trackInKg && safeStock > 0 ? (
+          {safeStock > 0 ? (
             <span className="text-[10px] text-zinc-600">
-              ≈ {safeStock % 1 === 0 ? safeStock.toFixed(0) : safeStock.toFixed(1)} kg
-              on hand
+              ≈ {safeStock % 1 === 0 ? safeStock.toFixed(0) : safeStock.toFixed(1)}{" "}
+              {stockUnitLabel} on hand
             </span>
           ) : null}
         </label>
 
-        <div className="col-span-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-2">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-amber-200/80">
-            Total purchase cost
-          </div>
-          <div className="mt-0.5 text-sm font-semibold text-amber-100">
-            {costPerUnitCents > 0 && safeStock > 0
-              ? formatPhpFromCents(totalPurchaseCents)
-              : "—"}
-          </div>
-          <div className="mt-0.5 text-[10px] text-zinc-500">
-            {costPerUnitCents > 0 && safeStock > 0
-              ? `${formatPhpFromCents(costPerUnitCents)} × ${safeStock} ${stockUnitLabel}`
-              : "Set stock to see total cost"}
-          </div>
-        </div>
-
         <label className="space-y-0.5">
           <span className="text-[10px] text-zinc-500">
-            {trackInKg ? "My retail (per kg)" : "My retail"}
+            {isWeight && trackInKg ? "Our retail (per kg)" : "Our retail (per pc)"}
           </span>
           <input
             name="retailPrice"
@@ -438,7 +547,7 @@ export function ProductForm(props: {
         </label>
         <label className="space-y-0.5">
           <span className="text-[10px] text-zinc-500">
-            {trackInKg ? "My bulk (per kg)" : "My bulk"}
+            {isWeight && trackInKg ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
           </span>
           <input
             name="bulkPrice"
@@ -448,9 +557,33 @@ export function ProductForm(props: {
             className={fieldClass}
           />
         </label>
-        {trackInKg && kgPerSackTenths ? (
-          <div className="col-span-2 text-[10px] text-zinc-600">
-            Per sack sell hint: retail × {displayKgPerSack(kgPerSackTenths)} kg
+
+        {costPerUnitCents > 0 && parseMoneyInput(retailInput) > 0 ? (
+          <div className="col-span-2 space-y-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2">
+            <ProfitLine
+              label="Retail profit"
+              perUnit={retailProfitPerUnit}
+              total={
+                safeStock > 0
+                  ? Math.round(retailProfitPerUnit * safeStock)
+                  : null
+              }
+              stock={safeStock}
+              unitLabel={stockUnitLabel}
+            />
+            {bulkProfitPerUnit != null ? (
+              <ProfitLine
+                label="Wholesale profit"
+                perUnit={bulkProfitPerUnit}
+                total={
+                  safeStock > 0
+                    ? Math.round(bulkProfitPerUnit * safeStock)
+                    : null
+                }
+                stock={safeStock}
+                unitLabel={stockUnitLabel}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

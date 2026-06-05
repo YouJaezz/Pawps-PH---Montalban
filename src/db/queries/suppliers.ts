@@ -23,6 +23,8 @@ export async function getSupplierCatalogRows() {
         packUnit: supplierCatalogItems.packUnit,
         perKiloPrice: supplierCatalogItems.perKiloPrice,
         retailPrice: supplierCatalogItems.retailPrice,
+        priceUnit: supplierCatalogItems.priceUnit,
+        unitsPerCase: supplierCatalogItems.unitsPerCase,
         notes: supplierCatalogItems.notes,
         documentId: supplierCatalogItems.documentId,
       })
@@ -77,6 +79,8 @@ export async function getSupplierCatalogRows() {
     packUnit: r.packUnit,
     perKiloPrice: r.perKiloPrice,
     retailPrice: r.retailPrice,
+    priceUnit: r.priceUnit,
+    unitsPerCase: r.unitsPerCase,
     notes: r.notes,
     fileName: r.documentId ? (docById.get(r.documentId) ?? null) : null,
   }));

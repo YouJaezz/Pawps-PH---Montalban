@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { updateSupplierCatalogItem } from "@/app/suppliers/actions";
+import type { PriceUnit } from "@/db/schema";
+import { priceUnitLabel } from "@/lib/price-units";
 
 const inputClass =
   "w-full rounded border border-white/10 bg-black/30 px-1 py-0.5 text-[10px] text-zinc-50 outline-none";
@@ -22,8 +24,13 @@ export function CatalogItemEditButton(props: {
   perKiloPrice: number | null;
   packSize: string | null;
   packUnit: string | null;
+  priceUnit?: string | null;
+  unitsPerCase?: number | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [priceUnit, setPriceUnit] = useState<PriceUnit>(
+    (props.priceUnit as PriceUnit) ?? "Sack",
+  );
 
   if (!open) {
     return (
@@ -76,26 +83,50 @@ export function CatalogItemEditButton(props: {
             className={inputClass}
           />
         </div>
-        <div className="grid grid-cols-3 gap-1">
+        <select
+          name="priceUnit"
+          value={priceUnit}
+          onChange={(e) => setPriceUnit(e.target.value as PriceUnit)}
+          className={inputClass}
+        >
+          <option value="Sack">Sack</option>
+          <option value="Piece">Piece</option>
+          <option value="Case">Case</option>
+        </select>
+        {priceUnit === "Case" ? (
+          <input
+            name="unitsPerCase"
+            type="number"
+            min={1}
+            defaultValue={props.unitsPerCase ?? 24}
+            placeholder="Cans per case"
+            className={inputClass}
+          />
+        ) : (
+          <input type="hidden" name="unitsPerCase" value={props.unitsPerCase ?? 24} />
+        )}
+        <div className="grid grid-cols-2 gap-1">
           <input
             name="unitCost"
             defaultValue={centsToInput(props.unitCost)}
-            placeholder="WS ₱"
+            placeholder={`WS ${priceUnitLabel(priceUnit)}`}
             className={inputClass}
           />
           <input
             name="retailPrice"
             defaultValue={centsToInput(props.retailPrice)}
-            placeholder="Retail ₱"
-            className={inputClass}
-          />
-          <input
-            name="perKiloPrice"
-            defaultValue={centsToInput(props.perKiloPrice)}
-            placeholder="Per kg ₱"
+            placeholder={`Retail ${priceUnitLabel(priceUnit)}`}
             className={inputClass}
           />
         </div>
+        {priceUnit === "Sack" ? (
+          <input
+            name="perKiloPrice"
+            defaultValue={centsToInput(props.perKiloPrice)}
+            placeholder="Per kg WS"
+            className={inputClass}
+          />
+        ) : null}
         <div className="flex gap-1">
           <button
             type="submit"

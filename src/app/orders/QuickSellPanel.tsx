@@ -18,6 +18,7 @@ import {
   unitPriceForSale,
   type SaleUnit,
 } from "@/lib/order-line-math";
+import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
 import { formatStockLabel } from "@/lib/product-stock";
 
@@ -31,6 +32,7 @@ export type QuickSellProduct = {
   stockQuantity: number;
   stockUnit: StockUnit;
   kgPerSack: number | null;
+  unitsPerCase: number | null;
 };
 
 export function QuickSellPanel(props: {
@@ -85,6 +87,7 @@ export function QuickSellPanel(props: {
         product.retailPrice,
         product.bulkPrice,
         product.kgPerSack,
+        product.unitsPerCase,
       )
     : 0;
   const qtyParsed = parseQuantityInput(quantity, saleUnit);
@@ -101,6 +104,7 @@ export function QuickSellPanel(props: {
     ? saleUnitsForProduct({
         stockUnit: product.stockUnit,
         kgPerSack: product.kgPerSack,
+        unitsPerCase: product.unitsPerCase,
       })
     : (["Piece"] as SaleUnit[]);
 
@@ -177,7 +181,7 @@ export function QuickSellPanel(props: {
                     <option key={p.id} value={p.id}>
                       {p.name} — {p.brand}
                       {p.variant ? ` (${p.variant})` : ""} | stock{" "}
-                      {formatStockLabel(p.stockUnit, p.stockQuantity, p.kgPerSack)}
+                      {formatStockLabel(p.stockUnit, p.stockQuantity, p.kgPerSack, p.unitsPerCase)}
                     </option>
                   ))}
                 </select>
@@ -194,7 +198,7 @@ export function QuickSellPanel(props: {
                   >
                     {allowedSaleUnits.map((u) => (
                       <option key={u} value={u}>
-                        {u}
+                        {saleUnitLabel(u)}
                       </option>
                     ))}
                   </select>
@@ -205,7 +209,9 @@ export function QuickSellPanel(props: {
                       ? "Weight (kg) *"
                       : saleUnit === "Sack"
                         ? "Sacks *"
-                        : "Qty *"}
+                        : saleUnit === "Case"
+                          ? "Cases *"
+                          : "Qty (pcs) *"}
                   </div>
                   <input
                     name="quantity"

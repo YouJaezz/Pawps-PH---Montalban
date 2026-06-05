@@ -107,6 +107,7 @@ async function reserveStockForOrder(orderId: number, note: string) {
         id: products.id,
         stockQuantity: products.stockQuantity,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
       })
       .from(products)
       .where(eq(products.id, line.productId))
@@ -119,6 +120,7 @@ async function reserveStockForOrder(orderId: number, note: string) {
       line.quantity,
       line.quantityTenths,
       product.kgPerSack,
+      product.unitsPerCase,
     );
 
     await db

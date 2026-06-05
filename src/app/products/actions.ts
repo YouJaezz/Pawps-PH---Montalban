@@ -83,6 +83,21 @@ export async function createProduct(
   const purchaseTier =
     purchaseTierRaw === "Retail" ? ("Retail" as const) : ("Wholesale" as const);
 
+  const trackInKg = formData.get("trackInKg") === "on";
+  const stockEntryModeRaw = String(formData.get("stockEntryMode") ?? "");
+  const stockEntryMode =
+    stockEntryModeRaw === "sacks"
+      ? ("sacks" as const)
+      : stockEntryModeRaw === "cases"
+        ? ("cases" as const)
+        : stockEntryModeRaw === "pcs"
+          ? ("pcs" as const)
+          : ("kg" as const);
+  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
+  const unitsPerCaseRaw = Number.parseInt(String(formData.get("unitsPerCase") ?? "24"), 10);
+  const unitsPerCase =
+    Number.isFinite(unitsPerCaseRaw) && unitsPerCaseRaw > 0 ? unitsPerCaseRaw : 24;
+
   if (catalogItemId && Number.isFinite(catalogItemId)) {
     const [catalogRow] = await db
       .select({
@@ -94,6 +109,8 @@ export async function createProduct(
         perKiloPrice: supplierCatalogItems.perKiloPrice,
         packSize: supplierCatalogItems.packSize,
         packUnit: supplierCatalogItems.packUnit,
+        priceUnit: supplierCatalogItems.priceUnit,
+        unitsPerCase: supplierCatalogItems.unitsPerCase,
       })
       .from(supplierCatalogItems)
       .where(eq(supplierCatalogItems.id, catalogItemId))
@@ -110,22 +127,27 @@ export async function createProduct(
           ? displayCatalogFlavor(catalogRow.variant, catalogRow.itemName)
           : null);
 
+      supplierRetailPrice = catalogRow.retailPrice ?? 0;
+      supplierBulkPrice = catalogRow.unitCost ?? 0;
+
+      const ws = catalogRow.unitCost ?? 0;
+      const supRetail = catalogRow.retailPrice ?? ws;
+      const base = purchaseTier === "Retail" ? supRetail : ws;
+      const caseSize = catalogRow.unitsPerCase ?? unitsPerCase;
+
       if (!formData.get("costPrice")) {
-        const trackInKg = formData.get("trackInKg") === "on";
         if (trackInKg && catalogRow.perKiloPrice != null && catalogRow.perKiloPrice > 0) {
           costPrice = catalogRow.perKiloPrice;
+        } else if (
+          catalogRow.priceUnit === "Case" &&
+          caseSize > 0
+        ) {
+          costPrice = Math.round(base / caseSize);
+        } else if (trackInKg && kgPerSack != null && kgPerSack > 0) {
+          costPrice = Math.round(base / (kgPerSack / 10));
         } else {
-          costPrice =
-            purchaseTier === "Retail"
-              ? (catalogRow.retailPrice ?? catalogRow.unitCost ?? 0)
-              : (catalogRow.unitCost ?? 0);
+          costPrice = base;
         }
-      }
-      if (!formData.get("supplierRetailPrice") && catalogRow.retailPrice != null) {
-        supplierRetailPrice = catalogRow.retailPrice;
-      }
-      if (!formData.get("supplierBulkPrice") && catalogRow.unitCost != null) {
-        supplierBulkPrice = catalogRow.unitCost;
       }
     }
   }
@@ -141,16 +163,12 @@ export async function createProduct(
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
 
-  const trackInKg = formData.get("trackInKg") === "on";
-  const stockEntryMode =
-    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
-  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
-
   const stockUnit: StockUnit = trackInKg ? "Kilogram" : "Piece";
   const stockQuantity =
     parseStockQuantityInput(String(formData.get("stockQuantity") ?? "0"), stockUnit, {
       stockEntryMode,
       kgPerSack,
+      unitsPerCase,
     }) ?? 0;
 
   const inserted = await db
@@ -165,6 +183,7 @@ export async function createProduct(
       stockQuantity,
       stockUnit,
       kgPerSack: trackInKg ? kgPerSack : null,
+      unitsPerCase: trackInKg ? null : unitsPerCase,
       expiryDate: null,
       supplierId,
       supplierCatalogItemId:

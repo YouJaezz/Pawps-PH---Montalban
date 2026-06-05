@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 
 import { updateProduct } from "@/app/products/actions";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
-import { stockQtyLabel } from "@/lib/product-stock";
+import { displayStockQuantity, stockQtyLabel } from "@/lib/product-stock";
 
 export type ProductEditRow = {
   id: number;
@@ -17,6 +18,7 @@ export type ProductEditRow = {
   stockUnit: StockUnit;
   stockQuantity: number;
   kgPerSack: number | null;
+  unitsPerCase: number | null;
   retailPrice: number;
   bulkPrice: number;
 };
@@ -29,9 +31,13 @@ function centsToInput(cents: number) {
 }
 
 export function ProductEditButton(props: { product: ProductEditRow }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [stockUnit, setStockUnit] = useState<StockUnit>(props.product.stockUnit);
-  const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg">("kg");
+  const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg" | "cases" | "pcs">(
+    props.product.stockUnit === "Kilogram" ? "kg" : "pcs",
+  );
   const [kgPerSackInput, setKgPerSackInput] = useState(
     props.product.kgPerSack != null
       ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
@@ -55,6 +61,10 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   const p = props.product;
   const isWeight =
     stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null;
+  const displayQty = displayStockQuantity(
+    stockUnit === "Sack" ? "Kilogram" : stockUnit,
+    p.stockQuantity,
+  );
 
   return (
     <>
@@ -69,7 +79,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
           );
           setOpen(true);
         }}
-        className="text-[10px] text-[#e8a44a]/90 hover:text-[#e8a44a]"
+        className="rounded border border-[#e8a44a]/30 px-2 py-0.5 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/10"
       >
         Edit
       </button>
@@ -105,7 +115,22 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               </button>
             </div>
 
-            <form action={updateProduct} className="mt-4 space-y-3">
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                startTransition(async () => {
+                  try {
+                    await updateProduct(fd);
+                    setOpen(false);
+                    router.refresh();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : "Save failed.");
+                  }
+                });
+              }}
+            >
               <input type="hidden" name="productId" value={p.id} />
 
               <label className="block space-y-1">
@@ -211,7 +236,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                     stockUnit === "Kilogram" || stockUnit === "Sack" ? "0.1" : "1"
                   }
                   required
-                  defaultValue={String(p.stockQuantity)}
+                  defaultValue={String(displayQty)}
                   className={inputClass}
                 />
                 <span className="text-[10px] text-zinc-600">
@@ -223,7 +248,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
                   <span className="text-xs text-zinc-400">
-                    {isWeight ? "Sell retail (per kg)" : "Sell retail (₱)"}
+                    {isWeight ? "Our retail (per kg)" : "Our retail (per pc)"}
                   </span>
                   <input
                     name="retailPrice"
@@ -234,7 +259,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 </label>
                 <label className="block space-y-1">
                   <span className="text-xs text-zinc-400">
-                    {isWeight ? "Sell bulk (per kg)" : "Sell bulk (₱)"}
+                    {isWeight ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
                   </span>
                   <input
                     name="bulkPrice"
@@ -253,9 +278,10 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               <div className="flex gap-2 pt-1">
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-zinc-50 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+                  disabled={pending}
+                  className="flex-1 rounded-lg bg-zinc-50 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
                 >
-                  Save changes
+                  {pending ? "Saving…" : "Save changes"}
                 </button>
                 <button
                   type="button"

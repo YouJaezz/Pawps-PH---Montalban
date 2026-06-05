@@ -1,4 +1,4 @@
-export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
+export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack", "Case"] as const;
 export type SaleUnit = (typeof SALE_UNITS)[number];
 
 export function isSaleUnit(value: string): value is SaleUnit {
@@ -59,12 +59,16 @@ export function stockDeductQuantity(
   quantity: number,
   quantityTenths: number | null | undefined,
   kgPerSack: number | null | undefined,
+  unitsPerCase?: number | null | undefined,
 ) {
   if (saleUnit === "Kilogram" && quantityTenths != null) {
     return Math.max(0, quantityTenths);
   }
   if (saleUnit === "Sack" && kgPerSack != null && kgPerSack > 0) {
     return quantity * kgPerSack;
+  }
+  if (saleUnit === "Case" && unitsPerCase != null && unitsPerCase > 0) {
+    return quantity * unitsPerCase;
   }
   return quantity;
 }
@@ -74,8 +78,15 @@ export function stockRestockQuantity(
   quantity: number,
   quantityTenths: number | null | undefined,
   kgPerSack: number | null | undefined,
+  unitsPerCase?: number | null | undefined,
 ) {
-  return stockDeductQuantity(saleUnit, quantity, quantityTenths, kgPerSack);
+  return stockDeductQuantity(
+    saleUnit,
+    quantity,
+    quantityTenths,
+    kgPerSack,
+    unitsPerCase,
+  );
 }
 
 export function formatQuantityLabel(
@@ -90,6 +101,9 @@ export function formatQuantityLabel(
   if (saleUnit === "Sack") {
     return `${quantity} sack${quantity === 1 ? "" : "s"}`;
   }
+  if (saleUnit === "Case") {
+    return `${quantity} case${quantity === 1 ? "" : "s"}`;
+  }
   if (saleUnit === "Pack") return `${quantity} pack${quantity === 1 ? "" : "s"}`;
   return `${quantity} pc${quantity === 1 ? "" : "s"}`;
 }
@@ -100,10 +114,14 @@ export function unitPriceForSale(
   retailCents: number,
   bulkCents: number,
   kgPerSack: number | null | undefined,
+  unitsPerCase?: number | null | undefined,
 ) {
   const perUnit = priceTier === "Bulk" ? bulkCents : retailCents;
   if (saleUnit === "Sack" && kgPerSack != null && kgPerSack > 0) {
     return Math.round(perUnit * (kgPerSack / 10));
+  }
+  if (saleUnit === "Case" && unitsPerCase != null && unitsPerCase > 0) {
+    return Math.round(perUnit * unitsPerCase);
   }
   return perUnit;
 }
@@ -111,16 +129,26 @@ export function unitPriceForSale(
 export function saleUnitsForProduct(opts: {
   stockUnit: string;
   kgPerSack: number | null | undefined;
+  unitsPerCase?: number | null | undefined;
 }) {
-  const units: SaleUnit[] = ["Piece"];
+  const units: SaleUnit[] = [];
+
   if (opts.stockUnit === "Kilogram" || opts.kgPerSack != null) {
     units.push("Kilogram");
+    if (opts.kgPerSack != null && opts.kgPerSack > 0) {
+      units.push("Sack");
+    }
+  } else {
+    units.push("Piece");
+    const caseSize = opts.unitsPerCase ?? 24;
+    if (caseSize > 1) {
+      units.push("Case");
+    }
   }
-  if (opts.kgPerSack != null && opts.kgPerSack > 0) {
-    units.push("Sack");
-  }
+
   if (opts.stockUnit === "Pack") {
     units.push("Pack");
   }
+
   return [...new Set(units)];
 }

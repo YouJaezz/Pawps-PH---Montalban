@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createSupplierCatalogItem } from "@/app/suppliers/actions";
+import type { PriceUnit } from "@/db/schema";
+import { priceUnitLabel } from "@/lib/price-units";
 
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
@@ -16,6 +18,7 @@ export function AddCatalogItemButton(props: {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [priceUnit, setPriceUnit] = useState<PriceUnit>("Sack");
 
   const defaultSupplier =
     props.defaultSupplierId != null
@@ -54,6 +57,10 @@ export function AddCatalogItemButton(props: {
             Close
           </button>
         </div>
+
+        <p className="mt-2 text-[10px] text-zinc-500">
+          Prices are what the supplier charges — not your shop retail or wholesale.
+        </p>
 
         <form
           className="mt-4 space-y-2"
@@ -100,23 +107,59 @@ export function AddCatalogItemButton(props: {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input name="packSize" placeholder="Size (e.g. 7)" className={inputClass} />
-            <input name="packUnit" placeholder="Unit (kg)" className={inputClass} />
+            <input name="packUnit" placeholder="Unit (kg, g)" className={inputClass} />
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <input name="unitCost" placeholder="WS ₱" inputMode="decimal" className={inputClass} />
-            <input
-              name="retailPrice"
-              placeholder="Retail ₱"
-              inputMode="decimal"
+
+          <label className="block space-y-0.5">
+            <span className="text-[11px] text-zinc-400">Supplier prices are per…</span>
+            <select
+              name="priceUnit"
+              value={priceUnit}
+              onChange={(e) => setPriceUnit(e.target.value as PriceUnit)}
               className={inputClass}
-            />
-            <input
-              name="perKiloPrice"
-              placeholder="Per kg ₱"
-              inputMode="decimal"
-              className={inputClass}
-            />
+            >
+              <option value="Sack">Sack (dry food bags)</option>
+              <option value="Piece">Piece (can / pouch)</option>
+              <option value="Case">Case (box of cans)</option>
+            </select>
+          </label>
+
+          {priceUnit === "Case" ? (
+            <label className="block space-y-0.5">
+              <span className="text-[11px] text-zinc-400">Cans per case</span>
+              <input
+                name="unitsPerCase"
+                type="number"
+                min={1}
+                defaultValue={24}
+                className={inputClass}
+              />
+            </label>
+          ) : (
+            <input type="hidden" name="unitsPerCase" value="24" />
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">
+                WS {priceUnitLabel(priceUnit)}
+              </span>
+              <input name="unitCost" inputMode="decimal" className={inputClass} />
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">
+                Retail {priceUnitLabel(priceUnit)}
+              </span>
+              <input name="retailPrice" inputMode="decimal" className={inputClass} />
+            </label>
           </div>
+
+          {priceUnit === "Sack" ? (
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-zinc-500">Per kg WS (optional)</span>
+              <input name="perKiloPrice" inputMode="decimal" className={inputClass} />
+            </label>
+          ) : null}
 
           {error ? (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">

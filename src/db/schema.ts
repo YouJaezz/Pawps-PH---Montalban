@@ -4,6 +4,12 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 export const STOCK_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
+/** How supplier WS / retail prices are quoted on the pricelist. */
+export const PRICE_UNITS = ["Sack", "Piece", "Case"] as const;
+export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+export const DEFAULT_UNITS_PER_CASE = 24;
+
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -15,6 +21,8 @@ export const products = sqliteTable("products", {
     .default("Piece"),
   /** Tenths of kg per sack (e.g. 70 = 7.0 kg). Used when stocking/selling by sack. */
   kgPerSack: integer("kg_per_sack"),
+  /** Cans/pouches per case (default 24). Used for case ↔ pcs stock display and sales. */
+  unitsPerCase: integer("units_per_case").default(24),
   // Store money as integer cents to avoid floating point issues.
   costPrice: integer("cost_price").notNull(),
   retailPrice: integer("retail_price").notNull(),
@@ -79,7 +87,7 @@ export const orders = sqliteTable("orders", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
+export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack", "Case"] as const;
 export type SaleUnit = (typeof SALE_UNITS)[number];
 
 export const orderItems = sqliteTable("order_items", {
@@ -283,6 +291,10 @@ export const supplierCatalogItems = sqliteTable("supplier_catalog_items", {
   packUnit: text("pack_unit"),
   perKiloPrice: integer("per_kilo_price"),
   retailPrice: integer("retail_price"),
+  /** Sack, Piece, or Case — what WS / retail prices refer to on the supplier list. */
+  priceUnit: text("price_unit", { enum: PRICE_UNITS }).default("Sack"),
+  /** Units per case when priceUnit is Case or for canned/pouch inventory (default 24). */
+  unitsPerCase: integer("units_per_case").default(24),
   notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

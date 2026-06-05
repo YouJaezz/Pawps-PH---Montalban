@@ -84,6 +84,7 @@ async function deductStockForOrder(orderId: number) {
         id: products.id,
         stockQuantity: products.stockQuantity,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
       })
       .from(products)
       .where(eq(products.id, line.productId))
@@ -96,6 +97,7 @@ async function deductStockForOrder(orderId: number) {
       line.quantity,
       line.quantityTenths,
       product.kgPerSack,
+      product.unitsPerCase,
     );
 
     await db
@@ -193,6 +195,7 @@ export async function quickSell(
         stockQuantity: products.stockQuantity,
         stockUnit: products.stockUnit,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
       })
       .from(products)
       .where(and(eq(products.id, productId), eq(products.archived, false)))
@@ -204,12 +207,14 @@ export async function quickSell(
       quantity,
       quantityTenths,
       p.kgPerSack,
+      p.unitsPerCase,
     );
     if (deductStock && p.stockQuantity < deductQty) {
       const stockLabel = formatStockLabel(
         p.stockUnit as import("@/db/schema").StockUnit,
         p.stockQuantity,
         p.kgPerSack,
+        p.unitsPerCase,
       );
       return actionError(
         `Not enough stock (${stockLabel} on hand). Uncheck "Deduct stock" or restock first.`,
@@ -222,6 +227,7 @@ export async function quickSell(
       p.retailPrice,
       p.bulkPrice,
       p.kgPerSack,
+      p.unitsPerCase,
     );
     const lineTotal = lineTotalCents(
       unitPrice,
@@ -365,6 +371,7 @@ export async function createBulkOrder(
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
       })
       .from(products)
       .where(and(inArray(products.id, productIds), eq(products.archived, false)));
@@ -397,6 +404,7 @@ export async function createBulkOrder(
         prod.retailPrice,
         prod.bulkPrice,
         prod.kgPerSack,
+        prod.unitsPerCase,
       );
       const lineTotal = lineTotalCents(
         unitPrice,
@@ -543,7 +551,10 @@ export async function cancelOrder(formData: FormData) {
   if (order.stockDeducted) {
     for (const l of lines) {
       const [p] = await db
-        .select({ kgPerSack: products.kgPerSack })
+        .select({
+          kgPerSack: products.kgPerSack,
+          unitsPerCase: products.unitsPerCase,
+        })
         .from(products)
         .where(eq(products.id, l.productId))
         .limit(1);
@@ -552,6 +563,7 @@ export async function cancelOrder(formData: FormData) {
         l.quantity,
         l.quantityTenths,
         p?.kgPerSack,
+        p?.unitsPerCase,
       );
       restockByProduct.set(
         l.productId,
@@ -793,6 +805,7 @@ export async function updateOrderLineItem(formData: FormData) {
       retailPrice: products.retailPrice,
       bulkPrice: products.bulkPrice,
       kgPerSack: products.kgPerSack,
+      unitsPerCase: products.unitsPerCase,
     })
     .from(products)
     .where(eq(products.id, line.productId))
@@ -809,6 +822,7 @@ export async function updateOrderLineItem(formData: FormData) {
           product.retailPrice,
           product.bulkPrice,
           product.kgPerSack,
+          product.unitsPerCase,
         );
 
   const lineTotal = lineTotalCents(

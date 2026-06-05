@@ -49,6 +49,7 @@ export default async function OrdersPage() {
         stockQuantity: products.stockQuantity,
         stockUnit: products.stockUnit,
         kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
       })
       .from(products)
       .where(eq(products.archived, false)),
@@ -87,6 +88,7 @@ export default async function OrdersPage() {
             variant: products.variant,
             stockUnit: products.stockUnit,
             kgPerSack: products.kgPerSack,
+            unitsPerCase: products.unitsPerCase,
           })
           .from(products)
           .where(inArray(products.id, productIdSet));
@@ -136,6 +138,7 @@ export default async function OrdersPage() {
         lineTotal: l.lineTotal,
         stockUnit: p.stockUnit,
         kgPerSack: p.kgPerSack,
+        unitsPerCase: p.unitsPerCase,
       });
     }
   }
