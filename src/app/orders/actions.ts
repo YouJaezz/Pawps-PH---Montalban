@@ -8,6 +8,7 @@ import { normalizeOrderStatus } from "@/lib/order-status";
 import {
   isSaleUnit,
   formatQuantityLabel,
+  effectiveQuantity,
   lineTotalCents,
   parseQuantityInput,
   stockDeductQuantity,
@@ -18,7 +19,12 @@ import {
 import { formatStockLabel } from "@/lib/product-stock";
 import { formatPhpFromCents } from "@/lib/money";
 import type { OrderReceiptData } from "@/lib/order-receipt";
-import { buildExcessLineNote, excessLineLabel } from "@/lib/excess-sale";
+import {
+  buildCustomSaleLineNote,
+  buildExcessLineNote,
+  excessLineLabel,
+  parseCustomSaleLabel,
+} from "@/lib/excess-sale";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -28,6 +34,7 @@ import {
   products,
   stockMovements,
   type OrderStatus,
+  type StockUnit,
 } from "@/db/schema";
 import { eq, inArray, and, sum } from "drizzle-orm";
 
@@ -199,6 +206,7 @@ export async function quickSell(
       .map((v) => Number.parseInt(String(v), 10))
       .filter((n) => Number.isFinite(n) && n > 0);
     const excessQtyLabels = formData.getAll("excessQtyLabel").map((v) => String(v));
+    const excessQtyPresets = formData.getAll("excessQtyPreset").map((v) => String(v));
     const excessAmountsRaw = formData.getAll("excessAmount").map((v) => String(v));
     const excessNotesRaw = formData.getAll("excessNote").map((v) => String(v));
 
@@ -319,11 +327,60 @@ export async function quickSell(
     for (let i = 0; i < excessProductIds.length; i++) {
       const productId = excessProductIds[i]!;
       const qtyLabel = excessQtyLabels[i]?.trim() ?? "";
+      const qtyPreset = excessQtyPresets[i] ?? "";
       const lineTotal = parseMoneyToCents(excessAmountsRaw[i] ?? null);
       const p = productById.get(productId);
 
       if (!p || !qtyLabel || lineTotal <= 0) {
         return actionError("Invalid excess/bonus line. Check product, label, and amount.");
+      }
+
+      if (qtyPreset === "Custom") {
+        const parsed = parseCustomSaleLabel(qtyLabel, {
+          stockUnit: p.stockUnit as StockUnit,
+          kgPerSack: p.kgPerSack,
+          unitsPerCase: p.unitsPerCase,
+        });
+        if (!parsed) {
+          return actionError(
+            `Could not read custom quantity "${qtyLabel}". Try formats like "0.25 kg", "1 sack", or "3 pcs".`,
+          );
+        }
+
+        const deductQty = stockDeductQuantity(
+          parsed.saleUnit,
+          parsed.quantity,
+          parsed.quantityTenths,
+          p.kgPerSack,
+          p.unitsPerCase,
+        );
+        deductByProduct.set(
+          productId,
+          (deductByProduct.get(productId) ?? 0) + deductQty,
+        );
+
+        const effQty = effectiveQuantity(
+          parsed.quantity,
+          parsed.saleUnit,
+          parsed.quantityTenths,
+        );
+        const unitPrice =
+          effQty > 0 ? Math.round(lineTotal / effQty) : lineTotal;
+
+        totalAmount += lineTotal;
+        lines.push({
+          productId,
+          quantity: parsed.quantity,
+          quantityTenths: parsed.quantityTenths,
+          saleUnit: parsed.saleUnit,
+          priceTier: "Retail",
+          unitCost: p.costPrice,
+          unitPrice,
+          lineTotal,
+          isExcessSale: false,
+          lineNote: buildCustomSaleLineNote(parsed.displayLabel, excessNotesRaw[i]),
+        });
+        continue;
       }
 
       totalAmount += lineTotal;

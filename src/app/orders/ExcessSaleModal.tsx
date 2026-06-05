@@ -209,7 +209,11 @@ export function ExcessSaleModal(props: {
                 action={formAction}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <input type="hidden" name="deductStock" value="" />
+                <input
+                  type="hidden"
+                  name="deductStock"
+                  value={lines.some((line) => line.qtyPreset === "Custom") ? "on" : ""}
+                />
                 {step === "confirm" ? (
                   <div className="hidden" aria-hidden>
                     {lines.map((line, idx) => (
@@ -218,6 +222,11 @@ export function ExcessSaleModal(props: {
                           type="hidden"
                           name="excessProductId"
                           value={line.productId}
+                        />
+                        <input
+                          type="hidden"
+                          name="excessQtyPreset"
+                          value={line.qtyPreset}
                         />
                         <input
                           type="hidden"
@@ -259,8 +268,13 @@ export function ExcessSaleModal(props: {
                       paidCents={totalCents}
                       itemSummary={itemSummary}
                       extraNotes={[
-                        "100% profit — inventory is not reduced for these lines.",
-                      ]}
+                        lines.some((line) => line.qtyPreset === "Custom")
+                          ? "Custom quantity lines deduct stock when the order is marked Completed."
+                          : "",
+                        lines.some((line) => line.qtyPreset !== "Custom")
+                          ? "Preset surplus/bonus lines are 100% profit — inventory is not reduced."
+                          : "",
+                      ].filter(Boolean)}
                       pending={pending}
                       confirmLabel="Yes, record excess sale"
                       onBack={() => setStep("form")}
@@ -334,7 +348,9 @@ export function ExcessSaleModal(props: {
 
                           {line.qtyPreset === "Custom" ? (
                             <label className="space-y-1">
-                              <div className="text-[11px] text-zinc-400">Custom label</div>
+                              <div className="text-[11px] text-zinc-400">
+                                Custom quantity (deducts stock)
+                              </div>
                               <input
                                 value={line.customQtyLabel}
                                 onChange={(e) =>
@@ -342,7 +358,7 @@ export function ExcessSaleModal(props: {
                                     customQtyLabel: e.target.value,
                                   })
                                 }
-                                placeholder="e.g. 3 pcs bonus from case"
+                                placeholder="e.g. 0.25 kg, 1 sack, 3 pcs"
                                 className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                               />
                             </label>

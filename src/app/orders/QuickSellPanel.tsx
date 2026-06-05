@@ -374,6 +374,11 @@ export function QuickSellPanel(props: {
                           />
                           <input
                             type="hidden"
+                            name="excessQtyPreset"
+                            value={line.qtyPreset}
+                          />
+                          <input
+                            type="hidden"
                             name="excessQtyLabel"
                             value={
                               line.qtyPreset === "Custom"
@@ -416,10 +421,12 @@ export function QuickSellPanel(props: {
                     itemSummary={cartSummary}
                     extraNotes={[
                       deductStock
-                        ? "Regular items deduct stock when the order is marked Completed."
-                        : "Regular items will not deduct stock automatically.",
-                      cart.some((line) => line.kind === "excess")
-                        ? "Excess/bonus lines are 100% profit and never touch inventory."
+                        ? "Regular and custom-quantity items deduct stock when the order is marked Completed."
+                        : "Regular and custom-quantity items will not deduct stock automatically.",
+                      cart.some(
+                        (line) => line.kind === "excess" && line.qtyPreset !== "Custom",
+                      )
+                        ? "Preset surplus/bonus lines are 100% profit and never touch inventory."
                         : "",
                     ].filter(Boolean)}
                     pending={pending}
@@ -573,18 +580,33 @@ export function QuickSellPanel(props: {
                             const amountCents = Math.round(
                               Number(line.amount.trim()) * 100,
                             );
+                            const isCustom = line.qtyPreset === "Custom";
                             return (
                               <li
                                 key={`excess-${idx}`}
-                                className="flex items-start justify-between gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2"
+                                className={`flex items-start justify-between gap-2 rounded-lg border px-2.5 py-2 ${
+                                  isCustom
+                                    ? "border-white/10 bg-black/20"
+                                    : "border-emerald-500/20 bg-emerald-500/5"
+                                }`}
                               >
                                 <div className="min-w-0 text-[11px]">
-                                  <div className="truncate font-medium text-emerald-100">
-                                    {productLabel(p)} · excess
+                                  <div
+                                    className={`truncate font-medium ${
+                                      isCustom ? "text-zinc-100" : "text-emerald-100"
+                                    }`}
+                                  >
+                                    {productLabel(p)} · {isCustom ? "custom qty" : "excess"}
                                   </div>
-                                  <div className="text-emerald-200/70">
-                                    {qty} · {formatPhpFromCents(amountCents)} · 100%
-                                    profit
+                                  <div
+                                    className={
+                                      isCustom ? "text-zinc-500" : "text-emerald-200/70"
+                                    }
+                                  >
+                                    {qty} · {formatPhpFromCents(amountCents)}
+                                    {isCustom
+                                      ? " · deducts stock on complete"
+                                      : " · 100% profit"}
                                   </div>
                                 </div>
                                 <button
@@ -644,8 +666,8 @@ export function QuickSellPanel(props: {
                       Excess / bonus stock (optional)
                     </div>
                     <p className="mt-1 text-[10px] text-emerald-100/70">
-                      For surplus sold separately (e.g. extra ¼ sack). 100% profit,
-                      no inventory change.
+                      Preset surplus (¼ sack, etc.) = 100% profit, no stock change.
+                      Choose Custom to sell a specific amount that deducts inventory.
                     </p>
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <label className="space-y-1">
@@ -698,10 +720,13 @@ export function QuickSellPanel(props: {
                     </div>
                     {excessQtyPreset === "Custom" ? (
                       <label className="mt-2 block space-y-1">
-                        <div className="text-[11px] text-zinc-400">Custom label</div>
+                        <div className="text-[11px] text-zinc-400">
+                          Custom quantity (deducts stock)
+                        </div>
                         <input
                           value={excessCustomQty}
                           onChange={(e) => setExcessCustomQty(e.target.value)}
+                          placeholder="e.g. 0.25 kg, 1 sack, 3 pcs"
                           className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                         />
                       </label>
