@@ -119,6 +119,54 @@ export function displayCatalogProductName(row: {
   return formatDisplayLabel(itemName);
 }
 
+/** Item / brand / flavor labels for inventory rows (optionally from linked catalog). */
+export function resolveInventoryLabels(
+  product: {
+    name: string;
+    brand: string | null;
+    variant?: string | null;
+  },
+  catalog?: {
+    itemName: string;
+    brand: string | null;
+    productName?: string | null;
+    variant?: string | null;
+  } | null,
+) {
+  const source = catalog
+    ? {
+        itemName: catalog.itemName,
+        brand: catalog.brand,
+        productName: catalog.productName,
+        variant: catalog.variant ?? product.variant,
+      }
+    : {
+        itemName: product.name,
+        brand: product.brand,
+        variant: product.variant,
+      };
+
+  return {
+    item: displayCatalogProductName(source),
+    brand: displayCatalogBrand(source.brand),
+    flavor: displayCatalogFlavor(source.variant, source.itemName),
+  };
+}
+
+export function shouldRepairProductFromCatalog(
+  product: { name: string; brand: string },
+  catalog: { itemName: string; brand: string | null },
+) {
+  const itemName = catalog.itemName?.trim() ?? "";
+  const brand = catalog.brand?.trim() ?? "";
+  if (!itemName || !brand) return false;
+  if (itemName.toLowerCase() === brand.toLowerCase()) return false;
+  return (
+    product.name.trim().toLowerCase() === brand.toLowerCase() &&
+    product.name.trim().toLowerCase() !== itemName.toLowerCase()
+  );
+}
+
 export function displayCatalogItem(
   brand: string | null | undefined,
   itemName: string,

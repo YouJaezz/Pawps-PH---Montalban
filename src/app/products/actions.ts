@@ -15,10 +15,6 @@ import {
   parseKgPerSackFromInput,
   parseStockQuantityInput,
 } from "@/lib/product-stock";
-import {
-  displayCatalogFlavor,
-  displayCatalogItem,
-} from "@/lib/catalog-item-display";
 import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
@@ -121,15 +117,12 @@ export async function createProduct(
       .limit(1);
 
     if (catalogRow) {
-      name =
-        name ||
-        displayCatalogItem(catalogRow.brand, catalogRow.itemName);
-      brand = brand || catalogRow.brand || name;
-      variant =
-        variant ||
-        (displayCatalogFlavor(catalogRow.variant, catalogRow.itemName) !== "—"
-          ? displayCatalogFlavor(catalogRow.variant, catalogRow.itemName)
-          : null);
+      const catalogItemName = catalogRow.itemName?.trim() ?? "";
+      const catalogBrand = catalogRow.brand?.trim() ?? "";
+
+      name = name || catalogItemName;
+      brand = brand || catalogBrand || name;
+      variant = variant || catalogRow.variant?.trim() || null;
 
       supplierRetailPrice = catalogRow.retailPrice ?? 0;
       supplierBulkPrice = catalogRow.unitCost ?? 0;

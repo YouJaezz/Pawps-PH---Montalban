@@ -2,8 +2,9 @@ import { db } from "@/db";
 import { products } from "@/db/schema";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import {
+  displayCatalogBrand,
+  displayCatalogProductName,
   displayCatalogFlavor,
-  displayCatalogItem,
 } from "@/lib/catalog-item-display";
 import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { formatPhpFromCents } from "@/lib/money";
@@ -62,8 +63,12 @@ export async function getCustomerPricelistRows(
     const priceCents = tier === "retail" ? p.retailPrice : p.bulkPrice;
     if (priceCents <= 0) continue;
 
-    const item = displayCatalogItem(null, p.name);
-    const brand = p.brand ? displayCatalogItem(null, p.brand) : "—";
+    const item = displayCatalogProductName({
+      itemName: p.name,
+      brand: p.brand,
+      variant: p.variant,
+    });
+    const brand = displayCatalogBrand(p.brand);
     const flavor = p.variant?.trim()
       ? displayCatalogFlavor(p.variant, p.name)
       : "—";

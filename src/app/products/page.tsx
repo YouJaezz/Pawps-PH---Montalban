@@ -11,25 +11,55 @@ import { db } from "@/db";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { products, suppliers } from "@/db/schema";
 import {
-  displayCatalogFlavor,
-  displayCatalogItem,
+  resolveInventoryLabels,
 } from "@/lib/catalog-item-display";
-import { formatPhpFromCents } from "@/lib/money";
 import { computeInventoryValuation } from "@/lib/inventory-valuation";
+import { formatPhpFromCents } from "@/lib/money";
 import { formatDualStock } from "@/lib/product-stock";
 import { displayCatalogItemType } from "@/lib/catalog-item-types";
+import { repairInventoryLabelsFromCatalog } from "@/lib/inventory-catalog-sync";
 import { formatSupplierPrice } from "@/lib/price-units";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function ProductsPage() {
-  const [supplierRows, catalogData, rows] = await Promise.all([
+  const [supplierRows, catalogData] = await Promise.all([
     db
       .select({ id: suppliers.id, name: suppliers.name })
       .from(suppliers)
       .orderBy(suppliers.name),
     getSupplierCatalogRows(),
-    db
+  ]);
+
+  const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
+  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
+
+  let rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      brand: products.brand,
+      variant: products.variant,
+      itemType: products.itemType,
+      packSize: products.packSize,
+      stockUnit: products.stockUnit,
+      kgPerSack: products.kgPerSack,
+      unitsPerCase: products.unitsPerCase,
+      costPrice: products.costPrice,
+      retailPrice: products.retailPrice,
+      bulkPrice: products.bulkPrice,
+      stockQuantity: products.stockQuantity,
+      purchaseTier: products.purchaseTier,
+      supplierId: products.supplierId,
+      supplierCatalogItemId: products.supplierCatalogItemId,
+    })
+    .from(products)
+    .where(eq(products.archived, false))
+    .orderBy(products.name);
+
+  const repaired = await repairInventoryLabelsFromCatalog(rows, catalogById);
+  if (repaired) {
+    rows = await db
       .select({
         id: products.id,
         name: products.name,
@@ -50,12 +80,8 @@ export default async function ProductsPage() {
       })
       .from(products)
       .where(eq(products.archived, false))
-      .orderBy(products.name),
-  ]);
-
-  const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
-
-  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
+      .orderBy(products.name);
+  }
 
   const catalogPickItems = catalogItems.map((c) => ({
     id: c.id,
@@ -178,17 +204,20 @@ export default async function ProductsPage() {
                     </tr>
                   ) : (
                     rows.map((p) => {
-                      const item = displayCatalogItem(null, p.name);
-                      const brand = p.brand
-                        ? displayCatalogItem(null, p.brand)
-                        : "—";
-                      const flavor =
-                        p.variant?.trim()
-                          ? displayCatalogFlavor(p.variant, p.name)
-                          : "—";
                       const catalog = p.supplierCatalogItemId
                         ? catalogById.get(p.supplierCatalogItemId)
                         : undefined;
+                      const labels = resolveInventoryLabels(
+                        {
+                          name: p.name,
+                          brand: p.brand,
+                          variant: p.variant,
+                        },
+                        catalog,
+                      );
+                      const item = labels.item;
+                      const brand = labels.brand;
+                      const flavor = labels.flavor;
                       const itemType =
                         p.itemType ?? catalog?.itemType ?? null;
                       const priceUnit = catalog?.priceUnit ?? "Sack";

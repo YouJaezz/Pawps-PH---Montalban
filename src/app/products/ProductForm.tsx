@@ -7,8 +7,9 @@ import {
   type CreateProductResult,
 } from "@/app/products/actions";
 import {
+  displayCatalogBrand,
   displayCatalogFlavor,
-  displayCatalogItem,
+  displayCatalogProductName,
 } from "@/lib/catalog-item-display";
 import { formatPhpFromCents } from "@/lib/money";
 import {
@@ -141,8 +142,11 @@ export function ProductForm(props: {
   );
 
   const previewItem = selectedCatalog
-    ? displayCatalogItem(selectedCatalog.brand, selectedCatalog.itemName)
+    ? displayCatalogProductName(selectedCatalog)
     : "";
+  const previewBrand = selectedCatalog
+    ? displayCatalogBrand(selectedCatalog.brand)
+    : "—";
   const previewFlavor = selectedCatalog
     ? displayCatalogFlavor(selectedCatalog.variant, selectedCatalog.itemName)
     : "";
@@ -315,18 +319,38 @@ export function ProductForm(props: {
           className={fieldClass}
         >
           <option value="">Manual entry</option>
-          {catalogForSupplier.map((c) => (
-            <option key={c.id} value={c.id}>
-              {displayCatalogItem(c.brand, c.itemName)} —{" "}
-              {displayCatalogFlavor(c.variant, c.itemName)}
-            </option>
-          ))}
+          {catalogForSupplier.map((c) => {
+            const item = displayCatalogProductName(c);
+            const brand = displayCatalogBrand(c.brand);
+            const flavor = displayCatalogFlavor(c.variant, c.itemName);
+            const label = [
+              item,
+              brand !== "—" && brand.toLowerCase() !== item.toLowerCase()
+                ? brand
+                : null,
+              flavor !== "—" ? flavor : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <option key={c.id} value={c.id}>
+                {label}
+              </option>
+            );
+          })}
         </select>
       </label>
 
       {selectedCatalog ? (
         <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11px] text-zinc-400">
-          <span className="text-zinc-200">{previewItem}</span> · {previewFlavor}
+          <span className="text-zinc-200">{previewItem}</span>
+          {previewBrand !== "—" ? (
+            <>
+              {" "}
+              · <span className="text-zinc-300">{previewBrand}</span>
+            </>
+          ) : null}
+          {previewFlavor !== "—" ? <> · {previewFlavor}</> : null}
           {selectedCatalog.perKiloPrice != null ? (
             <div className="mt-1 text-[10px] text-zinc-500">
               Supplier per kg: {formatPhpFromCents(selectedCatalog.perKiloPrice)}
@@ -367,16 +391,16 @@ export function ProductForm(props: {
 
       {selectedCatalog ? (
         <>
-          <input type="hidden" name="name" value={previewItem} />
+          <input type="hidden" name="name" value={selectedCatalog.itemName} />
           <input
             type="hidden"
             name="brand"
-            value={selectedCatalog.brand ?? previewItem}
+            value={selectedCatalog.brand ?? ""}
           />
           <input
             type="hidden"
             name="variant"
-            value={previewFlavor === "—" ? "" : previewFlavor}
+            value={selectedCatalog.variant ?? ""}
           />
         </>
       ) : null}
