@@ -4,6 +4,8 @@ export type OrderReceiptLine = {
   priceTier: string;
   unitPrice: number;
   lineTotal: number;
+  lineNote?: string | null;
+  isExcessSale?: boolean;
 };
 
 export type OrderReceiptData = {

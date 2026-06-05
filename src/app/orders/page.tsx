@@ -1,4 +1,5 @@
 import { BulkOrderModal } from "@/app/orders/BulkOrderModal";
+import { ExcessSaleModal } from "@/app/orders/ExcessSaleModal";
 import type { OrderEditPayload } from "@/app/orders/OrderEditModal";
 import { OrdersBoard } from "@/app/orders/OrdersBoard";
 import { QuickSellPanel } from "@/app/orders/QuickSellPanel";
@@ -75,6 +76,8 @@ export default async function OrdersPage() {
             quantityTenths: orderItems.quantityTenths,
             saleUnit: orderItems.saleUnit,
             priceTier: orderItems.priceTier,
+            isExcessSale: orderItems.isExcessSale,
+            lineNote: orderItems.lineNote,
             unitPrice: orderItems.unitPrice,
             lineTotal: orderItems.lineTotal,
           })
@@ -121,12 +124,16 @@ export default async function OrdersPage() {
   for (const l of recentLines) {
     const p = productById.get(l.productId);
     if (!p) continue;
-    const qtyLabel = formatQuantityLabel(
-      l.saleUnit as SaleUnit,
-      l.quantity,
-      l.quantityTenths,
-    );
-    const label = `${p.name}${p.variant ? ` (${p.variant})` : ""} · ${qtyLabel}`;
+    const qtyLabel = l.isExcessSale
+      ? `excess: ${l.lineNote?.match(/^Excess\/bonus stock — (.+?) — no inventory/)?.[1] ?? "bonus"}`
+      : formatQuantityLabel(
+          l.saleUnit as SaleUnit,
+          l.quantity,
+          l.quantityTenths,
+        );
+    const label = l.isExcessSale
+      ? `${p.name} · ${qtyLabel}`
+      : `${p.name}${p.variant ? ` (${p.variant})` : ""} · ${qtyLabel}`;
     const arr = linesByOrder.get(l.orderId) ?? [];
     arr.push(label);
     linesByOrder.set(l.orderId, arr);
@@ -187,6 +194,10 @@ export default async function OrdersPage() {
               customers={customerRows}
             />
             <BulkOrderModal
+              products={quickSellProducts}
+              customers={customerRows}
+            />
+            <ExcessSaleModal
               products={quickSellProducts}
               customers={customerRows}
             />

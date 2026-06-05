@@ -98,11 +98,26 @@ export function OrderReceiptView(props: {
             {receipt.lines.map((line, idx) => (
               <li key={idx} className="flex justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium">{line.label}</div>
-                  <div className="text-xs text-zinc-600">
-                    {line.qtyLabel} · {line.priceTier} ·{" "}
-                    {formatPhpFromCents(line.unitPrice)} ea
+                  <div className="font-medium">
+                    {line.label}
+                    {line.isExcessSale ? (
+                      <span className="ml-1 text-[10px] font-normal text-emerald-700">
+                        excess
+                      </span>
+                    ) : null}
                   </div>
+                  <div className="text-xs text-zinc-600">
+                    {line.qtyLabel}
+                    {line.isExcessSale ? null : (
+                      <>
+                        {" "}
+                        · {line.priceTier} · {formatPhpFromCents(line.unitPrice)} ea
+                      </>
+                    )}
+                  </div>
+                  {line.lineNote ? (
+                    <div className="mt-1 text-[10px] text-zinc-500">{line.lineNote}</div>
+                  ) : null}
                 </div>
                 <div className="shrink-0 font-medium">
                   {formatPhpFromCents(line.lineTotal)}

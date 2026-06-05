@@ -50,7 +50,7 @@ function centsToInput(cents: number) {
 
 function qtyInputValue(line: OrderLineEdit) {
   if (line.saleUnit === "Kilogram" && line.quantityTenths != null) {
-    return String(line.quantityTenths / 10);
+    return String(line.quantityTenths / 100);
   }
   return String(line.quantity);
 }

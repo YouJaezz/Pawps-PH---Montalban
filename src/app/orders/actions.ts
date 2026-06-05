@@ -18,6 +18,7 @@ import {
 import { formatStockLabel } from "@/lib/product-stock";
 import { formatPhpFromCents } from "@/lib/money";
 import type { OrderReceiptData } from "@/lib/order-receipt";
+import { buildExcessLineNote, excessLineLabel } from "@/lib/excess-sale";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -85,11 +86,13 @@ async function deductStockForOrder(orderId: number) {
       quantity: orderItems.quantity,
       quantityTenths: orderItems.quantityTenths,
       saleUnit: orderItems.saleUnit,
+      isExcessSale: orderItems.isExcessSale,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
 
   for (const line of lines) {
+    if (line.isExcessSale) continue;
     const [product] = await db
       .select({
         id: products.id,
@@ -191,6 +194,14 @@ export async function quickSell(
     const saleUnitsRaw = formData.getAll("saleUnit").map((v) => String(v));
     const priceTiersRaw = formData.getAll("priceTier").map((v) => String(v));
 
+    const excessProductIds = formData
+      .getAll("excessProductId")
+      .map((v) => Number.parseInt(String(v), 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const excessQtyLabels = formData.getAll("excessQtyLabel").map((v) => String(v));
+    const excessAmountsRaw = formData.getAll("excessAmount").map((v) => String(v));
+    const excessNotesRaw = formData.getAll("excessNote").map((v) => String(v));
+
     if (productIds.length === 0) {
       const singleId = parseIntOr(formData.get("productId"), 0);
       if (singleId > 0) {
@@ -204,24 +215,33 @@ export async function quickSell(
     if (!customerName) {
       return actionError("Customer name is required.");
     }
-    if (productIds.length === 0) {
-      return actionError("Add at least one item to the cart.");
+    if (productIds.length === 0 && excessProductIds.length === 0) {
+      return actionError("Add at least one regular or excess/bonus item.");
     }
 
-    const selected = await db
-      .select({
-        id: products.id,
-        name: products.name,
-        costPrice: products.costPrice,
-        retailPrice: products.retailPrice,
-        bulkPrice: products.bulkPrice,
-        stockQuantity: products.stockQuantity,
-        stockUnit: products.stockUnit,
-        kgPerSack: products.kgPerSack,
-        unitsPerCase: products.unitsPerCase,
-      })
-      .from(products)
-      .where(and(inArray(products.id, productIds), eq(products.archived, false)));
+    const allProductIds = [
+      ...new Set([...productIds, ...excessProductIds]),
+    ];
+
+    const selected =
+      allProductIds.length === 0
+        ? []
+        : await db
+            .select({
+              id: products.id,
+              name: products.name,
+              costPrice: products.costPrice,
+              retailPrice: products.retailPrice,
+              bulkPrice: products.bulkPrice,
+              stockQuantity: products.stockQuantity,
+              stockUnit: products.stockUnit,
+              kgPerSack: products.kgPerSack,
+              unitsPerCase: products.unitsPerCase,
+            })
+            .from(products)
+            .where(
+              and(inArray(products.id, allProductIds), eq(products.archived, false)),
+            );
 
     const productById = new Map(selected.map((p) => [p.id, p]));
 
@@ -235,6 +255,8 @@ export async function quickSell(
       unitCost: number;
       unitPrice: number;
       lineTotal: number;
+      isExcessSale: boolean;
+      lineNote: string | null;
     }> = [];
 
     const deductByProduct = new Map<number, number>();
@@ -289,6 +311,33 @@ export async function quickSell(
         unitCost: p.costPrice,
         unitPrice,
         lineTotal,
+        isExcessSale: false,
+        lineNote: null,
+      });
+    }
+
+    for (let i = 0; i < excessProductIds.length; i++) {
+      const productId = excessProductIds[i]!;
+      const qtyLabel = excessQtyLabels[i]?.trim() ?? "";
+      const lineTotal = parseMoneyToCents(excessAmountsRaw[i] ?? null);
+      const p = productById.get(productId);
+
+      if (!p || !qtyLabel || lineTotal <= 0) {
+        return actionError("Invalid excess/bonus line. Check product, label, and amount.");
+      }
+
+      totalAmount += lineTotal;
+      lines.push({
+        productId,
+        quantity: 1,
+        quantityTenths: null,
+        saleUnit: "Piece",
+        priceTier: "Retail",
+        unitCost: 0,
+        unitPrice: lineTotal,
+        lineTotal,
+        isExcessSale: true,
+        lineNote: buildExcessLineNote(qtyLabel, excessNotesRaw[i]),
       });
     }
 
@@ -359,6 +408,8 @@ export async function quickSell(
         unitCost: line.unitCost,
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,
+        isExcessSale: line.isExcessSale,
+        lineNote: line.lineNote,
       })),
     );
 
@@ -390,6 +441,20 @@ export async function quickSell(
 
     const receiptLines = lines.map((line) => {
       const p = productById.get(line.productId)!;
+      if (line.isExcessSale) {
+        const qtyLabel =
+          line.lineNote?.match(/^Excess\/bonus stock — (.+?) — no inventory/)?.[1] ??
+          "bonus";
+        return {
+          label: excessLineLabel(p.name, qtyLabel),
+          qtyLabel: qtyLabel,
+          priceTier: "Excess",
+          unitPrice: line.unitPrice,
+          lineTotal: line.lineTotal,
+          lineNote: line.lineNote,
+          isExcessSale: true,
+        };
+      }
       return {
         label: p.name,
         qtyLabel: formatQuantityLabel(
@@ -400,6 +465,8 @@ export async function quickSell(
         priceTier: line.priceTier,
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,
+        lineNote: null,
+        isExcessSale: false,
       };
     });
 

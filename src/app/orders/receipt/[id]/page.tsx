@@ -26,6 +26,8 @@ export default async function OrderReceiptPage(props: {
       quantityTenths: orderItems.quantityTenths,
       saleUnit: orderItems.saleUnit,
       priceTier: orderItems.priceTier,
+      isExcessSale: orderItems.isExcessSale,
+      lineNote: orderItems.lineNote,
       unitPrice: orderItems.unitPrice,
       lineTotal: orderItems.lineTotal,
     })
@@ -56,14 +58,19 @@ export default async function OrderReceiptPage(props: {
     createdAt: order.createdAt.toISOString(),
     lines: lines.map((line) => ({
       label: productById.get(line.productId) ?? "Item",
-      qtyLabel: formatQuantityLabel(
-        line.saleUnit as SaleUnit,
-        line.quantity,
-        line.quantityTenths,
-      ),
-      priceTier: line.priceTier,
+      qtyLabel: line.isExcessSale
+        ? (line.lineNote?.match(/^Excess\/bonus stock — (.+?) — no inventory/)?.[1] ??
+          "bonus stock")
+        : formatQuantityLabel(
+            line.saleUnit as SaleUnit,
+            line.quantity,
+            line.quantityTenths,
+          ),
+      priceTier: line.isExcessSale ? "Excess" : line.priceTier,
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,
+      lineNote: line.lineNote,
+      isExcessSale: line.isExcessSale,
     })),
   };
 

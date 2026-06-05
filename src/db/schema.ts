@@ -107,6 +107,10 @@ export const orderItems = sqliteTable("order_items", {
   unitCost: integer("unit_cost").notNull().default(0),
   unitPrice: integer("unit_price").notNull(),
   lineTotal: integer("line_total").notNull(),
+  isExcessSale: integer("is_excess_sale", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  lineNote: text("line_note"),
 });
 
 export const deliveryLogs = sqliteTable("delivery_logs", {

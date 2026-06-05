@@ -21,9 +21,11 @@ export function parseQuantityInput(value: string, saleUnit: SaleUnit) {
   if (!Number.isFinite(n) || n <= 0) return null;
 
   if (saleUnit === "Kilogram") {
-    const quantityTenths = Math.round(n * 10);
+    const rounded = Math.round(n * 100) / 100;
+    const quantityTenths = Math.round(rounded * 100);
+    if (quantityTenths <= 0) return null;
     return {
-      quantity: Math.max(1, Math.round(n)),
+      quantity: Math.max(1, Math.ceil(rounded)),
       quantityTenths,
     };
   }
@@ -33,13 +35,22 @@ export function parseQuantityInput(value: string, saleUnit: SaleUnit) {
   return { quantity, quantityTenths: null as number | null };
 }
 
+/** Snap manual kg entry to common retail fractions (¼, ½, ¾, etc.). */
+export function normalizeKgInput(value: string) {
+  const n = Number(value.trim());
+  if (!Number.isFinite(n) || n <= 0) return value;
+  const snapped = Math.round(n * 4) / 4;
+  if (snapped <= 0) return value;
+  return snapped % 1 === 0 ? String(snapped) : snapped.toFixed(2).replace(/0$/, "");
+}
+
 export function effectiveQuantity(
   quantity: number,
   saleUnit: SaleUnit,
   quantityTenths: number | null | undefined,
 ) {
   if (saleUnit === "Kilogram" && quantityTenths != null) {
-    return quantityTenths / 10;
+    return quantityTenths / 100;
   }
   return quantity;
 }
@@ -62,7 +73,7 @@ export function stockDeductQuantity(
   unitsPerCase?: number | null | undefined,
 ) {
   if (saleUnit === "Kilogram" && quantityTenths != null) {
-    return Math.max(0, quantityTenths);
+    return Math.max(0, Math.round(quantityTenths / 10));
   }
   if (saleUnit === "Sack" && kgPerSack != null && kgPerSack > 0) {
     return quantity * kgPerSack;
@@ -95,8 +106,12 @@ export function formatQuantityLabel(
   quantityTenths: number | null | undefined,
 ) {
   if (saleUnit === "Kilogram" && quantityTenths != null) {
-    const kg = quantityTenths / 10;
-    return `${kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(1)} kg`;
+    const kg = quantityTenths / 100;
+    if (kg < 1) {
+      const text = kg.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      return `${text} kg`;
+    }
+    return `${kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")} kg`;
   }
   if (saleUnit === "Sack") {
     return `${quantity} sack${quantity === 1 ? "" : "s"}`;
