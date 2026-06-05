@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PrintReceiptButton } from "@/app/transport/receipt/PrintReceiptButton";
+import { PrintReceiptButton } from "@/components/PrintReceiptButton";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { transportExtras, transportJobs } from "@/db/schema";

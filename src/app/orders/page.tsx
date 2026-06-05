@@ -178,7 +178,7 @@ export default async function OrdersPage() {
             <div className="text-xs text-zinc-500">Sales & Orders</div>
             <h1 className="text-xl font-semibold tracking-tight">Orders</h1>
             <p className="mt-0.5 text-[11px] text-zinc-500">
-              Search customers to autofill · track fulfillment & payments
+              New sales start as Pending · confirm before checkout · print receipt after
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -7,6 +7,7 @@ import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-serv
 import { normalizeOrderStatus } from "@/lib/order-status";
 import {
   isSaleUnit,
+  formatQuantityLabel,
   lineTotalCents,
   parseQuantityInput,
   stockDeductQuantity,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/order-line-math";
 import { formatStockLabel } from "@/lib/product-stock";
 import { formatPhpFromCents } from "@/lib/money";
+import type { OrderReceiptData } from "@/lib/order-receipt";
 import { db } from "@/db";
 import {
   ORDER_STATUSES,
@@ -32,14 +34,21 @@ export type OrderActionResult = {
   ok?: boolean;
   error?: string;
   message?: string;
+  orderId?: number;
+  receipt?: OrderReceiptData;
 };
 
 function actionError(message: string): OrderActionResult {
   return { error: message };
 }
 
-function actionSuccess(message: string): OrderActionResult {
-  return { ok: true, message };
+function actionSuccess(
+  message: string,
+  extra?: { orderId: number; receipt: OrderReceiptData },
+): OrderActionResult {
+  return extra
+    ? { ok: true, message, orderId: extra.orderId, receipt: extra.receipt }
+    : { ok: true, message };
 }
 
 function formatActionError(err: unknown) {
@@ -62,12 +71,13 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
 
 async function deductStockForOrder(orderId: number) {
   const [order] = await db
-    .select({ stockDeducted: orders.stockDeducted })
+    .select({ stockDeducted: orders.stockDeducted, notes: orders.notes })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1);
 
   if (!order || order.stockDeducted) return;
+  if (order.notes?.includes("[no-stock-deduct]")) return;
 
   const lines = await db
     .select({
@@ -311,8 +321,10 @@ export async function quickSell(
       location: locationRaw,
     });
 
-    const fulfillmentStatus: OrderStatus =
-      storeType === "Walk-in" ? "Completed" : "Confirmed";
+    const noteParts: string[] = [];
+    if (notesRaw.length) noteParts.push(notesRaw);
+    if (!deductStock) noteParts.push("[no-stock-deduct]");
+    const notes = noteParts.length ? noteParts.join("\n") : null;
 
     const insertedOrder = await db
       .insert(orders)
@@ -321,19 +333,20 @@ export async function quickSell(
         customerName,
         contact: contactRaw.length ? contactRaw : null,
         location: locationRaw.length ? locationRaw : null,
-        notes: notesRaw.length ? notesRaw : null,
-        orderStatus: fulfillmentStatus,
+        notes,
+        orderStatus: "Pending",
         totalAmount,
         amountPaid: totalAmount,
         paymentStatus: "Paid",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
-        stockDeducted: deductStock,
+        stockDeducted: false,
       })
-      .returning({ id: orders.id });
+      .returning({ id: orders.id, createdAt: orders.createdAt });
 
     const orderId = insertedOrder[0]?.id;
-    if (!orderId) return actionError("Failed to create order.");
+    const createdAt = insertedOrder[0]?.createdAt;
+    if (!orderId || !createdAt) return actionError("Failed to create order.");
 
     await db.insert(orderItems).values(
       lines.map((line) => ({
@@ -349,26 +362,6 @@ export async function quickSell(
       })),
     );
 
-    if (deductStock) {
-      for (const [productId, deductQty] of deductByProduct) {
-        const p = productById.get(productId);
-        if (!p) continue;
-
-        await db
-          .update(products)
-          .set({ stockQuantity: p.stockQuantity - deductQty })
-          .where(eq(products.id, productId));
-
-        await db.insert(stockMovements).values({
-          productId,
-          movementType: "Sale",
-          quantityDelta: -deductQty,
-          relatedOrderId: orderId,
-          note: "Quick Sell",
-        });
-      }
-    }
-
     if (deliveryMethodRaw.length) {
       await db.insert(deliveryLogs).values({
         orderId,
@@ -378,7 +371,7 @@ export async function quickSell(
           | "Montalban Free Delivery"
           | "Lalamove"
           | "Other",
-        status: fulfillmentStatus === "Completed" ? "Delivered" : "Queued",
+        status: "Queued",
         fee: 0,
         reference: null,
         notes: "Auto-created from order",
@@ -395,9 +388,41 @@ export async function quickSell(
     revalidatePath("/products");
     revalidatePath("/delivery");
 
+    const receiptLines = lines.map((line) => {
+      const p = productById.get(line.productId)!;
+      return {
+        label: p.name,
+        qtyLabel: formatQuantityLabel(
+          line.saleUnit,
+          line.quantity,
+          line.quantityTenths,
+        ),
+        priceTier: line.priceTier,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      };
+    });
+
     const itemLabel = lines.length === 1 ? "1 item" : `${lines.length} items`;
     return actionSuccess(
-      `Sale recorded — ${itemLabel}, ${formatPhpFromCents(totalAmount)} paid.`,
+      `Order #${orderId} created as Pending — ${itemLabel}, ${formatPhpFromCents(totalAmount)} collected. Complete it from the orders table when ready.`,
+      {
+        orderId,
+        receipt: {
+          orderId,
+          customerName,
+          contact: contactRaw.length ? contactRaw : null,
+          location: locationRaw.length ? locationRaw : null,
+          storeType,
+          deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+          orderStatus: "Pending",
+          paymentStatus: "Paid",
+          totalAmount,
+          amountPaid: totalAmount,
+          createdAt: createdAt.toISOString(),
+          lines: receiptLines,
+        },
+      },
     );
   } catch (err) {
     console.error("quickSell failed:", err);
@@ -445,6 +470,7 @@ export async function createBulkOrder(
     const selected = await db
       .select({
         id: products.id,
+        name: products.name,
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
@@ -528,10 +554,11 @@ export async function createBulkOrder(
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
       })
-      .returning({ id: orders.id });
+      .returning({ id: orders.id, createdAt: orders.createdAt });
 
     const orderId = insertedOrder[0]?.id;
-    if (!orderId) return actionError("Failed to create bulk order.");
+    const createdAt = insertedOrder[0]?.createdAt;
+    if (!orderId || !createdAt) return actionError("Failed to create bulk order.");
 
     await db.insert(orderItems).values(
       lines.map((l) => ({
@@ -571,7 +598,41 @@ export async function createBulkOrder(
     revalidatePath("/customers");
     revalidatePath("/delivery");
 
-    return actionSuccess("Bulk order created.");
+    const receiptLines = lines.map((line) => {
+      const p = priceById.get(line.productId)!;
+      return {
+        label: p.name,
+        qtyLabel: formatQuantityLabel(
+          line.saleUnit,
+          line.quantity,
+          line.quantityTenths,
+        ),
+        priceTier,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      };
+    });
+
+    return actionSuccess(
+      `Order #${orderId} created as Pending — ${formatPhpFromCents(deposit)} deposit collected. Complete it from the orders table when ready.`,
+      {
+        orderId,
+        receipt: {
+          orderId,
+          customerName,
+          contact: contactRaw.length ? contactRaw : null,
+          location: locationRaw.length ? locationRaw : null,
+          storeType,
+          deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+          orderStatus: "Pending",
+          paymentStatus: "30% Deposit",
+          totalAmount: total,
+          amountPaid: deposit,
+          createdAt: createdAt.toISOString(),
+          lines: receiptLines,
+        },
+      },
+    );
   } catch (err) {
     console.error("createBulkOrder failed:", err);
     return actionError(formatActionError(err));

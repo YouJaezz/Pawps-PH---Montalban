@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   quickSell,
@@ -10,6 +10,8 @@ import {
   CustomerPicker,
   type CustomerOption,
 } from "@/app/orders/CustomerPicker";
+import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
+import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
 import type { StockUnit } from "@/db/schema";
 import {
   formatQuantityLabel,
@@ -43,6 +45,8 @@ type CartLine = {
   priceTier: "Retail" | "Bulk";
 };
 
+type ModalStep = "form" | "confirm" | "receipt";
+
 function productLabel(p: QuickSellProduct) {
   return `${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
 }
@@ -52,7 +56,9 @@ export function QuickSellPanel(props: {
   customers: CustomerOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<ModalStep>("form");
   const [formKey, setFormKey] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
     OrderActionResult | null,
     FormData
@@ -74,6 +80,8 @@ export function QuickSellPanel(props: {
   const [contact, setContact] = useState("");
   const [location, setLocation] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [storeType, setStoreType] = useState("Online");
+  const [deliveryMethod, setDeliveryMethod] = useState("Montalban Free Delivery");
 
   const productById = useMemo(() => {
     const m = new Map<number, QuickSellProduct>();
@@ -97,6 +105,12 @@ export function QuickSellPanel(props: {
     }
   }, [draftProduct, draftAllowedUnits, draftSaleUnit]);
 
+  useEffect(() => {
+    if (state?.ok && state.receipt) {
+      setStep("receipt");
+    }
+  }, [state]);
+
   function resetDraft() {
     setDraftProductId(props.products[0]?.id ?? 0);
     setDraftSaleUnit("Piece");
@@ -107,6 +121,7 @@ export function QuickSellPanel(props: {
 
   function closeModal() {
     setOpen(false);
+    setStep("form");
     setFormKey((k) => k + 1);
     setCart([]);
     resetDraft();
@@ -114,10 +129,13 @@ export function QuickSellPanel(props: {
     setContact("");
     setLocation("");
     setCustomerId("");
+    setStoreType("Online");
+    setDeliveryMethod("Montalban Free Delivery");
   }
 
   function openModal() {
     setFormKey((k) => k + 1);
+    setStep("form");
     setCart([]);
     resetDraft();
     setOpen(true);
@@ -194,6 +212,15 @@ export function QuickSellPanel(props: {
     setCart((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const cartSummary = useMemo(() => {
+    if (cart.length === 0) return "—";
+    if (cart.length === 1) {
+      const p = productById.get(cart[0]!.productId);
+      return p ? productLabel(p) : "1 item";
+    }
+    return `${cart.length} items · ${formatPhpFromCents(cartTotal)}`;
+  }, [cart, cartTotal, productById]);
+
   return (
     <>
       <button
@@ -215,10 +242,12 @@ export function QuickSellPanel(props: {
                 <div>
                   <div className="text-sm text-zinc-400">Sales</div>
                   <div className="mt-1 text-xl font-semibold tracking-tight">
-                    Quick Sell
+                    {step === "receipt" ? "Receipt" : "Quick Sell"}
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    Add multiple items to the cart, then check out as one order.
+                    {step === "receipt"
+                      ? "Print or save this receipt, then complete the order when ready."
+                      : "Add multiple items to the cart, then check out as one pending order."}
                   </div>
                 </div>
                 <button
@@ -230,11 +259,12 @@ export function QuickSellPanel(props: {
               </div>
             </div>
 
-            {state?.ok ? (
+            {step === "receipt" && state?.receipt ? (
               <div className="space-y-4 overflow-y-auto p-6">
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
-                  {state.message ?? "Sale recorded."}
+                  {state.message ?? "Order created."}
                 </div>
+                <OrderReceiptView receipt={state.receipt} compact />
                 <button
                   type="button"
                   onClick={closeModal}
@@ -246,9 +276,66 @@ export function QuickSellPanel(props: {
             ) : (
               <form
                 key={formKey}
+                ref={formRef}
                 action={formAction}
                 className="flex min-h-0 flex-1 flex-col"
               >
+                {step === "confirm" ? (
+                  <div className="hidden" aria-hidden>
+                    {cart.map((line, idx) => (
+                      <div key={`confirm-${idx}`}>
+                        <input type="hidden" name="productId" value={line.productId} />
+                        <input type="hidden" name="quantity" value={line.quantity} />
+                        <input type="hidden" name="saleUnit" value={line.saleUnit} />
+                        <input type="hidden" name="priceTier" value={line.priceTier} />
+                      </div>
+                    ))}
+                    <input type="hidden" name="customerName" value={customerName} />
+                    <input type="hidden" name="customerId" value={customerId} />
+                    <input type="hidden" name="contact" value={contact} />
+                    <input type="hidden" name="location" value={location} />
+                    <input type="hidden" name="storeType" value={storeType} />
+                    <input type="hidden" name="deliveryMethod" value={deliveryMethod} />
+                    {deductStock ? (
+                      <input type="hidden" name="deductStock" value="on" />
+                    ) : null}
+                  </div>
+                ) : null}
+                {step === "confirm" ? (
+                  <>
+                    {state?.error ? (
+                      <div className="mx-6 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                        {state.error}
+                      </div>
+                    ) : null}
+                    <OrderSaleConfirm
+                    title="Confirm Quick Sell"
+                    customerName={customerName}
+                    contact={contact}
+                    location={location}
+                    totalLabel="Total due"
+                    totalCents={cartTotal}
+                    paidLabel="Collect now"
+                    paidCents={cartTotal}
+                    itemSummary={cartSummary}
+                    extraNotes={[
+                      deductStock
+                        ? "Stock will deduct when the order is marked Completed."
+                        : "Stock will not deduct automatically for this order.",
+                    ]}
+                    pending={pending}
+                    confirmLabel="Yes, create pending order"
+                    onBack={() => setStep("form")}
+                    onConfirm={() => formRef.current?.requestSubmit()}
+                  />
+                  </>
+                ) : (
+                  <>
+                {state?.error ? (
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    {state.error}
+                  </div>
+                ) : null}
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 pt-4">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs font-medium text-zinc-200">
@@ -424,7 +511,8 @@ export function QuickSellPanel(props: {
                       <div className="text-xs text-zinc-300">Store type</div>
                       <select
                         name="storeType"
-                        defaultValue="Online"
+                        value={storeType}
+                        onChange={(e) => setStoreType(e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                       >
                         <option>Online</option>
@@ -435,7 +523,8 @@ export function QuickSellPanel(props: {
                       <div className="text-xs text-zinc-300">Delivery method</div>
                       <select
                         name="deliveryMethod"
-                        defaultValue="Montalban Free Delivery"
+                        value={deliveryMethod}
+                        onChange={(e) => setDeliveryMethod(e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                       >
                         <option>Montalban Free Delivery</option>
@@ -453,7 +542,7 @@ export function QuickSellPanel(props: {
                       onChange={(e) => setDeductStock(e.target.checked)}
                       className="size-4 accent-white"
                     />
-                    Deduct stock for all cart items
+                    Deduct stock when order is marked Completed
                   </label>
 
                   {state?.error ? (
@@ -465,15 +554,16 @@ export function QuickSellPanel(props: {
 
                 <div className="shrink-0 border-t border-white/10 p-6 pt-4">
                   <button
-                    type="submit"
-                    disabled={pending || cart.length === 0 || !customerName.trim()}
+                    type="button"
+                    onClick={() => setStep("confirm")}
+                    disabled={cart.length === 0 || !customerName.trim()}
                     className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
                   >
-                    {pending
-                      ? "Saving…"
-                      : `Confirm sale · ${formatPhpFromCents(cartTotal)}`}
+                    Review order · {formatPhpFromCents(cartTotal)}
                   </button>
                 </div>
+                  </>
+                )}
               </form>
             )}
           </div>

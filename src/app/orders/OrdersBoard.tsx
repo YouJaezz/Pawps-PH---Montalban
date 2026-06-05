@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import {
@@ -52,7 +53,7 @@ export function OrdersBoard(props: {
   editableByOrderId: Record<number, OrderEditPayload>;
 }) {
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("open");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
@@ -279,6 +280,14 @@ export function OrdersBoard(props: {
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex flex-col gap-1">
+                        <Link
+                          href={`/orders/receipt/${o.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded border border-white/10 px-2 py-0.5 text-[9px] text-zinc-300 hover:bg-white/5"
+                        >
+                          Receipt
+                        </Link>
                         {props.editableByOrderId[o.id] ? (
                           <button
                             type="button"
