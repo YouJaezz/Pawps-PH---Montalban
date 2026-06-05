@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CustomerPricelistExport } from "@/app/products/CustomerPricelistExport";
 import { ProductAddButton } from "@/app/products/ProductAddButton";
 import { ProductEditButton } from "@/app/products/ProductEditButton";
 import { deleteProduct } from "@/app/products/delete-actions";
@@ -110,11 +111,13 @@ export default async function ProductsPage() {
             >
               Suppliers
             </Link>
+            <CustomerPricelistExport />
             <a
               href="/api/export/stock-levels.csv"
               className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
+              title="Internal stock export with costs and quantities"
             >
-              Export
+              Stock CSV
             </a>
           </div>
         </div>
