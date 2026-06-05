@@ -6,8 +6,9 @@ import { AddCatalogItemButton } from "@/app/suppliers/AddCatalogItemButton";
 import { CatalogItemEditButton } from "@/app/suppliers/CatalogItemEditButton";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import {
+  displayCatalogBrand,
   displayCatalogFlavor,
-  displayCatalogItem,
+  displayCatalogProductName,
   formatBulkTierNote,
   formatPackLabel,
   resolveCatalogItemDetails,
@@ -60,12 +61,14 @@ export function SupplierSearch(props: {
     if (!q) return list;
 
     return list.filter((r) => {
-      const item = displayCatalogItem(r.brand, r.itemName);
+      const item = displayCatalogProductName(r);
+      const brand = displayCatalogBrand(r.brand);
       const flavor = displayCatalogFlavor(r.variant, r.itemName);
       const details = resolveCatalogItemDetails(r);
       const hay = [
         r.supplierName,
         item,
+        brand,
         flavor,
         r.brand,
         r.productName,
@@ -134,6 +137,7 @@ export function SupplierSearch(props: {
             <tr>
               <th className="px-2 py-1.5 font-medium">Supplier</th>
               <th className="px-2 py-1.5 font-medium">Item</th>
+              <th className="hidden px-2 py-1.5 font-medium sm:table-cell">Brand</th>
               <th className="hidden px-2 py-1.5 font-medium sm:table-cell">Flavor</th>
               <th className="hidden px-2 py-1.5 font-medium md:table-cell">Type</th>
               <th className="hidden w-14 px-2 py-1.5 font-medium lg:table-cell">
@@ -149,7 +153,7 @@ export function SupplierSearch(props: {
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-zinc-500" colSpan={8}>
+                <td className="px-2 py-3 text-zinc-500" colSpan={9}>
                   {props.rows.length === 0
                     ? "No items — upload a price list."
                     : `No match for ${filterLabel}.`}
@@ -157,7 +161,8 @@ export function SupplierSearch(props: {
               </tr>
             ) : (
               filtered.map((r) => {
-                const item = displayCatalogItem(r.brand, r.itemName);
+                const item = displayCatalogProductName(r);
+                const brand = displayCatalogBrand(r.brand);
                 const flavor = displayCatalogFlavor(r.variant, r.itemName);
                 const details = resolveCatalogItemDetails(r);
                 const sizeLabel = formatPackLabel(
@@ -173,6 +178,9 @@ export function SupplierSearch(props: {
                     </td>
                     <td className="max-w-[140px] truncate px-2 py-1 font-medium text-zinc-100">
                       {item}
+                    </td>
+                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-300 sm:table-cell">
+                      {brand}
                     </td>
                     <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-400 sm:table-cell">
                       {flavor}

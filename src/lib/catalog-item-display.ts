@@ -64,6 +64,61 @@ function stripGarbageBrand(raw: string) {
   return cleaned;
 }
 
+function formatDisplayLabel(raw: string) {
+  const cleaned = stripGarbageBrand(raw.trim());
+  if (!cleaned) return "—";
+
+  for (const rule of BRAND_DISPLAY_RULES) {
+    if (rule.match.test(cleaned)) return rule.label;
+  }
+
+  return toTitleCase(cleaned);
+}
+
+/** Brand column — manufacturer / label on the supplier list. */
+export function displayCatalogBrand(brand: string | null | undefined): string {
+  if (!brand?.trim()) return "—";
+  return formatDisplayLabel(brand);
+}
+
+/** Product line / item name (not brand). */
+export function displayCatalogProductName(row: {
+  itemName: string;
+  brand?: string | null;
+  productName?: string | null;
+  variant?: string | null;
+}): string {
+  const itemName = row.itemName?.trim() ?? "";
+  const brand = row.brand?.trim() ?? "";
+  const variant = row.variant?.trim() ?? "";
+  const productName = row.productName?.trim() ?? "";
+
+  if (itemName && brand && itemName.toLowerCase() !== brand.toLowerCase()) {
+    const legacyCombined =
+      variant.length > 0 &&
+      itemName.toLowerCase() === `${brand} — ${variant}`.toLowerCase();
+    if (!legacyCombined) {
+      return formatDisplayLabel(itemName);
+    }
+  }
+
+  if (
+    productName &&
+    productName.toLowerCase() !== variant.toLowerCase() &&
+    productName.toLowerCase() !== brand.toLowerCase()
+  ) {
+    return formatDisplayLabel(productName);
+  }
+
+  if (brand) return formatDisplayLabel(brand);
+
+  if (itemName.includes(" — ")) {
+    return formatDisplayLabel(itemName.split(" — ")[0]!.trim());
+  }
+
+  return formatDisplayLabel(itemName);
+}
+
 export function displayCatalogItem(
   brand: string | null | undefined,
   itemName: string,
