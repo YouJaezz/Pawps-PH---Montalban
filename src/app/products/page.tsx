@@ -1,11 +1,12 @@
 import Link from "next/link";
 
 import { CustomerPricelistExport } from "@/app/products/CustomerPricelistExport";
+import {
+  InventoryTable,
+  type InventoryTableRow,
+} from "@/app/products/InventoryTable";
 import { ProductAddButton } from "@/app/products/ProductAddButton";
-import { ProductEditButton } from "@/app/products/ProductEditButton";
-import { deleteProduct } from "@/app/products/delete-actions";
 import { AppShell } from "@/components/AppShell";
-import { ScrollableTable } from "@/components/ScrollableTable";
 import { db } from "@/db";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { products, suppliers } from "@/db/schema";
@@ -18,6 +19,7 @@ import { formatDualStock } from "@/lib/product-stock";
 import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { repairInventoryLabelsFromCatalog } from "@/lib/inventory-catalog-sync";
 import { formatSupplierPrice } from "@/lib/price-units";
+import { rowSearchText } from "@/lib/table-filter";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -115,6 +117,86 @@ export default async function ProductsPage() {
     })),
   );
 
+  const inventoryTableRows: InventoryTableRow[] = rows.map((p) => {
+    const catalog = p.supplierCatalogItemId
+      ? catalogById.get(p.supplierCatalogItemId)
+      : undefined;
+    const labels = resolveInventoryLabels(
+      {
+        name: p.name,
+        brand: p.brand,
+        variant: p.variant,
+      },
+      catalog,
+    );
+    const item = labels.item;
+    const brand = labels.brand;
+    const flavor = labels.flavor;
+    const itemType = p.itemType ?? catalog?.itemType ?? null;
+    const itemTypeLabel = displayCatalogItemType(itemType);
+    const priceUnit = catalog?.priceUnit ?? "Sack";
+    const supplierName = p.supplierId
+      ? (supplierById.get(p.supplierId) ?? "—")
+      : "—";
+    const stock = formatDualStock(p.stockUnit as StockUnit, p.stockQuantity, {
+      kgPerSack: p.kgPerSack,
+      unitsPerCase: p.unitsPerCase,
+    });
+    const retailProfit = Math.max(0, p.retailPrice - p.costPrice);
+    const bulkProfit =
+      p.bulkPrice > 0 ? Math.max(0, p.bulkPrice - p.costPrice) : null;
+    const isWeight = p.stockUnit === "Kilogram" || p.kgPerSack != null;
+    const unitSuffix = isWeight ? "/kg" : "/pc";
+
+    return {
+      id: p.id,
+      item,
+      brand,
+      flavor,
+      itemTypeLabel,
+      supplierName,
+      supplierId: p.supplierId,
+      supplierRetail: formatSupplierPrice(catalog?.retailPrice, priceUnit),
+      supplierWs: formatSupplierPrice(catalog?.unitCost, priceUnit),
+      purchaseTier: p.purchaseTier,
+      ourRetail: formatPhpFromCents(p.retailPrice),
+      ourWs:
+        p.bulkPrice > 0 ? formatPhpFromCents(p.bulkPrice) : "—",
+      stockPrimary: stock.primary,
+      stockSecondary: stock.secondary,
+      profitRetail: formatPhpFromCents(retailProfit),
+      profitBulk: bulkProfit != null ? formatPhpFromCents(bulkProfit) : null,
+      unitSuffix,
+      stockQuantity: p.stockQuantity,
+      searchText: rowSearchText([
+        item,
+        brand,
+        flavor,
+        itemTypeLabel,
+        supplierName,
+        p.purchaseTier,
+      ]),
+      productEdit: {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        variant: p.variant,
+        itemType: p.itemType,
+        packSize: p.packSize,
+        stockUnit: p.stockUnit as StockUnit,
+        stockQuantity: p.stockQuantity,
+        kgPerSack: p.kgPerSack,
+        unitsPerCase: p.unitsPerCase,
+        retailPrice: p.retailPrice,
+        bulkPrice: p.bulkPrice,
+      },
+    };
+  });
+
+  const inventorySuppliers = supplierRows
+    .filter((s) => inventoryTableRows.some((r) => r.supplierId === s.id))
+    .map((s) => ({ id: s.id, name: s.name }));
+
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
@@ -174,168 +256,10 @@ export default async function ProductsPage() {
               Inventory ({rows.length})
             </div>
 
-            <ScrollableTable maxHeight="max-h-[min(75vh,800px)]">
-              <table className="w-full table-auto text-xs">
-                <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
-                  <tr>
-                    <th className="px-2 py-2">Item</th>
-                    <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
-                      <th className="px-2 py-2">Flavor</th>
-                      <th className="hidden px-2 py-2 md:table-cell">Type</th>
-                      <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
-                    <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
-                    <th className="hidden px-2 py-2 lg:table-cell">Sup. WS</th>
-                    <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
-                    <th className="hidden px-2 py-2 sm:table-cell">Our retail</th>
-                    <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
-                    <th className="px-2 py-2">Stock</th>
-                    <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
-                    <th className="w-24 px-2 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {rows.length === 0 ? (
-                    <tr>
-                      <td className="px-3 py-5 text-zinc-400" colSpan={13}>
-                        No inventory — pick a supplier catalog item to add.
-                      </td>
-                    </tr>
-                  ) : (
-                    rows.map((p) => {
-                      const catalog = p.supplierCatalogItemId
-                        ? catalogById.get(p.supplierCatalogItemId)
-                        : undefined;
-                      const labels = resolveInventoryLabels(
-                        {
-                          name: p.name,
-                          brand: p.brand,
-                          variant: p.variant,
-                        },
-                        catalog,
-                      );
-                      const item = labels.item;
-                      const brand = labels.brand;
-                      const flavor = labels.flavor;
-                      const itemType =
-                        p.itemType ?? catalog?.itemType ?? null;
-                      const priceUnit = catalog?.priceUnit ?? "Sack";
-                      const stock = formatDualStock(
-                        p.stockUnit as StockUnit,
-                        p.stockQuantity,
-                        {
-                          kgPerSack: p.kgPerSack,
-                          unitsPerCase: p.unitsPerCase,
-                        },
-                      );
-                      const retailProfit = Math.max(0, p.retailPrice - p.costPrice);
-                      const bulkProfit =
-                        p.bulkPrice > 0
-                          ? Math.max(0, p.bulkPrice - p.costPrice)
-                          : null;
-                      const isWeight =
-                        p.stockUnit === "Kilogram" || p.kgPerSack != null;
-                      const unitSuffix = isWeight ? "/kg" : "/pc";
-
-                      return (
-                        <tr key={p.id} className="hover:bg-white/5">
-                          <td className="px-2 py-2 font-medium text-zinc-50">
-                            {item}
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
-                            {brand}
-                          </td>
-                            <td className="px-2 py-2 text-zinc-300">{flavor}</td>
-                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                              {displayCatalogItemType(itemType)}
-                            </td>
-                            <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                            {p.supplierId
-                              ? (supplierById.get(p.supplierId) ?? "—")
-                              : "—"}
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                            {formatSupplierPrice(catalog?.retailPrice, priceUnit)}
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                            {formatSupplierPrice(catalog?.unitCost, priceUnit)}
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                            {p.purchaseTier}
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
-                            {formatPhpFromCents(p.retailPrice)}
-                            <span className="text-[9px] text-zinc-600">
-                              {unitSuffix}
-                            </span>
-                          </td>
-                          <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
-                            {p.bulkPrice > 0 ? (
-                              <>
-                                {formatPhpFromCents(p.bulkPrice)}
-                                <span className="text-[9px] text-zinc-600">
-                                  {unitSuffix}
-                                </span>
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="px-2 py-2 font-medium">
-                            <div>{stock.primary}</div>
-                            {stock.secondary !== "—" ? (
-                              <div className="text-[9px] font-normal text-zinc-500">
-                                {stock.secondary}
-                              </div>
-                            ) : null}
-                          </td>
-                          <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
-                            <div>
-                              R: +{formatPhpFromCents(retailProfit)}
-                              {unitSuffix}
-                            </div>
-                            {bulkProfit != null ? (
-                              <div className="text-[10px] text-emerald-500/80">
-                                W: +{formatPhpFromCents(bulkProfit)}
-                                {unitSuffix}
-                              </div>
-                            ) : null}
-                          </td>
-                          <td className="px-2 py-2 align-top">
-                            <div className="flex flex-col gap-1.5">
-                              <ProductEditButton
-                                product={{
-                                  id: p.id,
-                                  name: p.name,
-                                  brand: p.brand,
-                                  variant: p.variant,
-                                  itemType: p.itemType,
-                                  packSize: p.packSize,
-                                  stockUnit: p.stockUnit as StockUnit,
-                                  stockQuantity: p.stockQuantity,
-                                  kgPerSack: p.kgPerSack,
-                                  unitsPerCase: p.unitsPerCase,
-                                  retailPrice: p.retailPrice,
-                                  bulkPrice: p.bulkPrice,
-                                }}
-                              />
-                              <form action={deleteProduct}>
-                                <input type="hidden" name="productId" value={p.id} />
-                                <button
-                                  type="submit"
-                                  className="text-[10px] text-red-400/80 hover:text-red-300"
-                                >
-                                  Delete
-                                </button>
-                              </form>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </ScrollableTable>
+            <InventoryTable
+              rows={inventoryTableRows}
+              suppliers={inventorySuppliers}
+            />
           </div>
         </div>
       </div>

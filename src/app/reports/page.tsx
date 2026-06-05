@@ -1,13 +1,23 @@
 import Link from "next/link";
 
+import { TopProductsTable } from "@/app/reports/TopProductsTable";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
-import { ScrollableTable } from "@/components/ScrollableTable";
 import { getBusinessInsights } from "@/db/queries/business";
 import { formatPhpFromCents } from "@/lib/money";
+import { rowSearchText } from "@/lib/table-filter";
 
 export default async function ReportsPage() {
   const insights = await getBusinessInsights();
+
+  const topProductRows = insights.topProductsLast30Days.map((p) => ({
+    productId: p.productId,
+    label: p.label,
+    quantity: p.quantity,
+    revenueCents: p.revenueCents,
+    profitCents: p.profitCents,
+    searchText: rowSearchText([p.label]),
+  }));
 
   return (
     <AppShell>
@@ -91,47 +101,7 @@ export default async function ReportsPage() {
             </a>
           </div>
 
-          <ScrollableTable maxHeight="max-h-[min(55vh,480px)]">
-            <table className="w-full table-fixed text-sm">
-              <thead className="bg-white/5 text-left text-zinc-300">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Product</th>
-                  <th className="w-20 px-4 py-3 font-medium">Qty</th>
-                  <th className="w-28 px-4 py-3 font-medium">Revenue</th>
-                  <th className="hidden w-28 px-4 py-3 font-medium sm:table-cell">
-                    Profit
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {insights.topProductsLast30Days.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-4 text-zinc-400" colSpan={3}>
-                      No paid sales yet — use Quick Sell to record sales.
-                    </td>
-                  </tr>
-                ) : (
-                  insights.topProductsLast30Days.map((p) => (
-                    <tr key={p.productId} className="hover:bg-white/5">
-                      <td className="px-4 py-3 font-medium text-zinc-50">
-                        <div className="truncate">{p.label}</div>
-                        <div className="mt-1 text-xs text-zinc-400 sm:hidden">
-                          Profit: {formatPhpFromCents(p.profitCents)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-200">{p.quantity}</td>
-                      <td className="px-4 py-3 text-zinc-200">
-                        {formatPhpFromCents(p.revenueCents)}
-                      </td>
-                      <td className="hidden px-4 py-3 text-zinc-200 sm:table-cell">
-                        {formatPhpFromCents(p.profitCents)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollableTable>
+          <TopProductsTable rows={topProductRows} />
         </div>
       </div>
     </AppShell>

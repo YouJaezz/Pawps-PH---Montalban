@@ -1,9 +1,10 @@
 import { StatCard } from "@/components/StatCard";
 import { AppShell } from "@/components/AppShell";
-import { ScrollableTable } from "@/components/ScrollableTable";
+import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
 import { getInventoryAtAGlance } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
 import { formatPhpFromCents } from "@/lib/money";
+import { rowSearchText } from "@/lib/table-filter";
 import Link from "next/link";
 
 function formatDateShort(d: Date) {
@@ -19,6 +20,15 @@ export default async function Home() {
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),
     getBusinessInsights(),
   ]);
+
+  const expiringRows = glance.expiringSoon.map((p) => ({
+    id: p.id,
+    name: p.name,
+    subtitle: [p.brand, p.variant].filter(Boolean).join(" • "),
+    stockQuantity: p.stockQuantity,
+    expiryLabel: p.expiryDate ? formatDateShort(p.expiryDate) : "—",
+    searchText: rowSearchText([p.name, p.brand, p.variant]),
+  }));
 
   return (
     <AppShell>
@@ -91,45 +101,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <ScrollableTable maxHeight="max-h-[min(50vh,400px)]">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 text-left text-zinc-300">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Product</th>
-                  <th className="px-4 py-3 font-medium">Stock</th>
-                  <th className="px-4 py-3 font-medium">Expiry</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {glance.expiringSoon.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-4 text-zinc-400" colSpan={3}>
-                      No expiring items found (or no products yet).
-                    </td>
-                  </tr>
-                ) : (
-                  glance.expiringSoon.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/5">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-zinc-50">
-                          {p.name}
-                        </div>
-                        <div className="text-xs text-zinc-400">
-                          {[p.brand, p.variant].filter(Boolean).join(" • ")}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-200">
-                        {p.stockQuantity}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-200">
-                        {p.expiryDate ? formatDateShort(p.expiryDate) : "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollableTable>
+          <ExpiringSoonTable rows={expiringRows} />
         </div>
       </div>
     </AppShell>

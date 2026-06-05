@@ -9,7 +9,9 @@ import {
   updatePreOrderStatus,
   type PreOrderActionResult,
 } from "@/app/preorders/actions";
+import { TableToolbar } from "@/components/TableToolbar";
 import { formatPhpFromCents } from "@/lib/money";
+import { matchesQuery, rowSearchText } from "@/lib/table-filter";
 
 export type PreOrderRow = {
   id: number;
@@ -76,6 +78,7 @@ function FeedbackBanner(props: { state: PreOrderActionResult | null }) {
 
 export function PreOrderTable(props: { rows: PreOrderRow[] }) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [statusState, statusAction, statusPending] = useActionState<
     PreOrderActionResult | null,
@@ -89,32 +92,56 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
   const feedback = statusState ?? receiveState;
 
   const filtered = useMemo(() => {
-    if (filter === "all") return props.rows;
-    return props.rows.filter((r) => r.status === filter);
-  }, [props.rows, filter]);
+    let list = props.rows;
+    if (filter !== "all") {
+      list = list.filter((r) => r.status === filter);
+    }
+    if (query.trim()) {
+      list = list.filter((r) =>
+        matchesQuery(
+          rowSearchText([
+            r.id,
+            r.customerName,
+            r.supplierName,
+            r.status,
+            ...r.items.flatMap((i) => [i.itemName, i.variant]),
+          ]),
+          query,
+        ),
+      );
+    }
+    return list;
+  }, [props.rows, filter, query]);
 
   return (
     <div>
       <FeedbackBanner state={feedback} />
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none"
-        >
-          <option value="all">All statuses</option>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+      <TableToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Search customer, item, PO #…"
+        shown={filtered.length}
+        total={props.rows.length}
+        filters={[
+          {
+            id: "status",
+            value: filter,
+            onChange: setFilter,
+            "aria-label": "Filter by status",
+            options: [
+              { value: "all", label: "All statuses" },
+              ...statuses.map((s) => ({ value: s, label: s })),
+            ],
+          },
+        ]}
+      />
 
       <div className="space-y-3">
-        {filtered.length === 0 ? (
+        {props.rows.length === 0 ? (
           <p className="text-sm text-zinc-500">No pre-orders yet.</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-zinc-500">No pre-orders match your search or filters.</p>
         ) : (
           filtered.map((row) => (
             <div

@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import {
   changeOwnPassword,
   createAccount,
   type SettingsActionResult,
 } from "@/app/settings/actions";
+import { TableToolbar } from "@/components/TableToolbar";
+import { matchesQuery, rowSearchText } from "@/lib/table-filter";
 
 const fieldClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
@@ -132,8 +134,25 @@ export function AccountsTable(props: {
   currentUserId: number;
   toggleAction: (formData: FormData) => Promise<void>;
 }) {
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return props.accounts;
+    return props.accounts.filter((u) =>
+      matchesQuery(rowSearchText([u.email, u.name, u.role]), query),
+    );
+  }, [props.accounts, query]);
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-white/10">
+    <div>
+      <TableToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Search email, name…"
+        shown={filtered.length}
+        total={props.accounts.length}
+      />
+      <div className="overflow-x-auto rounded-lg border border-white/10">
       <table className="w-full text-xs">
         <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
           <tr>
@@ -145,7 +164,16 @@ export function AccountsTable(props: {
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
-          {props.accounts.map((u) => (
+          {filtered.length === 0 ? (
+            <tr>
+              <td className="px-2 py-4 text-zinc-500" colSpan={5}>
+                {props.accounts.length === 0
+                  ? "No accounts yet."
+                  : "No accounts match your search."}
+              </td>
+            </tr>
+          ) : (
+          filtered.map((u) => (
             <tr key={u.id} className="hover:bg-white/5">
               <td className="px-2 py-2 text-zinc-200">{u.email}</td>
               <td className="px-2 py-2 text-zinc-400">{u.name ?? "—"}</td>
@@ -173,9 +201,11 @@ export function AccountsTable(props: {
                 )}
               </td>
             </tr>
-          ))}
+          ))
+          )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

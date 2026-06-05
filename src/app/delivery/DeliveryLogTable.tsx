@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { deleteDeliveryLog } from "@/app/delivery/delete-actions";
 import { updateDeliveryLog } from "@/app/delivery/update-actions";
+import { TableToolbar } from "@/components/TableToolbar";
 import { formatPhpFromCents } from "@/lib/money";
+import { matchesQuery, rowSearchText } from "@/lib/table-filter";
 
 export type DeliveryLogRow = {
   id: number;
@@ -36,13 +38,62 @@ const statuses = [
 
 export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = useMemo(() => {
+    let list = props.rows;
+    if (statusFilter !== "all") {
+      list = list.filter((d) => d.status === statusFilter);
+    }
+    if (query.trim()) {
+      list = list.filter((d) =>
+        matchesQuery(
+          rowSearchText([
+            d.customerName,
+            d.location,
+            d.deliveryMethod,
+            d.status,
+            d.reference,
+            d.notes,
+            d.orderId,
+          ]),
+          query,
+        ),
+      );
+    }
+    return list;
+  }, [props.rows, query, statusFilter]);
 
   return (
-    <div className="space-y-2">
+    <div>
+      <TableToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Search customer, location, order #…"
+        shown={filtered.length}
+        total={props.rows.length}
+        filters={[
+          {
+            id: "status",
+            value: statusFilter,
+            onChange: setStatusFilter,
+            "aria-label": "Filter by status",
+            options: [
+              { value: "all", label: "All statuses" },
+              ...statuses.map((s) => ({ value: s, label: s })),
+            ],
+          },
+        ]}
+      />
+
+      <div className="space-y-2">
       {props.rows.length === 0 ? (
         <p className="text-sm text-zinc-500">No delivery logs yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-zinc-500">No logs match your search or filters.</p>
       ) : (
-        props.rows.map((d) => (
+        filtered.map((d) => (
           <div
             key={d.id}
             className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
@@ -165,6 +216,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }

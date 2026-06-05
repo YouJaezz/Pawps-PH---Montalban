@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import { CopyTrackingLink } from "@/app/transport/CopyTrackingLink";
 import { deleteTransportJob } from "@/app/transport/delete-actions";
 import { updateTransportStatus } from "@/app/transport/actions";
+import { TableToolbar } from "@/components/TableToolbar";
 import { formatPhpFromCents } from "@/lib/money";
+import { matchesQuery, rowSearchText } from "@/lib/table-filter";
 import { tenthsToKm } from "@/lib/transport-pricing";
 
 export type TransportJobRow = {
@@ -31,12 +34,62 @@ const statuses = [
 ] as const;
 
 export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = useMemo(() => {
+    let list = props.rows;
+    if (statusFilter !== "all") {
+      list = list.filter((j) => j.status === statusFilter);
+    }
+    if (query.trim()) {
+      list = list.filter((j) =>
+        matchesQuery(
+          rowSearchText([
+            j.customerName,
+            j.contact,
+            j.pickupLocation,
+            j.dropoffLocation,
+            j.serviceType,
+            j.status,
+            j.receiptNumber,
+          ]),
+          query,
+        ),
+      );
+    }
+    return list;
+  }, [props.rows, query, statusFilter]);
+
   return (
-    <div className="space-y-2">
+    <div>
+      <TableToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Search customer, location, receipt…"
+        shown={filtered.length}
+        total={props.rows.length}
+        filters={[
+          {
+            id: "status",
+            value: statusFilter,
+            onChange: setStatusFilter,
+            "aria-label": "Filter by status",
+            options: [
+              { value: "all", label: "All statuses" },
+              ...statuses.map((s) => ({ value: s, label: s })),
+            ],
+          },
+        ]}
+      />
+
+      <div className="space-y-2">
       {props.rows.length === 0 ? (
         <p className="text-sm text-zinc-500">No transport jobs yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-zinc-500">No jobs match your search or filters.</p>
       ) : (
-        props.rows.map((j) => (
+        filtered.map((j) => (
           <div
             key={j.id}
             className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
@@ -111,6 +164,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }
