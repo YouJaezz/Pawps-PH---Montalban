@@ -178,20 +178,22 @@ export async function backfillSupplierPriceHistoryIfEmpty() {
 
   const { catalogItemKey } = await import("@/lib/supplier-item-key");
 
-  await db.insert(supplierPriceHistory).values(
-    catalog
-      .filter((row) => row.documentId != null)
-      .map((row) => ({
-        supplierId: row.supplierId,
-        documentId: row.documentId!,
-        itemKey: catalogItemKey(row),
-        itemName: row.itemName,
-        brand: row.brand,
-        variant: row.variant,
-        unitCost: row.unitCost,
-        retailPrice: row.retailPrice,
-        perKiloPrice: row.perKiloPrice,
-        recordedAt: row.createdAt,
-      })),
-  );
+  const historyRows = catalog
+    .filter((row) => row.documentId != null)
+    .map((row) => ({
+      supplierId: row.supplierId,
+      documentId: row.documentId!,
+      itemKey: catalogItemKey(row),
+      itemName: row.itemName,
+      brand: row.brand,
+      variant: row.variant,
+      unitCost: row.unitCost,
+      retailPrice: row.retailPrice,
+      perKiloPrice: row.perKiloPrice,
+      recordedAt: row.createdAt,
+    }));
+
+  if (historyRows.length === 0) return;
+
+  await db.insert(supplierPriceHistory).values(historyRows);
 }
