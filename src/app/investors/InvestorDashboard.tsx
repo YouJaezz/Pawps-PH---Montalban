@@ -100,6 +100,14 @@ export function InvestorDashboard(props: {
   accruedUnpaidCents: number;
   setupStep: number;
   highlightAgreement?: boolean;
+  currentMonthLabel: string;
+  salesPreview: {
+    monthLabel: string;
+    grossRevenueCents: number;
+    orderCount: number;
+  };
+  sanityOrderCount: number;
+  sanityGrossCents: number;
 }) {
   const [profileState, profileAction, profilePending] = useActionState<
     InvestorActionResult | null,
@@ -142,6 +150,11 @@ export function InvestorDashboard(props: {
   const inv = props.investor;
   const agr = props.agreement;
   const setupComplete = props.setupStep >= 3;
+  const salesConnected = props.sanityGrossCents > 0;
+  const metricsMismatch =
+    salesConnected &&
+    props.currentMetrics &&
+    props.currentMetrics.grossRevenueCents !== props.sanityGrossCents;
 
   const [investorId, setInvestorId] = useState(inv?.id ?? 0);
   useEffect(() => {
@@ -212,6 +225,34 @@ export function InvestorDashboard(props: {
         </div>
       ) : null}
 
+      {salesConnected ? (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+          <div className="text-xs font-medium text-emerald-300">
+            Sales connected · {props.currentMonthLabel}
+          </div>
+          <div className="mt-1 text-lg font-semibold text-zinc-50">
+            {formatPhpFromCents(props.sanityGrossCents)} collected
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            From {props.sanityOrderCount} order(s) in Sales &amp; Orders this month
+            (Philippines calendar). Investor share below uses the same data minus
+            COGS.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-[11px] text-amber-200/90">
+          No cash collected in {props.currentMonthLabel} yet. Orders on the Sales
+          &amp; Orders page with payment recorded will appear here automatically.
+        </div>
+      )}
+
+      {metricsMismatch ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
+          Sync note: refreshing should align totals. If a month was locked at ₱0
+          before sales came in, use <strong>Reset month</strong> on that row.
+        </div>
+      ) : null}
+
       {setupComplete && inv && agr ? (
         <div className="rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/10 to-transparent p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -248,7 +289,7 @@ export function InvestorDashboard(props: {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-[#e8a44a]/20 bg-[#e8a44a]/5 p-4 lg:col-span-2">
           <div className="text-xs font-medium uppercase tracking-wide text-[#e8a44a]">
-            This month — live from sales
+            {props.currentMonthLabel} — live from sales
           </div>
           {props.currentMetrics && agr ? (
             <>
@@ -280,25 +321,36 @@ export function InvestorDashboard(props: {
                   </div>
                 </div>
               </div>
-              {props.currentMetrics.orderCount === 0 ? (
+              {(props.currentMetrics.orderCount === 0 &&
+                props.sanityOrderCount === 0) ? (
                 <p className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
-                  No cash collected this month yet — numbers appear when Quick Sell or
-                  Bulk orders record payment in{" "}
+                  No cash collected in {props.currentMonthLabel} yet — numbers
+                  appear when Quick Sell or Bulk orders record payment in{" "}
                   <Link href="/orders" className="text-zinc-200 underline">
                     Sales &amp; Orders
                   </Link>
-                  . Pending orders with payment collected count here.
+                  .
                 </p>
               ) : (
                 <p className="mt-2 text-[10px] text-zinc-600">
-                  Based on {props.currentMetrics.orderCount} order(s) with payment
-                  collected this month (same data as Dashboard income).
+                  Based on{" "}
+                  {Math.max(
+                    props.currentMetrics.orderCount,
+                    props.sanityOrderCount,
+                  )}{" "}
+                  order(s) with payment collected in {props.currentMonthLabel}.
                 </p>
               )}
             </>
+          ) : salesConnected ? (
+            <p className="mt-2 text-sm text-zinc-400">
+              {formatPhpFromCents(props.sanityGrossCents)} detected from orders —
+              saving the agreement below will show net income and exact share.
+            </p>
           ) : (
             <p className="mt-2 text-sm text-zinc-500">
-              Complete the agreement below to see live profit-share numbers.
+              Save the investor profile and agreement below to calculate profit
+              share.
             </p>
           )}
         </div>
@@ -518,7 +570,14 @@ export function InvestorDashboard(props: {
               ) : (
                 props.monthlyRows.map((row) => (
                   <tr key={`${row.year}-${row.month}`} className="hover:bg-white/5">
-                    <td className="px-3 py-2 font-medium text-zinc-200">{row.label}</td>
+                    <td className="px-3 py-2 font-medium text-zinc-200">
+                      {row.label}
+                      {row.liveDiffers ? (
+                        <span className="ml-1 text-[9px] font-normal text-amber-400">
+                          · live sales differ
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2 text-zinc-400">
                       {formatPhpFromCents(row.grossRevenueCents)}
                     </td>

@@ -1,18 +1,25 @@
 import { cache } from "react";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, gte, lt, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   investorAgreements,
   investorPayouts,
   investors,
+  orders,
 } from "@/db/schema";
+import { ensureDefaultAgreement } from "@/db/queries/investor-setup";
 import {
   computeMonthlyNetIncomeBatch,
   investorShareCents,
   monthKey,
 } from "@/lib/investor-income";
-import { phIsCurrentMonth, phMonthLabel, phNow } from "@/lib/ph-time";
+import {
+  phIsCurrentMonth,
+  phMonthBounds,
+  phMonthLabel,
+  phNow,
+} from "@/lib/ph-time";
 
 export type InvestorMonthlyRow = {
   year: number;
@@ -26,8 +33,16 @@ export type InvestorMonthlyRow = {
   payoutId: number | null;
   payoutStatus: "Open" | "Projected" | "Accrued" | "Paid";
   canAccrue: boolean;
-  /** Locked snapshot differs from live sales (e.g. locked before more orders came in). */
   liveDiffers: boolean;
+  orderCount: number;
+};
+
+export type InvestorSalesPreview = {
+  monthLabel: string;
+  year: number;
+  month: number;
+  grossRevenueCents: number;
+  orderCount: number;
 };
 
 function phMonthPeriods(count: number) {
@@ -45,13 +60,34 @@ function phMonthPeriods(count: number) {
   return periods;
 }
 
+function lockedSnapshotStale(
+  existing: {
+    grossRevenueCents: number;
+    netIncomeCents: number;
+  },
+  metrics: { grossRevenueCents: number; netIncomeCents: number },
+) {
+  return (
+    existing.grossRevenueCents === 0 &&
+    metrics.grossRevenueCents > 0 &&
+    existing.netIncomeCents === 0
+  );
+}
+
 export const getInvestorDashboard = cache(async () => {
-  const [investorRows, agreements, payouts] = await Promise.all([
-    db
-      .select()
-      .from(investors)
-      .where(eq(investors.active, true))
-      .orderBy(investors.fullName),
+  const investorRows = await db
+    .select()
+    .from(investors)
+    .where(eq(investors.active, true))
+    .orderBy(investors.fullName);
+
+  const primary = investorRows[0] ?? null;
+
+  const agreementRecord = primary
+    ? ((await ensureDefaultAgreement(primary.id)) ?? undefined)
+    : undefined;
+
+  const [agreements, payouts] = await Promise.all([
     db
       .select()
       .from(investorAgreements)
@@ -70,16 +106,26 @@ export const getInvestorDashboard = cache(async () => {
   );
 
   const { year: currentYear, month: currentMonth } = phNow();
+  const currentMonthLabel = phMonthLabel(currentYear, currentMonth);
 
-  const primary = investorRows[0] ?? null;
-  const agreement = primary ? agreementByInvestor.get(primary.id) : undefined;
+  const agreement = primary
+    ? (agreementByInvestor.get(primary.id) ?? agreementRecord)
+    : undefined;
 
   const monthPeriods = phMonthPeriods(6);
 
-  const metricsByMonth =
-    agreement && primary
-      ? await computeMonthlyNetIncomeBatch(monthPeriods)
-      : new Map();
+  const metricsByMonth = await computeMonthlyNetIncomeBatch(monthPeriods);
+
+  const currentMetrics =
+    metricsByMonth.get(monthKey(currentYear, currentMonth)) ?? null;
+
+  const salesPreview: InvestorSalesPreview = {
+    monthLabel: currentMonthLabel,
+    year: currentYear,
+    month: currentMonth,
+    grossRevenueCents: currentMetrics?.grossRevenueCents ?? 0,
+    orderCount: currentMetrics?.orderCount ?? 0,
+  };
 
   const monthlyRows: InvestorMonthlyRow[] = [];
   if (agreement && primary) {
@@ -106,23 +152,31 @@ export const getInvestorDashboard = cache(async () => {
         agreement.sharePercent,
       );
 
-      // Current month always shows live sales; past months use locked snapshot when set.
       if (existing && !isCurrentMonth) {
+        const stale = lockedSnapshotStale(existing, metrics);
         monthlyRows.push({
           year,
           month,
           label,
-          grossRevenueCents: existing.grossRevenueCents,
-          cogsCents: existing.cogsCents,
-          netIncomeCents: existing.netIncomeCents,
+          grossRevenueCents: stale
+            ? metrics.grossRevenueCents
+            : existing.grossRevenueCents,
+          cogsCents: stale ? metrics.cogsCents : existing.cogsCents,
+          netIncomeCents: stale
+            ? metrics.netIncomeCents
+            : existing.netIncomeCents,
           sharePercent: existing.sharePercent,
-          payoutCents: existing.payoutCents,
+          payoutCents: stale
+            ? liveShare
+            : existing.payoutCents,
           payoutId: existing.id,
           payoutStatus: existing.status,
           canAccrue: false,
           liveDiffers:
+            stale ||
             existing.grossRevenueCents !== metrics.grossRevenueCents ||
             existing.netIncomeCents !== metrics.netIncomeCents,
+          orderCount: metrics.orderCount,
         });
         continue;
       }
@@ -144,13 +198,10 @@ export const getInvestorDashboard = cache(async () => {
             : "Open",
         canAccrue: !isCurrentMonth && !existing,
         liveDiffers: false,
+        orderCount: metrics.orderCount,
       });
     }
   }
-
-  const currentMetrics = agreement
-    ? (metricsByMonth.get(monthKey(currentYear, currentMonth)) ?? null)
-    : null;
 
   const currentShareCents =
     agreement && currentMetrics
@@ -174,6 +225,27 @@ export const getInvestorDashboard = cache(async () => {
 
   const setupStep = !primary ? 1 : !agreement ? 2 : 3;
 
+  // Direct sanity count — same rules as investor income (PH month, cash collected).
+  const { start, end } = phMonthBounds(currentYear, currentMonth);
+  const createdMs = sql<number>`CASE WHEN ${orders.createdAt} < 1000000000000 THEN ${orders.createdAt} * 1000 ELSE ${orders.createdAt} END`;
+  const [sanityRow] = await db
+    .select({
+      orderCount: sql<number>`count(*)`,
+      grossCents: sql<number>`coalesce(sum(${orders.amountPaid}), 0)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        sql`${createdMs} >= ${start.getTime()}`,
+        sql`${createdMs} < ${end.getTime()}`,
+        ne(orders.orderStatus, "Cancelled"),
+        gt(orders.amountPaid, 0),
+      ),
+    );
+
+  const sanityOrderCount = Number(sanityRow?.orderCount ?? 0);
+  const sanityGrossCents = Number(sanityRow?.grossCents ?? 0);
+
   return {
     investors: investorRows,
     primary,
@@ -185,5 +257,9 @@ export const getInvestorDashboard = cache(async () => {
     accruedUnpaidCents,
     setupStep,
     payoutHistory: investorPayoutsForPrimary,
+    currentMonthLabel,
+    salesPreview,
+    sanityOrderCount,
+    sanityGrossCents,
   };
 });

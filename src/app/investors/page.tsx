@@ -3,6 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { getInvestorDashboard } from "@/db/queries/investors";
 import { requireAdmin } from "@/lib/auth-guard";
 
+export const dynamic = "force-dynamic";
+
 export default async function InvestorsPage(props: {
   searchParams: Promise<{ step?: string }>;
 }) {
@@ -34,6 +36,10 @@ export default async function InvestorsPage(props: {
             accruedUnpaidCents={data.accruedUnpaidCents}
             setupStep={data.setupStep}
             highlightAgreement={searchParams.step === "agreement"}
+            currentMonthLabel={data.currentMonthLabel}
+            salesPreview={data.salesPreview}
+            sanityOrderCount={data.sanityOrderCount}
+            sanityGrossCents={data.sanityGrossCents}
           />
         </div>
       </div>

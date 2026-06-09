@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -9,6 +9,7 @@ import {
   orderItems,
   orders,
 } from "@/db/schema";
+import { ensureDefaultAgreement } from "@/db/queries/investor-setup";
 import { effectiveQuantity, type SaleUnit } from "@/lib/order-line-math";
 import {
   phMonthBounds,
@@ -16,6 +17,22 @@ import {
   phMonthLabel,
   phNow,
 } from "@/lib/ph-time";
+
+function orderCreatedMsColumn() {
+  return sql<number>`CASE WHEN ${orders.createdAt} < 1000000000000 THEN ${orders.createdAt} * 1000 ELSE ${orders.createdAt} END`;
+}
+
+function normalizeOrderCreatedAt(raw: Date | number | string): Date {
+  if (raw instanceof Date) {
+    const ms = raw.getTime();
+    if (ms > 0 && ms < 1_000_000_000_000) return new Date(ms * 1000);
+    return raw;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return new Date(raw);
+  if (n > 0 && n < 1_000_000_000_000) return new Date(n * 1000);
+  return new Date(n);
+}
 
 export type MonthlyNetIncome = {
   grossRevenueCents: number;
@@ -106,6 +123,7 @@ export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
     if (end > rangeEnd) rangeEnd = end;
   }
 
+  const createdMs = orderCreatedMsColumn();
   const monthOrders = await db
     .select({
       id: orders.id,
@@ -116,8 +134,8 @@ export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, rangeStart),
-        lt(orders.createdAt, rangeEnd),
+        sql`${createdMs} >= ${rangeStart.getTime()}`,
+        sql`${createdMs} < ${rangeEnd.getTime()}`,
         ne(orders.orderStatus, "Cancelled"),
       ),
     );
@@ -127,8 +145,7 @@ export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
 
   const paidByMonth = new Map<MonthKey, typeof paidOrders>();
   for (const order of paidOrders) {
-    const created =
-      order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
+    const created = normalizeOrderCreatedAt(order.createdAt);
     const key = phMonthKey(created) as MonthKey;
     if (!result.has(key)) continue;
     const arr = paidByMonth.get(key) ?? [];
@@ -197,6 +214,8 @@ export const getInvestorSummary = cache(async (): Promise<InvestorSummary | null
     .limit(1);
 
   if (!investor) return null;
+
+  await ensureDefaultAgreement(investor.id);
 
   const { year, month } = phNow();
   const currentMonthLabel = phMonthLabel(year, month);

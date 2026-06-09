@@ -10,6 +10,7 @@ import {
   investorPayouts,
   investors,
 } from "@/db/schema";
+import { ensureDefaultAgreement } from "@/db/queries/investor-setup";
 import {
   computeMonthlyNetIncome,
   investorShareCents,
@@ -73,6 +74,7 @@ export async function upsertInvestorProfile(
 
   if (Number.isFinite(id) && id > 0) {
     await db.update(investors).set(values).where(eq(investors.id, id));
+    await ensureDefaultAgreement(id);
     revalidateInvestorPages();
     return {
       ok: true,
@@ -80,7 +82,8 @@ export async function upsertInvestorProfile(
     };
   }
 
-  await db.insert(investors).values(values);
+  const [inserted] = await db.insert(investors).values(values).returning({ id: investors.id });
+  if (inserted) await ensureDefaultAgreement(inserted.id);
   revalidateInvestorPages();
   redirect("/investors?step=agreement");
 }

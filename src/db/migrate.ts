@@ -152,6 +152,12 @@ async function seedDefaultInvestor(db: ReturnType<typeof drizzle>) {
   }
 }
 
+async function fixLegacyTimestamps(client: Client) {
+  await client.execute(
+    `UPDATE orders SET created_at = created_at * 1000 WHERE created_at > 0 AND created_at < 1000000000000`,
+  );
+}
+
 async function main() {
   const url = process.env.DATABASE_URL ?? "file:./db.sqlite";
   const authToken = process.env.DATABASE_AUTH_TOKEN;
@@ -173,6 +179,7 @@ async function main() {
   const db = drizzle(client);
 
   await applyMigrations(client);
+  await fixLegacyTimestamps(client);
   await seedAdminUser(db);
   await seedDefaultInvestor(db);
 
