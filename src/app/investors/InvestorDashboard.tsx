@@ -4,9 +4,10 @@ import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
+  deleteInvestor,
   markPayoutPaid,
   recordMonthlyPayout,
-  undoAccrual,
+  resetMonthlyPayout,
   upsertInvestorAgreement,
   upsertInvestorProfile,
   type InvestorActionResult,
@@ -123,10 +124,20 @@ export function InvestorDashboard(props: {
   const [undoState, undoAction, undoPending] = useActionState<
     InvestorActionResult | null,
     FormData
-  >(undoAccrual, null);
+  >(resetMonthlyPayout, null);
+
+  const [deleteState, deleteAction, deletePending] = useActionState<
+    InvestorActionResult | null,
+    FormData
+  >(deleteInvestor, null);
 
   const actionFeedback =
-    payoutState ?? paidState ?? undoState ?? profileState ?? agreementState;
+    payoutState ??
+    paidState ??
+    undoState ??
+    deleteState ??
+    profileState ??
+    agreementState;
 
   const inv = props.investor;
   const agr = props.agreement;
@@ -139,6 +150,40 @@ export function InvestorDashboard(props: {
 
   return (
     <div className="space-y-6">
+      {inv ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4">
+          <div className="text-xs font-medium uppercase tracking-wide text-red-300">
+            Testing tools
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            Delete removes this investor, agreement, and all payout records so you can
+            start fresh. Reset month unlocks a locked period (including Paid).
+          </p>
+          <form
+            action={deleteAction}
+            className="mt-3"
+            onSubmit={(e) => {
+              if (
+                !window.confirm(
+                  `Delete "${inv.fullName}" and all payout history? This cannot be undone.`,
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <input type="hidden" name="investorId" value={inv.id} />
+            <button
+              type="submit"
+              disabled={deletePending}
+              className="rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+            >
+              {deletePending ? "Deleting…" : "Delete investor"}
+            </button>
+          </form>
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-xs font-medium text-zinc-300">Setup checklist</div>
         <div className="mt-2">
@@ -237,12 +282,12 @@ export function InvestorDashboard(props: {
               </div>
               {props.currentMetrics.orderCount === 0 ? (
                 <p className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
-                  No paid sales this month yet — numbers appear when cashiers complete
-                  Quick Sell orders in{" "}
+                  No cash collected this month yet — numbers appear when Quick Sell or
+                  Bulk orders record payment in{" "}
                   <Link href="/orders" className="text-zinc-200 underline">
                     Sales &amp; Orders
                   </Link>
-                  .
+                  . Pending orders with payment collected count here.
                 </p>
               ) : (
                 <p className="mt-2 text-[10px] text-zinc-600">
@@ -499,7 +544,7 @@ export function InvestorDashboard(props: {
                         agreementId={agr.id}
                         payoutAction={payoutAction}
                         paidAction={paidAction}
-                        undoAction={undoAction}
+                        resetAction={undoAction}
                         pending={payoutPending || paidPending || undoPending}
                       />
                     </td>
@@ -538,17 +583,51 @@ function PayoutActions(props: {
   agreementId: number;
   payoutAction: (payload: FormData) => void;
   paidAction: (payload: FormData) => void;
-  undoAction: (payload: FormData) => void;
+  resetAction: (payload: FormData) => void;
   pending: boolean;
 }) {
   const { row } = props;
 
+  const resetForm = row.payoutId ? (
+    <form
+      action={props.resetAction}
+      onSubmit={(e) => {
+        if (
+          !window.confirm(
+            `Reset ${row.label}? This removes the lock and shows live sales again.`,
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="payoutId" value={row.payoutId} />
+      <button
+        type="submit"
+        disabled={props.pending}
+        className="text-[10px] text-red-300 underline hover:text-red-200 disabled:opacity-50"
+      >
+        Reset month
+      </button>
+    </form>
+  ) : null;
+
   if (row.payoutStatus === "Projected") {
-    return <span className="text-[10px] text-zinc-600">Month not ended</span>;
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] text-zinc-600">Month in progress</span>
+        {resetForm}
+      </div>
+    );
   }
 
   if (row.payoutStatus === "Paid") {
-    return <span className="text-[10px] text-emerald-400">Complete</span>;
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] text-emerald-400">Complete</span>
+        {resetForm}
+      </div>
+    );
   }
 
   if (row.payoutStatus === "Accrued" && row.payoutId) {
@@ -564,14 +643,14 @@ function PayoutActions(props: {
             Mark paid
           </button>
         </form>
-        <form action={props.undoAction}>
+        <form action={props.resetAction}>
           <input type="hidden" name="payoutId" value={row.payoutId} />
           <button
             type="submit"
             disabled={props.pending}
             className="text-[10px] text-red-300/80 underline hover:text-red-200 disabled:opacity-50"
           >
-            Undo lock
+            Reset month
           </button>
         </form>
       </div>

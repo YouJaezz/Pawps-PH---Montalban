@@ -10,6 +10,12 @@ import {
   orders,
 } from "@/db/schema";
 import { effectiveQuantity, type SaleUnit } from "@/lib/order-line-math";
+import {
+  phMonthBounds,
+  phMonthKey,
+  phMonthLabel,
+  phNow,
+} from "@/lib/ph-time";
 
 export type MonthlyNetIncome = {
   grossRevenueCents: number;
@@ -34,10 +40,7 @@ export function monthKey(year: number, month: number): MonthKey {
 }
 
 function monthBounds(year: number, month: number) {
-  return {
-    start: new Date(year, month - 1, 1),
-    end: new Date(year, month, 1),
-  };
+  return phMonthBounds(year, month);
 }
 
 function lineCogs(line: {
@@ -124,8 +127,9 @@ export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
 
   const paidByMonth = new Map<MonthKey, typeof paidOrders>();
   for (const order of paidOrders) {
-    const created = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
-    const key = monthKey(created.getFullYear(), created.getMonth() + 1);
+    const created =
+      order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
+    const key = phMonthKey(created) as MonthKey;
     if (!result.has(key)) continue;
     const arr = paidByMonth.get(key) ?? [];
     arr.push(order);
@@ -194,13 +198,8 @@ export const getInvestorSummary = cache(async (): Promise<InvestorSummary | null
 
   if (!investor) return null;
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const currentMonthLabel = now.toLocaleDateString("en-PH", {
-    month: "long",
-    year: "numeric",
-  });
+  const { year, month } = phNow();
+  const currentMonthLabel = phMonthLabel(year, month);
 
   const [agreement, payouts, metricsBatch] = await Promise.all([
     db

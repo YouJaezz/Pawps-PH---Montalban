@@ -12,6 +12,7 @@ import {
   investorShareCents,
   monthKey,
 } from "@/lib/investor-income";
+import { phIsCurrentMonth, phMonthLabel, phNow } from "@/lib/ph-time";
 
 export type InvestorMonthlyRow = {
   year: number;
@@ -25,7 +26,24 @@ export type InvestorMonthlyRow = {
   payoutId: number | null;
   payoutStatus: "Open" | "Projected" | "Accrued" | "Paid";
   canAccrue: boolean;
+  /** Locked snapshot differs from live sales (e.g. locked before more orders came in). */
+  liveDiffers: boolean;
 };
+
+function phMonthPeriods(count: number) {
+  const { year: startYear, month: startMonth } = phNow();
+  const periods: Array<{ year: number; month: number }> = [];
+  for (let i = 0; i < count; i++) {
+    let y = startYear;
+    let m = startMonth - i;
+    while (m <= 0) {
+      m += 12;
+      y -= 1;
+    }
+    periods.push({ year: y, month: m });
+  }
+  return periods;
+}
 
 export const getInvestorDashboard = cache(async () => {
   const [investorRows, agreements, payouts] = await Promise.all([
@@ -51,17 +69,12 @@ export const getInvestorDashboard = cache(async () => {
     agreements.map((a) => [a.investorId, a]),
   );
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const { year: currentYear, month: currentMonth } = phNow();
 
   const primary = investorRows[0] ?? null;
   const agreement = primary ? agreementByInvestor.get(primary.id) : undefined;
 
-  const monthPeriods = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(currentYear, currentMonth - 1 - i, 1);
-    return { year: d.getFullYear(), month: d.getMonth() + 1 };
-  });
+  const monthPeriods = phMonthPeriods(6);
 
   const metricsByMonth =
     agreement && primary
@@ -71,11 +84,8 @@ export const getInvestorDashboard = cache(async () => {
   const monthlyRows: InvestorMonthlyRow[] = [];
   if (agreement && primary) {
     for (const { year, month } of monthPeriods) {
-      const isCurrentMonth = year === currentYear && month === currentMonth;
-      const label = new Date(year, month - 1, 1).toLocaleDateString("en-PH", {
-        month: "long",
-        year: "numeric",
-      });
+      const isCurrentMonth = phIsCurrentMonth(year, month);
+      const label = phMonthLabel(year, month);
 
       const existing = payouts.find(
         (p) =>
@@ -84,7 +94,20 @@ export const getInvestorDashboard = cache(async () => {
           p.periodMonth === month,
       );
 
-      if (existing) {
+      const metrics = metricsByMonth.get(monthKey(year, month)) ?? {
+        grossRevenueCents: 0,
+        cogsCents: 0,
+        netIncomeCents: 0,
+        orderCount: 0,
+      };
+
+      const liveShare = investorShareCents(
+        metrics.netIncomeCents,
+        agreement.sharePercent,
+      );
+
+      // Current month always shows live sales; past months use locked snapshot when set.
+      if (existing && !isCurrentMonth) {
         monthlyRows.push({
           year,
           month,
@@ -97,16 +120,12 @@ export const getInvestorDashboard = cache(async () => {
           payoutId: existing.id,
           payoutStatus: existing.status,
           canAccrue: false,
+          liveDiffers:
+            existing.grossRevenueCents !== metrics.grossRevenueCents ||
+            existing.netIncomeCents !== metrics.netIncomeCents,
         });
         continue;
       }
-
-      const metrics = metricsByMonth.get(monthKey(year, month)) ?? {
-        grossRevenueCents: 0,
-        cogsCents: 0,
-        netIncomeCents: 0,
-        orderCount: 0,
-      };
 
       monthlyRows.push({
         year,
@@ -116,13 +135,15 @@ export const getInvestorDashboard = cache(async () => {
         cogsCents: metrics.cogsCents,
         netIncomeCents: metrics.netIncomeCents,
         sharePercent: agreement.sharePercent,
-        payoutCents: investorShareCents(
-          metrics.netIncomeCents,
-          agreement.sharePercent,
-        ),
-        payoutId: null,
-        payoutStatus: isCurrentMonth ? "Projected" : "Open",
-        canAccrue: !isCurrentMonth,
+        payoutCents: liveShare,
+        payoutId: existing?.id ?? null,
+        payoutStatus: isCurrentMonth
+          ? "Projected"
+          : existing
+            ? existing.status
+            : "Open",
+        canAccrue: !isCurrentMonth && !existing,
+        liveDiffers: false,
       });
     }
   }

@@ -14,6 +14,7 @@ import {
   computeMonthlyNetIncome,
   investorShareCents,
 } from "@/lib/investor-income";
+import { phIsCurrentMonth, phMonthLabel } from "@/lib/ph-time";
 import { requireAdmin } from "@/lib/auth-guard";
 
 export type InvestorActionResult = {
@@ -42,8 +43,7 @@ function revalidateInvestorPages() {
 }
 
 function isCurrentMonth(year: number, month: number) {
-  const now = new Date();
-  return year === now.getFullYear() && month === now.getMonth() + 1;
+  return phIsCurrentMonth(year, month);
 }
 
 export async function upsertInvestorProfile(
@@ -223,10 +223,7 @@ export async function recordMonthlyPayout(
 
   revalidateInvestorPages();
 
-  const monthLabel = new Date(year, month - 1, 1).toLocaleDateString("en-PH", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = phMonthLabel(year, month);
 
   const peso = (payoutCents / 100).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
@@ -277,10 +274,7 @@ export async function markPayoutPaid(
 
   revalidateInvestorPages();
 
-  const monthLabel = new Date(row.periodYear, row.periodMonth - 1, 1).toLocaleDateString(
-    "en-PH",
-    { month: "long", year: "numeric" },
-  );
+  const monthLabel = phMonthLabel(row.periodYear, row.periodMonth);
   const peso = (row.payoutCents / 100).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
   });
@@ -288,8 +282,8 @@ export async function markPayoutPaid(
   return { ok: true, message: `${monthLabel} marked paid — ₱${peso} disbursed.` };
 }
 
-/** Undo an accidental accrue — only works while status is Accrued (not yet paid). */
-export async function undoAccrual(
+/** Remove a locked month (Accrued or Paid) so it can be recalculated — for testing / corrections. */
+export async function resetMonthlyPayout(
   _prev: InvestorActionResult | null,
   formData: FormData,
 ): Promise<InvestorActionResult> {
@@ -302,7 +296,6 @@ export async function undoAccrual(
 
   const [row] = await db
     .select({
-      status: investorPayouts.status,
       periodYear: investorPayouts.periodYear,
       periodMonth: investorPayouts.periodMonth,
     })
@@ -311,20 +304,55 @@ export async function undoAccrual(
     .limit(1);
 
   if (!row) return { error: "Payout not found." };
-  if (row.status === "Paid") {
-    return { error: "Cannot undo a payout that was already marked paid." };
-  }
 
   await db.delete(investorPayouts).where(eq(investorPayouts.id, payoutId));
   revalidateInvestorPages();
 
-  const monthLabel = new Date(row.periodYear, row.periodMonth - 1, 1).toLocaleDateString(
-    "en-PH",
-    { month: "long", year: "numeric" },
-  );
+  const monthLabel = phMonthLabel(row.periodYear, row.periodMonth);
 
   return {
     ok: true,
-    message: `${monthLabel} accrual removed — month is open again.`,
+    message: `${monthLabel} reset — month is open again with live sales numbers.`,
+  };
+}
+
+/** @deprecated Use resetMonthlyPayout — kept for existing forms. */
+export async function undoAccrual(
+  prev: InvestorActionResult | null,
+  formData: FormData,
+): Promise<InvestorActionResult> {
+  return resetMonthlyPayout(prev, formData);
+}
+
+export async function deleteInvestor(
+  _prev: InvestorActionResult | null,
+  formData: FormData,
+): Promise<InvestorActionResult> {
+  await requireAdmin();
+
+  const investorId = Number.parseInt(String(formData.get("investorId") ?? ""), 10);
+  if (!Number.isFinite(investorId) || investorId <= 0) {
+    return { error: "Invalid investor." };
+  }
+
+  const [inv] = await db
+    .select({ fullName: investors.fullName })
+    .from(investors)
+    .where(eq(investors.id, investorId))
+    .limit(1);
+
+  if (!inv) return { error: "Investor not found." };
+
+  await db.delete(investorPayouts).where(eq(investorPayouts.investorId, investorId));
+  await db
+    .delete(investorAgreements)
+    .where(eq(investorAgreements.investorId, investorId));
+  await db.delete(investors).where(eq(investors.id, investorId));
+
+  revalidateInvestorPages();
+
+  return {
+    ok: true,
+    message: `"${inv.fullName}" and all agreements/payouts were deleted. Add a new profile to start over.`,
   };
 }

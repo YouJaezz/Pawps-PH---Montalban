@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
-import { requireAuth, requireAdmin } from "@/lib/auth-guard";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
+import { requireAuth, requireAdmin } from "@/lib/auth-guard";
 import { normalizeOrderStatus } from "@/lib/order-status";
+import { revalidateSalesPages } from "@/lib/revalidate-sales";
 import {
   isSaleUnit,
   formatQuantityLabel,
@@ -492,11 +491,7 @@ export async function quickSell(
       await bumpCustomerSpend(customerId, totalAmount);
     }
 
-    revalidatePath("/orders");
-    revalidatePath("/customers");
-    revalidatePath("/");
-    revalidatePath("/products");
-    revalidatePath("/delivery");
+    revalidateSalesPages();
 
     const receiptLines = lines.map((line) => {
       const p = productById.get(line.productId)!;
@@ -723,9 +718,7 @@ export async function createBulkOrder(
       await bumpCustomerSpend(customerId, deposit);
     }
 
-    revalidatePath("/orders");
-    revalidatePath("/customers");
-    revalidatePath("/delivery");
+    revalidateSalesPages();
 
     const receiptLines = lines.map((line) => {
       const p = priceById.get(line.productId)!;
@@ -889,10 +882,7 @@ export async function cancelOrder(formData: FormData) {
     .set({ status: "Cancelled" })
     .where(eq(deliveryLogs.orderId, orderId));
 
-  revalidatePath("/orders");
-  revalidatePath("/products");
-  revalidatePath("/delivery");
-  revalidatePath("/customers");
+  revalidateSalesPages();
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -945,9 +935,7 @@ export async function updateOrderStatus(formData: FormData) {
       .where(eq(deliveryLogs.orderId, orderId));
   }
 
-  revalidatePath("/orders");
-  revalidatePath("/delivery");
-  revalidatePath("/products");
+  revalidateSalesPages();
 }
 
 export async function markOrderPaid(formData: FormData) {
@@ -981,8 +969,7 @@ export async function markOrderPaid(formData: FormData) {
     await bumpCustomerSpend(o.customerId, delta);
   }
 
-  revalidatePath("/orders");
-  revalidatePath("/customers");
+  revalidateSalesPages();
 }
 
 export async function addPayment(formData: FormData) {
@@ -1025,8 +1012,7 @@ export async function addPayment(formData: FormData) {
     await bumpCustomerSpend(o.customerId, delta);
   }
 
-  revalidatePath("/orders");
-  revalidatePath("/customers");
+  revalidateSalesPages();
 }
 
 export async function updateOrderLineItem(formData: FormData) {
@@ -1116,9 +1102,7 @@ export async function updateOrderLineItem(formData: FormData) {
 
   await recalcOrderTotal(orderId);
 
-  revalidatePath("/orders");
-  revalidatePath("/customers");
-  revalidatePath("/");
+  revalidateSalesPages();
 }
 
 export async function updateOrderDetails(formData: FormData) {
@@ -1161,7 +1145,6 @@ export async function updateOrderDetails(formData: FormData) {
     })
     .where(eq(orders.id, orderId));
 
-  revalidatePath("/orders");
-  revalidatePath("/delivery");
+  revalidateSalesPages();
 }
 
