@@ -5,12 +5,16 @@ import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getBusinessInsights } from "@/db/queries/business";
 import { requireAdmin } from "@/lib/auth-guard";
+import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 
 export default async function ReportsPage() {
   await requireAdmin();
-  const insights = await getBusinessInsights();
+  const [insights, investor] = await Promise.all([
+    getBusinessInsights(),
+    getInvestorSummary(),
+  ]);
 
   const topProductRows = insights.topProductsLast30Days.map((p) => ({
     productId: p.productId,
@@ -63,6 +67,51 @@ export default async function ReportsPage() {
             subtitle="Unpaid balance across orders"
           />
         </div>
+
+        {investor ? (
+          <>
+            <div className="mt-8 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Investor profit share
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-4">
+              <StatCard
+                title={
+                  investor.hasSetup
+                    ? `${investor.investorName} · ${investor.sharePercent}%`
+                    : "Investor setup"
+                }
+                value={
+                  investor.hasSetup
+                    ? formatPhpFromCents(investor.currentShareCents)
+                    : "Incomplete"
+                }
+                subtitle={
+                  investor.hasSetup
+                    ? `${investor.currentMonthLabel} projected share`
+                    : "Finish agreement in Investors tab"
+                }
+              />
+              <StatCard
+                title="Net income (this month)"
+                value={formatPhpFromCents(investor.currentNetCents)}
+                subtitle={`${investor.currentOrderCount} order(s) with payment`}
+              />
+              <StatCard
+                title="Paid to investor (YTD)"
+                value={formatPhpFromCents(investor.paidOutYtdCents)}
+              />
+              <StatCard
+                title="Accrued (not yet paid)"
+                value={formatPhpFromCents(investor.accruedUnpaidCents)}
+                subtitle={
+                  <Link href="/investors" className="underline hover:text-zinc-200">
+                    Manage in Investors →
+                  </Link>
+                }
+              />
+            </div>
+          </>
+        ) : null}
 
         <div className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-500">
           On-hand inventory

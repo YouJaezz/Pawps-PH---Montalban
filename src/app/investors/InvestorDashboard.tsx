@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 
 import {
   markPayoutPaid,
   recordMonthlyPayout,
+  undoAccrual,
   upsertInvestorAgreement,
   upsertInvestorProfile,
   type InvestorActionResult,
@@ -40,6 +42,31 @@ function ResultBanner(props: { state: InvestorActionResult | null }) {
   return null;
 }
 
+function SetupSteps(props: { step: number }) {
+  const steps = [
+    { n: 1, label: "Investor profile" },
+    { n: 2, label: "Agreement (₱50k · 10%)" },
+    { n: 3, label: "Live share tracking" },
+  ];
+  return (
+    <ol className="flex flex-wrap gap-2 text-[11px]">
+      {steps.map((s) => (
+        <li
+          key={s.n}
+          className={`rounded-full border px-3 py-1 ${
+            props.step >= s.n
+              ? "border-[#e8a44a]/40 bg-[#e8a44a]/10 text-[#e8a44a]"
+              : "border-white/10 text-zinc-500"
+          }`}
+        >
+          {s.n}. {s.label}
+          {props.step > s.n ? " ✓" : ""}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function InvestorDashboard(props: {
   investor: {
     id: number;
@@ -69,6 +96,9 @@ export function InvestorDashboard(props: {
   } | null;
   currentShareCents: number;
   paidYtdCents: number;
+  accruedUnpaidCents: number;
+  setupStep: number;
+  highlightAgreement?: boolean;
 }) {
   const [profileState, profileAction, profilePending] = useActionState<
     InvestorActionResult | null,
@@ -80,89 +110,180 @@ export function InvestorDashboard(props: {
     FormData
   >(upsertInvestorAgreement, null);
 
+  const [payoutState, payoutAction, payoutPending] = useActionState<
+    InvestorActionResult | null,
+    FormData
+  >(recordMonthlyPayout, null);
+
+  const [paidState, paidAction, paidPending] = useActionState<
+    InvestorActionResult | null,
+    FormData
+  >(markPayoutPaid, null);
+
+  const [undoState, undoAction, undoPending] = useActionState<
+    InvestorActionResult | null,
+    FormData
+  >(undoAccrual, null);
+
+  const actionFeedback =
+    payoutState ?? paidState ?? undoState ?? profileState ?? agreementState;
+
   const inv = props.investor;
   const agr = props.agreement;
+  const setupComplete = props.setupStep >= 3;
+
+  const [investorId, setInvestorId] = useState(inv?.id ?? 0);
+  useEffect(() => {
+    if (inv?.id) setInvestorId(inv.id);
+  }, [inv?.id]);
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="text-xs font-medium text-zinc-300">Setup checklist</div>
+        <div className="mt-2">
+          <SetupSteps step={props.setupStep} />
+        </div>
+        {props.setupStep === 1 ? (
+          <p className="mt-2 text-[11px] text-zinc-500">
+            Step 1: Enter the investor&apos;s name and contact, then click{" "}
+            <strong className="text-zinc-300">Save profile</strong>.
+          </p>
+        ) : props.setupStep === 2 ? (
+          <p className="mt-2 text-[11px] text-amber-200/80">
+            Step 2: Save the agreement (₱50,000 capital · 10% of monthly net income).
+            {props.highlightAgreement ? " You're on this step now." : ""}
+          </p>
+        ) : (
+          <p className="mt-2 text-[11px] text-emerald-300/80">
+            Setup complete — her share updates automatically from Sales &amp; Orders.
+          </p>
+        )}
+      </div>
+
+      {actionFeedback ? (
+        <div className="sticky top-0 z-10">
+          <ResultBanner state={actionFeedback} />
+        </div>
+      ) : null}
+
+      {setupComplete && inv && agr ? (
+        <div className="rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/10 to-transparent p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[#e8a44a]">
+                {inv.fullName} · {agr.sharePercent}% profit share
+              </div>
+              <div className="mt-1 text-2xl font-bold text-zinc-50">
+                {formatPhpFromCents(props.currentShareCents)}
+              </div>
+              <div className="mt-1 text-xs text-zinc-400">
+                Her share this month (projected) · capital{" "}
+                {formatPhpFromCents(agr.capitalCents)}
+              </div>
+            </div>
+            <div className="text-right text-xs text-zinc-400">
+              <div>
+                Paid out YTD:{" "}
+                <span className="font-medium text-emerald-300">
+                  {formatPhpFromCents(props.paidYtdCents)}
+                </span>
+              </div>
+              <div className="mt-1">
+                Accrued (not yet paid):{" "}
+                <span className="font-medium text-amber-300">
+                  {formatPhpFromCents(props.accruedUnpaidCents)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-[#e8a44a]/20 bg-[#e8a44a]/5 p-4 lg:col-span-2">
           <div className="text-xs font-medium uppercase tracking-wide text-[#e8a44a]">
-            Current month (projected)
+            This month — live from sales
           </div>
-          {props.currentMetrics ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <div className="text-[10px] text-zinc-500">Gross revenue</div>
-                <div className="text-sm font-semibold">
-                  {formatPhpFromCents(props.currentMetrics.grossRevenueCents)}
+          {props.currentMetrics && agr ? (
+            <>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <div className="text-[10px] text-zinc-500">Cash collected</div>
+                  <div className="text-sm font-semibold">
+                    {formatPhpFromCents(props.currentMetrics.grossRevenueCents)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-500">COGS</div>
+                  <div className="text-sm font-semibold text-red-300/90">
+                    {formatPhpFromCents(props.currentMetrics.cogsCents)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-500">Net income</div>
+                  <div className="text-sm font-semibold text-emerald-300">
+                    {formatPhpFromCents(props.currentMetrics.netIncomeCents)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-500">
+                    Her {agr.sharePercent}% share
+                  </div>
+                  <div className="text-lg font-bold text-[#e8a44a]">
+                    {formatPhpFromCents(props.currentShareCents)}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="text-[10px] text-zinc-500">COGS</div>
-                <div className="text-sm font-semibold text-red-300/90">
-                  {formatPhpFromCents(props.currentMetrics.cogsCents)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-zinc-500">Net income</div>
-                <div className="text-sm font-semibold text-emerald-300">
-                  {formatPhpFromCents(props.currentMetrics.netIncomeCents)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-zinc-500">
-                  Investor share ({agr?.sharePercent ?? "—"}%)
-                </div>
-                <div className="text-lg font-bold text-[#e8a44a]">
-                  {formatPhpFromCents(props.currentShareCents)}
-                </div>
-              </div>
-            </div>
+              {props.currentMetrics.orderCount === 0 ? (
+                <p className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
+                  No paid sales this month yet — numbers appear when cashiers complete
+                  Quick Sell orders in{" "}
+                  <Link href="/orders" className="text-zinc-200 underline">
+                    Sales &amp; Orders
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <p className="mt-2 text-[10px] text-zinc-600">
+                  Based on {props.currentMetrics.orderCount} order(s) with payment
+                  collected this month (same data as Dashboard income).
+                </p>
+              )}
+            </>
           ) : (
             <p className="mt-2 text-sm text-zinc-500">
-              Add an agreement to calculate monthly shares.
+              Complete the agreement below to see live profit-share numbers.
             </p>
           )}
-          <p className="mt-2 text-[10px] text-zinc-600">
-            Net income = paid sales revenue minus cost of goods sold (same month).
-            {props.currentMetrics
-              ? ` Based on ${props.currentMetrics.orderCount} paid order(s).`
-              : ""}
-          </p>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs font-medium text-zinc-300">Summary</div>
-          <dl className="mt-3 space-y-2 text-xs">
-            <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">Capital invested</dt>
-              <dd className="font-medium">
-                {agr ? formatPhpFromCents(agr.capitalCents) : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">Profit share</dt>
-              <dd className="font-medium">
-                {agr ? `${agr.sharePercent}% of net income` : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">Paid out (YTD)</dt>
-              <dd className="font-medium text-emerald-300">
-                {formatPhpFromCents(props.paidYtdCents)}
-              </dd>
-            </div>
-          </dl>
+          <div className="text-xs font-medium text-zinc-300">How it works</div>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-400">
+            <li>Sales in Orders add cash collected + COGS automatically.</li>
+            <li>
+              Net income = cash collected − COGS (each month).
+            </li>
+            <li>
+              Her share = net income × {agr?.sharePercent ?? 10}%.
+            </li>
+            <li>
+              After month ends: <strong className="text-zinc-300">Lock month</strong>{" "}
+              → then <strong className="text-zinc-300">Mark paid</strong> when you send
+              money.
+            </li>
+          </ol>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="text-sm font-medium text-zinc-100">Investor profile</div>
+          <div className="text-sm font-medium text-zinc-100">
+            1 · Investor profile
+          </div>
           <form action={profileAction} className="mt-3 space-y-2">
-            <ResultBanner state={profileState} />
-            <input type="hidden" name="investorId" value={inv?.id ?? ""} />
+            <input type="hidden" name="investorId" value={investorId || ""} />
             <label className="block space-y-0.5">
               <span className="text-[11px] text-zinc-400">Full name *</span>
               <input
@@ -207,15 +328,6 @@ export function InvestorDashboard(props: {
                 className={fieldClass}
               />
             </label>
-            <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-400">Notes</span>
-              <textarea
-                name="notes"
-                rows={2}
-                defaultValue={inv?.notes ?? ""}
-                className={fieldClass}
-              />
-            </label>
             <button
               type="submit"
               disabled={profilePending}
@@ -226,23 +338,33 @@ export function InvestorDashboard(props: {
           </form>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div
+          className={`rounded-xl border bg-white/5 p-4 ${
+            props.highlightAgreement
+              ? "border-[#e8a44a]/40 ring-1 ring-[#e8a44a]/20"
+              : "border-white/10"
+          }`}
+        >
           <div className="text-sm font-medium text-zinc-100">
-            Investment agreement
+            2 · Investment agreement
           </div>
           <form action={agreementAction} className="mt-3 space-y-2">
-            <ResultBanner state={agreementState} />
-            <input type="hidden" name="investorId" value={inv?.id ?? ""} />
+            <input type="hidden" name="investorId" value={investorId || ""} />
             <input type="hidden" name="agreementId" value={agr?.id ?? ""} />
+            {!investorId ? (
+              <p className="text-[11px] text-amber-300">
+                Save the profile first — then this form will unlock.
+              </p>
+            ) : null}
             <label className="block space-y-0.5">
               <span className="text-[11px] text-zinc-400">
-                Agreement holder (authorized signatory) *
+                Agreement holder (your business signatory) *
               </span>
               <input
                 name="agreementHolder"
                 required
-                defaultValue={agr?.agreementHolder ?? ""}
-                placeholder="Business owner / partner name on contract"
+                disabled={!investorId}
+                defaultValue={agr?.agreementHolder ?? "The PAWps PH — Montalban"}
                 className={fieldClass}
               />
             </label>
@@ -253,6 +375,7 @@ export function InvestorDashboard(props: {
                   name="capitalAmount"
                   inputMode="decimal"
                   required
+                  disabled={!investorId}
                   defaultValue={
                     agr ? (agr.capitalCents / 100).toFixed(0) : "50000"
                   }
@@ -265,6 +388,7 @@ export function InvestorDashboard(props: {
                   name="sharePercent"
                   inputMode="decimal"
                   required
+                  disabled={!investorId}
                   defaultValue={agr?.sharePercent ?? 10}
                   className={fieldClass}
                 />
@@ -276,6 +400,7 @@ export function InvestorDashboard(props: {
                 <input
                   name="agreementDate"
                   type="date"
+                  disabled={!investorId}
                   defaultValue={fmtDate(agr?.agreementDate)}
                   className={fieldClass}
                 />
@@ -285,6 +410,7 @@ export function InvestorDashboard(props: {
                 <input
                   name="effectiveFrom"
                   type="date"
+                  disabled={!investorId}
                   defaultValue={fmtDate(agr?.effectiveFrom)}
                   className={fieldClass}
                 />
@@ -295,6 +421,7 @@ export function InvestorDashboard(props: {
               <textarea
                 name="termsNotes"
                 rows={2}
+                disabled={!investorId}
                 defaultValue={
                   agr?.termsNotes ??
                   "10% of monthly net income from paid sales, after COGS."
@@ -304,46 +431,43 @@ export function InvestorDashboard(props: {
             </label>
             <button
               type="submit"
-              disabled={agreementPending || !inv}
+              disabled={agreementPending || !investorId}
               className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
             >
-              {agreementPending ? "Saving…" : "Save agreement"}
+              {agreementPending ? "Saving…" : "Save agreement & see share"}
             </button>
-            {!inv ? (
-              <p className="text-[10px] text-zinc-500">
-                Save the investor profile first, then record the agreement.
-              </p>
-            ) : null}
           </form>
         </div>
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">
-          Monthly profit share schedule
+          3 · Monthly profit share
         </div>
         <p className="mt-1 text-[11px] text-zinc-500">
-          Accrue each closed month to lock figures, then mark as paid when disbursed.
+          <strong className="text-zinc-400">Open</strong> = calculated, not locked ·{" "}
+          <strong className="text-zinc-400">Projected</strong> = this month (still
+          selling) · <strong className="text-zinc-400">Accrued</strong> = locked ·{" "}
+          <strong className="text-zinc-400">Paid</strong> = money sent
         </p>
         <ScrollableTable maxHeight="max-h-[min(50vh,420px)]" className="mt-3">
           <table className="w-full text-xs">
             <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
               <tr>
                 <th className="px-3 py-2">Period</th>
-                <th className="px-3 py-2">Revenue</th>
+                <th className="px-3 py-2">Collected</th>
                 <th className="px-3 py-2">COGS</th>
                 <th className="px-3 py-2">Net income</th>
-                <th className="px-3 py-2">Share</th>
-                <th className="px-3 py-2">Payout</th>
+                <th className="px-3 py-2">Her share</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Action</th>
+                <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {props.monthlyRows.length === 0 ? (
+              {!agr || props.monthlyRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-zinc-500">
-                    No agreement yet — add investor details above.
+                  <td colSpan={7} className="px-3 py-4 text-zinc-500">
+                    Save the agreement above to see monthly shares.
                   </td>
                 </tr>
               ) : (
@@ -359,69 +483,25 @@ export function InvestorDashboard(props: {
                     <td className="px-3 py-2 text-emerald-300/90">
                       {formatPhpFromCents(row.netIncomeCents)}
                     </td>
-                    <td className="px-3 py-2 text-zinc-400">{row.sharePercent}%</td>
                     <td className="px-3 py-2 font-medium text-[#e8a44a]">
-                      {formatPhpFromCents(row.payoutCents)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={
-                          row.payoutStatus === "Paid"
-                            ? "text-emerald-400"
-                            : row.payoutStatus === "Projected"
-                              ? "text-zinc-400"
-                              : "text-amber-300"
-                        }
-                      >
-                        {row.payoutStatus}
+                      {formatPhpFromCents(row.payoutCents)}{" "}
+                      <span className="text-[10px] font-normal text-zinc-500">
+                        ({row.sharePercent}%)
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      {row.payoutStatus === "Projected" ? (
-                        <span className="text-[10px] text-zinc-600">In progress</span>
-                      ) : row.payoutStatus === "Paid" ? (
-                        <span className="text-[10px] text-zinc-600">Done</span>
-                      ) : inv && agr ? (
-                        <div className="flex flex-col gap-1">
-                          <form action={recordMonthlyPayout}>
-                            <input type="hidden" name="investorId" value={inv.id} />
-                            <input type="hidden" name="agreementId" value={agr.id} />
-                            <input type="hidden" name="year" value={row.year} />
-                            <input type="hidden" name="month" value={row.month} />
-                            <button
-                              type="submit"
-                              className="text-[10px] text-zinc-300 underline hover:text-zinc-100"
-                            >
-                              Accrue
-                            </button>
-                          </form>
-                          {row.payoutId ? (
-                            <form action={markPayoutPaid}>
-                              <input type="hidden" name="payoutId" value={row.payoutId} />
-                              <button
-                                type="submit"
-                                className="text-[10px] text-emerald-300 underline hover:text-emerald-200"
-                              >
-                                Mark paid
-                              </button>
-                            </form>
-                          ) : (
-                            <form action={recordMonthlyPayout}>
-                              <input type="hidden" name="investorId" value={inv.id} />
-                              <input type="hidden" name="agreementId" value={agr.id} />
-                              <input type="hidden" name="year" value={row.year} />
-                              <input type="hidden" name="month" value={row.month} />
-                              <input type="hidden" name="markPaid" value="on" />
-                              <button
-                                type="submit"
-                                className="text-[10px] text-emerald-300 underline hover:text-emerald-200"
-                              >
-                                Accrue &amp; pay
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      ) : null}
+                      <StatusBadge status={row.payoutStatus} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <PayoutActions
+                        row={row}
+                        investorId={investorId}
+                        agreementId={agr.id}
+                        payoutAction={payoutAction}
+                        paidAction={paidAction}
+                        undoAction={undoAction}
+                        pending={payoutPending || paidPending || undoPending}
+                      />
                     </td>
                   </tr>
                 ))
@@ -432,4 +512,105 @@ export function InvestorDashboard(props: {
       </div>
     </div>
   );
+}
+
+function StatusBadge(props: { status: InvestorMonthlyRow["payoutStatus"] }) {
+  const styles = {
+    Open: "text-zinc-400",
+    Projected: "text-sky-300",
+    Accrued: "text-amber-300",
+    Paid: "text-emerald-400",
+  };
+  const labels = {
+    Open: "Open",
+    Projected: "In progress",
+    Accrued: "Locked",
+    Paid: "Paid",
+  };
+  return (
+    <span className={styles[props.status]}>{labels[props.status]}</span>
+  );
+}
+
+function PayoutActions(props: {
+  row: InvestorMonthlyRow;
+  investorId: number;
+  agreementId: number;
+  payoutAction: (payload: FormData) => void;
+  paidAction: (payload: FormData) => void;
+  undoAction: (payload: FormData) => void;
+  pending: boolean;
+}) {
+  const { row } = props;
+
+  if (row.payoutStatus === "Projected") {
+    return <span className="text-[10px] text-zinc-600">Month not ended</span>;
+  }
+
+  if (row.payoutStatus === "Paid") {
+    return <span className="text-[10px] text-emerald-400">Complete</span>;
+  }
+
+  if (row.payoutStatus === "Accrued" && row.payoutId) {
+    return (
+      <div className="flex flex-col gap-1">
+        <form action={props.paidAction}>
+          <input type="hidden" name="payoutId" value={row.payoutId} />
+          <button
+            type="submit"
+            disabled={props.pending}
+            className="text-[10px] text-emerald-300 underline hover:text-emerald-200 disabled:opacity-50"
+          >
+            Mark paid
+          </button>
+        </form>
+        <form action={props.undoAction}>
+          <input type="hidden" name="payoutId" value={row.payoutId} />
+          <button
+            type="submit"
+            disabled={props.pending}
+            className="text-[10px] text-red-300/80 underline hover:text-red-200 disabled:opacity-50"
+          >
+            Undo lock
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  if (row.canAccrue && props.investorId) {
+    return (
+      <div className="flex flex-col gap-1">
+        <form action={props.payoutAction}>
+          <input type="hidden" name="investorId" value={props.investorId} />
+          <input type="hidden" name="agreementId" value={props.agreementId} />
+          <input type="hidden" name="year" value={row.year} />
+          <input type="hidden" name="month" value={row.month} />
+          <button
+            type="submit"
+            disabled={props.pending}
+            className="text-[10px] text-zinc-300 underline hover:text-zinc-100 disabled:opacity-50"
+          >
+            Lock month
+          </button>
+        </form>
+        <form action={props.payoutAction}>
+          <input type="hidden" name="investorId" value={props.investorId} />
+          <input type="hidden" name="agreementId" value={props.agreementId} />
+          <input type="hidden" name="year" value={row.year} />
+          <input type="hidden" name="month" value={row.month} />
+          <input type="hidden" name="markPaid" value="on" />
+          <button
+            type="submit"
+            disabled={props.pending}
+            className="text-[10px] text-emerald-300 underline hover:text-emerald-200 disabled:opacity-50"
+          >
+            Lock &amp; mark paid
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return <span className="text-[10px] text-zinc-600">—</span>;
 }

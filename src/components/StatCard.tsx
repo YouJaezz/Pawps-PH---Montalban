@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 export function StatCard(props: {
   title: string;
   value: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   icon?: ReactNode;
 }) {
   return (

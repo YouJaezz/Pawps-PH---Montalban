@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
 import { getInventoryAtAGlance } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
+import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 import { formatStockLabel } from "@/lib/product-stock";
@@ -18,9 +19,10 @@ function formatDateShort(d: Date) {
 }
 
 export default async function Home() {
-  const [glance, insights] = await Promise.all([
+  const [glance, insights, investor] = await Promise.all([
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),
     getBusinessInsights(),
+    getInvestorSummary(),
   ]);
 
   const expiringRows = glance.expiringSoon.map((p) => ({
@@ -68,7 +70,7 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total stock value (cost basis)"
             value={formatPhpFromCents(glance.totalStockValueCents)}
@@ -82,9 +84,64 @@ export default async function Home() {
           <StatCard
             title="Income (last 30 days)"
             value={formatPhpFromCents(insights.incomeLast30DaysCents)}
-            subtitle="From paid orders"
+            subtitle="Cash collected from orders"
           />
+          {investor?.hasSetup ? (
+            <StatCard
+              title={`Investor share (${investor.sharePercent}%)`}
+              value={formatPhpFromCents(investor.currentShareCents)}
+              subtitle={`${investor.investorName} · ${investor.currentMonthLabel} (projected)`}
+            />
+          ) : investor ? (
+            <StatCard
+              title="Investor share"
+              value="Setup needed"
+              subtitle={
+                <Link href="/investors" className="text-[#e8a44a] underline">
+                  Complete agreement →
+                </Link>
+              }
+            />
+          ) : (
+            <StatCard
+              title="Investor share"
+              value="—"
+              subtitle={
+                <Link href="/investors" className="text-zinc-400 underline">
+                  Add investor →
+                </Link>
+              }
+            />
+          )}
         </div>
+
+        {investor?.hasSetup ? (
+          <div className="mt-4 rounded-xl border border-[#e8a44a]/20 bg-[#e8a44a]/5 px-4 py-3 text-sm">
+            <span className="text-zinc-300">{investor.investorName}</span>
+            <span className="text-zinc-500"> · </span>
+            <span className="text-[#e8a44a]">
+              {formatPhpFromCents(investor.currentShareCents)} this month
+            </span>
+            <span className="text-zinc-500"> · </span>
+            <span className="text-zinc-400">
+              Paid YTD {formatPhpFromCents(investor.paidOutYtdCents)}
+            </span>
+            {investor.accruedUnpaidCents > 0 ? (
+              <>
+                <span className="text-zinc-500"> · </span>
+                <span className="text-amber-300">
+                  Accrued {formatPhpFromCents(investor.accruedUnpaidCents)}
+                </span>
+              </>
+            ) : null}
+            <Link
+              href="/investors"
+              className="ml-3 text-xs text-zinc-400 underline hover:text-zinc-200"
+            >
+              Investor tab →
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link

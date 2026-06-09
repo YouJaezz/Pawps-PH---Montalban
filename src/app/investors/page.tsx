@@ -3,8 +3,11 @@ import { AppShell } from "@/components/AppShell";
 import { getInvestorDashboard } from "@/db/queries/investors";
 import { requireAdmin } from "@/lib/auth-guard";
 
-export default async function InvestorsPage() {
+export default async function InvestorsPage(props: {
+  searchParams: Promise<{ step?: string }>;
+}) {
   await requireAdmin();
+  const searchParams = await props.searchParams;
   const data = await getInvestorDashboard();
 
   return (
@@ -15,8 +18,9 @@ export default async function InvestorsPage() {
           Investor relations
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Track capital contributions, profit-sharing agreements, and monthly
-          investor payouts based on net income from paid sales.
+          Tracks your investor&apos;s {data.agreement?.sharePercent ?? 10}% share of
+          monthly net income — connected automatically to Sales &amp; Orders and the
+          Dashboard.
         </p>
 
         <div className="mt-6">
@@ -27,6 +31,9 @@ export default async function InvestorsPage() {
             currentMetrics={data.currentMetrics}
             currentShareCents={data.currentShareCents}
             paidYtdCents={data.paidYtdCents}
+            accruedUnpaidCents={data.accruedUnpaidCents}
+            setupStep={data.setupStep}
+            highlightAgreement={searchParams.step === "agreement"}
           />
         </div>
       </div>

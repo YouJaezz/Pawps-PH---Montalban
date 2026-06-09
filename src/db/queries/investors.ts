@@ -1,84 +1,15 @@
-import { cache } from "react";
-import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   investorAgreements,
   investorPayouts,
   investors,
-  orderItems,
-  orders,
 } from "@/db/schema";
-import { effectiveQuantity, type SaleUnit } from "@/lib/order-line-math";
-
-function monthBounds(year: number, month: number) {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
-  return { start, end };
-}
-
-function lineCogs(line: {
-  quantity: number;
-  quantityTenths: number | null;
-  saleUnit: string;
-  unitCost: number;
-  isExcessSale: boolean;
-}) {
-  if (line.isExcessSale) return 0;
-  const qty = effectiveQuantity(
-    line.quantity,
-    line.saleUnit as SaleUnit,
-    line.quantityTenths,
-  );
-  return Math.round(line.unitCost * qty);
-}
-
-export async function computeMonthlyNetIncome(year: number, month: number) {
-  const { start, end } = monthBounds(year, month);
-
-  const paidOrders = await db
-    .select({ id: orders.id })
-    .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, start),
-        lt(orders.createdAt, end),
-        ne(orders.orderStatus, "Cancelled"),
-        eq(orders.paymentStatus, "Paid"),
-      ),
-    );
-
-  const orderIds = paidOrders.map((o) => o.id);
-  if (orderIds.length === 0) {
-    return { grossRevenueCents: 0, cogsCents: 0, netIncomeCents: 0, orderCount: 0 };
-  }
-
-  const lines = await db
-    .select({
-      lineTotal: orderItems.lineTotal,
-      quantity: orderItems.quantity,
-      quantityTenths: orderItems.quantityTenths,
-      saleUnit: orderItems.saleUnit,
-      unitCost: orderItems.unitCost,
-      isExcessSale: orderItems.isExcessSale,
-    })
-    .from(orderItems)
-    .where(inArray(orderItems.orderId, orderIds));
-
-  let grossRevenueCents = 0;
-  let cogsCents = 0;
-  for (const line of lines) {
-    grossRevenueCents += line.lineTotal;
-    cogsCents += lineCogs(line);
-  }
-
-  return {
-    grossRevenueCents,
-    cogsCents,
-    netIncomeCents: grossRevenueCents - cogsCents,
-    orderCount: orderIds.length,
-  };
-}
+import {
+  computeMonthlyNetIncome,
+  investorShareCents,
+} from "@/lib/investor-income";
 
 export type InvestorMonthlyRow = {
   year: number;
@@ -90,10 +21,12 @@ export type InvestorMonthlyRow = {
   sharePercent: number;
   payoutCents: number;
   payoutId: number | null;
-  payoutStatus: "Accrued" | "Paid" | "Projected";
+  /** Open = past month, not locked yet · Projected = current month · Accrued/Paid = locked in DB */
+  payoutStatus: "Open" | "Projected" | "Accrued" | "Paid";
+  canAccrue: boolean;
 };
 
-export const getInvestorDashboard = cache(async () => {
+export async function getInvestorDashboard() {
   const investorRows = await db
     .select()
     .from(investors)
@@ -113,7 +46,8 @@ export const getInvestorDashboard = cache(async () => {
     .select()
     .from(investorPayouts)
     .orderBy(
-      sql`${investorPayouts.periodYear} desc, ${investorPayouts.periodMonth} desc`,
+      desc(investorPayouts.periodYear),
+      desc(investorPayouts.periodMonth),
     );
 
   const now = new Date();
@@ -124,11 +58,12 @@ export const getInvestorDashboard = cache(async () => {
   const agreement = primary ? agreementByInvestor.get(primary.id) : undefined;
 
   const monthlyRows: InvestorMonthlyRow[] = [];
-  if (agreement) {
+  if (agreement && primary) {
     for (let i = 0; i < 6; i++) {
       const d = new Date(currentYear, currentMonth - 1 - i, 1);
       const year = d.getFullYear();
       const month = d.getMonth() + 1;
+      const isCurrentMonth = year === currentYear && month === currentMonth;
       const label = d.toLocaleDateString("en-PH", {
         month: "long",
         year: "numeric",
@@ -136,7 +71,7 @@ export const getInvestorDashboard = cache(async () => {
 
       const existing = payouts.find(
         (p) =>
-          p.investorId === primary!.id &&
+          p.investorId === primary.id &&
           p.periodYear === year &&
           p.periodMonth === month,
       );
@@ -153,14 +88,17 @@ export const getInvestorDashboard = cache(async () => {
           payoutCents: existing.payoutCents,
           payoutId: existing.id,
           payoutStatus: existing.status,
+          canAccrue: false,
         });
         continue;
       }
 
       const metrics = await computeMonthlyNetIncome(year, month);
-      const payoutCents = Math.round(
-        (metrics.netIncomeCents * agreement.sharePercent) / 100,
+      const payoutCents = investorShareCents(
+        metrics.netIncomeCents,
+        agreement.sharePercent,
       );
+
       monthlyRows.push({
         year,
         month,
@@ -171,35 +109,37 @@ export const getInvestorDashboard = cache(async () => {
         sharePercent: agreement.sharePercent,
         payoutCents,
         payoutId: null,
-        payoutStatus:
-          year === currentYear && month === currentMonth
-            ? "Projected"
-            : "Accrued",
+        payoutStatus: isCurrentMonth ? "Projected" : "Open",
+        canAccrue: !isCurrentMonth,
       });
     }
   }
 
-  const currentMetrics =
-    agreement != null
-      ? await computeMonthlyNetIncome(currentYear, currentMonth)
-      : null;
+  const currentMetrics = agreement
+    ? await computeMonthlyNetIncome(currentYear, currentMonth)
+    : null;
 
   const currentShareCents =
     agreement && currentMetrics
-      ? Math.round(
-          (currentMetrics.netIncomeCents * agreement.sharePercent) / 100,
+      ? investorShareCents(
+          currentMetrics.netIncomeCents,
+          agreement.sharePercent,
         )
       : 0;
 
-  const paidYtd = payouts
-    .filter(
-      (p) =>
-        primary &&
-        p.investorId === primary.id &&
-        p.periodYear === currentYear &&
-        p.status === "Paid",
-    )
+  const investorPayoutsForPrimary = primary
+    ? payouts.filter((p) => p.investorId === primary.id)
+    : [];
+
+  const paidYtdCents = investorPayoutsForPrimary
+    .filter((p) => p.periodYear === currentYear && p.status === "Paid")
     .reduce((sum, p) => sum + p.payoutCents, 0);
+
+  const accruedUnpaidCents = investorPayoutsForPrimary
+    .filter((p) => p.status === "Accrued")
+    .reduce((sum, p) => sum + p.payoutCents, 0);
+
+  const setupStep = !primary ? 1 : !agreement ? 2 : 3;
 
   return {
     investors: investorRows,
@@ -208,7 +148,9 @@ export const getInvestorDashboard = cache(async () => {
     monthlyRows,
     currentMetrics,
     currentShareCents,
-    paidYtdCents: paidYtd,
-    payoutHistory: payouts.filter((p) => primary && p.investorId === primary.id),
+    paidYtdCents,
+    accruedUnpaidCents,
+    setupStep,
+    payoutHistory: investorPayoutsForPrimary,
   };
-});
+}

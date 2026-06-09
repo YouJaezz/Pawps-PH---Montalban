@@ -1,7 +1,7 @@
 import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { investorAgreements, investors, users } from "./schema";
 import { hashPassword } from "../lib/password";
@@ -90,34 +90,66 @@ async function seedAdminUser(db: ReturnType<typeof drizzle>) {
 }
 
 async function seedDefaultInvestor(db: ReturnType<typeof drizzle>) {
-  const rows = await db.select({ count: sql<number>`count(*)` }).from(investors);
-  if (Number(rows[0]?.count ?? 0) > 0) return;
+  const investorCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(investors);
+  const hasInvestors = Number(investorCount[0]?.count ?? 0) > 0;
 
-  const [inv] = await db
-    .insert(investors)
-    .values({
-      fullName: "Primary Investor",
-      contact: null,
-      email: null,
-      address: null,
-      notes: "Update profile with investor legal name and contact details.",
-    })
-    .returning({ id: investors.id });
+  if (!hasInvestors) {
+    const [inv] = await db
+      .insert(investors)
+      .values({
+        fullName: "Primary Investor",
+        contact: null,
+        email: null,
+        address: null,
+        notes: "Update profile with investor legal name and contact details.",
+      })
+      .returning({ id: investors.id });
 
-  if (!inv) return;
+    if (inv) {
+      await db.insert(investorAgreements).values({
+        investorId: inv.id,
+        agreementHolder: "The PAWps PH — Montalban",
+        capitalCents: 5_000_000,
+        sharePercent: 10,
+        agreementDate: new Date(),
+        effectiveFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        termsNotes:
+          "10% of monthly net income (paid sales revenue minus COGS) in exchange for ₱50,000 capital contribution.",
+      });
+      console.log("Seeded default investor (₱50,000 · 10% share)");
+    }
+    return;
+  }
 
-  await db.insert(investorAgreements).values({
-    investorId: inv.id,
-    agreementHolder: "The PAWps PH — Montalban",
-    capitalCents: 5_000_000,
-    sharePercent: 10,
-    agreementDate: new Date(),
-    effectiveFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    termsNotes:
-      "10% of monthly net income (paid sales revenue minus COGS) in exchange for ₱50,000 capital contribution.",
-  });
+  // Ensure existing investors without an agreement get a default one
+  const allInvestors = await db
+    .select({ id: investors.id })
+    .from(investors)
+    .where(eq(investors.active, true));
 
-  console.log("Seeded default investor (₱50,000 · 10% share)");
+  for (const inv of allInvestors) {
+    const [existingAgreement] = await db
+      .select({ id: investorAgreements.id })
+      .from(investorAgreements)
+      .where(eq(investorAgreements.investorId, inv.id))
+      .limit(1);
+
+    if (!existingAgreement) {
+      await db.insert(investorAgreements).values({
+        investorId: inv.id,
+        agreementHolder: "The PAWps PH — Montalban",
+        capitalCents: 5_000_000,
+        sharePercent: 10,
+        agreementDate: new Date(),
+        effectiveFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        termsNotes:
+          "10% of monthly net income from collected sales minus COGS.",
+      });
+      console.log(`Added default agreement for investor #${inv.id}`);
+    }
+  }
 }
 
 async function main() {
