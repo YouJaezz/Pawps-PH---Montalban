@@ -1,8 +1,10 @@
+import { cache } from "react";
+
 import { getActiveInventoryProducts, inventoryValuationFromRows } from "@/db/queries/inventory-products";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export async function getInventoryAtAGlance(opts?: { daysUntilExpiry?: number }) {
+export const getInventoryAtAGlance = cache(async (opts?: { daysUntilExpiry?: number }) => {
   const daysUntilExpiry = opts?.daysUntilExpiry ?? 30;
   const cutoff = new Date(Date.now() + daysUntilExpiry * MS_PER_DAY);
 
@@ -20,4 +22,4 @@ export async function getInventoryAtAGlance(opts?: { daysUntilExpiry?: number })
     expiringSoonCount: expiringSoon.length,
     cutoff,
   };
-}
+});

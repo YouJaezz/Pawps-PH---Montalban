@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -7,8 +8,9 @@ import {
   investors,
 } from "@/db/schema";
 import {
-  computeMonthlyNetIncome,
+  computeMonthlyNetIncomeBatch,
   investorShareCents,
+  monthKey,
 } from "@/lib/investor-income";
 
 export type InvestorMonthlyRow = {
@@ -21,34 +23,33 @@ export type InvestorMonthlyRow = {
   sharePercent: number;
   payoutCents: number;
   payoutId: number | null;
-  /** Open = past month, not locked yet · Projected = current month · Accrued/Paid = locked in DB */
   payoutStatus: "Open" | "Projected" | "Accrued" | "Paid";
   canAccrue: boolean;
 };
 
-export async function getInvestorDashboard() {
-  const investorRows = await db
-    .select()
-    .from(investors)
-    .where(eq(investors.active, true))
-    .orderBy(investors.fullName);
-
-  const agreements = await db
-    .select()
-    .from(investorAgreements)
-    .where(eq(investorAgreements.active, true));
+export const getInvestorDashboard = cache(async () => {
+  const [investorRows, agreements, payouts] = await Promise.all([
+    db
+      .select()
+      .from(investors)
+      .where(eq(investors.active, true))
+      .orderBy(investors.fullName),
+    db
+      .select()
+      .from(investorAgreements)
+      .where(eq(investorAgreements.active, true)),
+    db
+      .select()
+      .from(investorPayouts)
+      .orderBy(
+        desc(investorPayouts.periodYear),
+        desc(investorPayouts.periodMonth),
+      ),
+  ]);
 
   const agreementByInvestor = new Map(
     agreements.map((a) => [a.investorId, a]),
   );
-
-  const payouts = await db
-    .select()
-    .from(investorPayouts)
-    .orderBy(
-      desc(investorPayouts.periodYear),
-      desc(investorPayouts.periodMonth),
-    );
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -57,14 +58,21 @@ export async function getInvestorDashboard() {
   const primary = investorRows[0] ?? null;
   const agreement = primary ? agreementByInvestor.get(primary.id) : undefined;
 
+  const monthPeriods = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(currentYear, currentMonth - 1 - i, 1);
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  });
+
+  const metricsByMonth =
+    agreement && primary
+      ? await computeMonthlyNetIncomeBatch(monthPeriods)
+      : new Map();
+
   const monthlyRows: InvestorMonthlyRow[] = [];
   if (agreement && primary) {
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(currentYear, currentMonth - 1 - i, 1);
-      const year = d.getFullYear();
-      const month = d.getMonth() + 1;
+    for (const { year, month } of monthPeriods) {
       const isCurrentMonth = year === currentYear && month === currentMonth;
-      const label = d.toLocaleDateString("en-PH", {
+      const label = new Date(year, month - 1, 1).toLocaleDateString("en-PH", {
         month: "long",
         year: "numeric",
       });
@@ -93,11 +101,12 @@ export async function getInvestorDashboard() {
         continue;
       }
 
-      const metrics = await computeMonthlyNetIncome(year, month);
-      const payoutCents = investorShareCents(
-        metrics.netIncomeCents,
-        agreement.sharePercent,
-      );
+      const metrics = metricsByMonth.get(monthKey(year, month)) ?? {
+        grossRevenueCents: 0,
+        cogsCents: 0,
+        netIncomeCents: 0,
+        orderCount: 0,
+      };
 
       monthlyRows.push({
         year,
@@ -107,7 +116,10 @@ export async function getInvestorDashboard() {
         cogsCents: metrics.cogsCents,
         netIncomeCents: metrics.netIncomeCents,
         sharePercent: agreement.sharePercent,
-        payoutCents,
+        payoutCents: investorShareCents(
+          metrics.netIncomeCents,
+          agreement.sharePercent,
+        ),
         payoutId: null,
         payoutStatus: isCurrentMonth ? "Projected" : "Open",
         canAccrue: !isCurrentMonth,
@@ -116,7 +128,7 @@ export async function getInvestorDashboard() {
   }
 
   const currentMetrics = agreement
-    ? await computeMonthlyNetIncome(currentYear, currentMonth)
+    ? (metricsByMonth.get(monthKey(currentYear, currentMonth)) ?? null)
     : null;
 
   const currentShareCents =
@@ -153,4 +165,4 @@ export async function getInvestorDashboard() {
     setupStep,
     payoutHistory: investorPayoutsForPrimary,
   };
-}
+});

@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 
+import { getPendingDeliveryCount } from "@/db/queries/delivery-nav";
 import { logoutAction } from "@/app/login/actions";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { isAdmin, roleLabel } from "@/lib/roles";
 import { getSession, type SessionUser } from "@/lib/session";
-import { db } from "@/db";
-import { deliveryLogs } from "@/db/schema";
-import { inArray, sql } from "drizzle-orm";
 
 function NavItem(props: { href: string; label: string; hint?: string }) {
   return (
@@ -21,15 +19,6 @@ function NavItem(props: { href: string; label: string; hint?: string }) {
       ) : null}
     </Link>
   );
-}
-
-async function getPendingDeliveryCount() {
-  const statuses = ["Queued", "Booked", "Picked Up"] as const;
-  const rows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deliveryLogs)
-    .where(inArray(deliveryLogs.status, [...statuses]));
-  return Number(rows[0]?.count ?? 0);
 }
 
 export async function AppShell(props: {

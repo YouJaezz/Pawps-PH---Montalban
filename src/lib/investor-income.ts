@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -10,10 +11,33 @@ import {
 } from "@/db/schema";
 import { effectiveQuantity, type SaleUnit } from "@/lib/order-line-math";
 
+export type MonthlyNetIncome = {
+  grossRevenueCents: number;
+  cogsCents: number;
+  netIncomeCents: number;
+  orderCount: number;
+};
+
+export type MonthPeriod = { year: number; month: number };
+
+export type MonthKey = `${number}-${number}`;
+
+const EMPTY_MONTH: MonthlyNetIncome = {
+  grossRevenueCents: 0,
+  cogsCents: 0,
+  netIncomeCents: 0,
+  orderCount: 0,
+};
+
+export function monthKey(year: number, month: number): MonthKey {
+  return `${year}-${month}`;
+}
+
 function monthBounds(year: number, month: number) {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
-  return { start, end };
+  return {
+    start: new Date(year, month - 1, 1),
+    end: new Date(year, month, 1),
+  };
 }
 
 function lineCogs(line: {
@@ -32,51 +56,15 @@ function lineCogs(line: {
   return Math.round(line.unitCost * qty);
 }
 
-/** Net income for a month — uses cash collected (amountPaid) minus prorated COGS. */
-export async function computeMonthlyNetIncome(year: number, month: number) {
-  const { start, end } = monthBounds(year, month);
-
-  const monthOrders = await db
-    .select({
-      id: orders.id,
-      totalAmount: orders.totalAmount,
-      amountPaid: orders.amountPaid,
-    })
-    .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, start),
-        lt(orders.createdAt, end),
-        ne(orders.orderStatus, "Cancelled"),
-      ),
-    );
-
-  const paidOrders = monthOrders.filter((o) => o.amountPaid > 0);
-  if (paidOrders.length === 0) {
-    return { grossRevenueCents: 0, cogsCents: 0, netIncomeCents: 0, orderCount: 0 };
-  }
-
-  const orderIds = paidOrders.map((o) => o.id);
-  const lines = await db
-    .select({
-      orderId: orderItems.orderId,
-      lineTotal: orderItems.lineTotal,
-      quantity: orderItems.quantity,
-      quantityTenths: orderItems.quantityTenths,
-      saleUnit: orderItems.saleUnit,
-      unitCost: orderItems.unitCost,
-      isExcessSale: orderItems.isExcessSale,
-    })
-    .from(orderItems)
-    .where(inArray(orderItems.orderId, orderIds));
-
-  const cogsByOrder = new Map<number, number>();
-  for (const line of lines) {
-    cogsByOrder.set(
-      line.orderId,
-      (cogsByOrder.get(line.orderId) ?? 0) + lineCogs(line),
-    );
-  }
+function metricsForPaidOrders(
+  paidOrders: Array<{
+    id: number;
+    totalAmount: number;
+    amountPaid: number;
+  }>,
+  cogsByOrder: Map<number, number>,
+): MonthlyNetIncome {
+  if (paidOrders.length === 0) return EMPTY_MONTH;
 
   let grossRevenueCents = 0;
   let cogsCents = 0;
@@ -98,6 +86,86 @@ export async function computeMonthlyNetIncome(year: number, month: number) {
   };
 }
 
+/** Compute net income for many months in two DB queries (orders + lines). */
+export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
+  const result = new Map<MonthKey, MonthlyNetIncome>();
+  if (months.length === 0) return result;
+
+  for (const m of months) {
+    result.set(monthKey(m.year, m.month), { ...EMPTY_MONTH });
+  }
+
+  let rangeStart = monthBounds(months[0]!.year, months[0]!.month).start;
+  let rangeEnd = monthBounds(months[0]!.year, months[0]!.month).end;
+  for (const m of months) {
+    const { start, end } = monthBounds(m.year, m.month);
+    if (start < rangeStart) rangeStart = start;
+    if (end > rangeEnd) rangeEnd = end;
+  }
+
+  const monthOrders = await db
+    .select({
+      id: orders.id,
+      totalAmount: orders.totalAmount,
+      amountPaid: orders.amountPaid,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, rangeStart),
+        lt(orders.createdAt, rangeEnd),
+        ne(orders.orderStatus, "Cancelled"),
+      ),
+    );
+
+  const paidOrders = monthOrders.filter((o) => o.amountPaid > 0);
+  if (paidOrders.length === 0) return result;
+
+  const paidByMonth = new Map<MonthKey, typeof paidOrders>();
+  for (const order of paidOrders) {
+    const created = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
+    const key = monthKey(created.getFullYear(), created.getMonth() + 1);
+    if (!result.has(key)) continue;
+    const arr = paidByMonth.get(key) ?? [];
+    arr.push(order);
+    paidByMonth.set(key, arr);
+  }
+
+  const orderIds = paidOrders.map((o) => o.id);
+  const lines = await db
+    .select({
+      orderId: orderItems.orderId,
+      quantity: orderItems.quantity,
+      quantityTenths: orderItems.quantityTenths,
+      saleUnit: orderItems.saleUnit,
+      unitCost: orderItems.unitCost,
+      isExcessSale: orderItems.isExcessSale,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const cogsByOrder = new Map<number, number>();
+  for (const line of lines) {
+    cogsByOrder.set(
+      line.orderId,
+      (cogsByOrder.get(line.orderId) ?? 0) + lineCogs(line),
+    );
+  }
+
+  for (const [key, ordersInMonth] of paidByMonth) {
+    result.set(key, metricsForPaidOrders(ordersInMonth, cogsByOrder));
+  }
+
+  return result;
+}
+
+/** Net income for one month — uses cash collected minus prorated COGS. */
+export async function computeMonthlyNetIncome(year: number, month: number) {
+  const batch = await computeMonthlyNetIncomeBatch([{ year, month }]);
+  return batch.get(monthKey(year, month)) ?? EMPTY_MONTH;
+}
+
 export function investorShareCents(netIncomeCents: number, sharePercent: number) {
   return Math.round((netIncomeCents * sharePercent) / 100);
 }
@@ -116,7 +184,7 @@ export type InvestorSummary = {
   accruedUnpaidCents: number;
 };
 
-export async function getInvestorSummary(): Promise<InvestorSummary | null> {
+export const getInvestorSummary = cache(async (): Promise<InvestorSummary | null> => {
   const [investor] = await db
     .select()
     .from(investors)
@@ -126,17 +194,6 @@ export async function getInvestorSummary(): Promise<InvestorSummary | null> {
 
   if (!investor) return null;
 
-  const [agreement] = await db
-    .select()
-    .from(investorAgreements)
-    .where(
-      and(
-        eq(investorAgreements.investorId, investor.id),
-        eq(investorAgreements.active, true),
-      ),
-    )
-    .limit(1);
-
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -144,6 +201,29 @@ export async function getInvestorSummary(): Promise<InvestorSummary | null> {
     month: "long",
     year: "numeric",
   });
+
+  const [agreement, payouts, metricsBatch] = await Promise.all([
+    db
+      .select()
+      .from(investorAgreements)
+      .where(
+        and(
+          eq(investorAgreements.investorId, investor.id),
+          eq(investorAgreements.active, true),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({
+        payoutCents: investorPayouts.payoutCents,
+        status: investorPayouts.status,
+        periodYear: investorPayouts.periodYear,
+      })
+      .from(investorPayouts)
+      .where(eq(investorPayouts.investorId, investor.id)),
+    computeMonthlyNetIncomeBatch([{ year, month }]),
+  ]);
 
   if (!agreement) {
     return {
@@ -161,20 +241,11 @@ export async function getInvestorSummary(): Promise<InvestorSummary | null> {
     };
   }
 
-  const metrics = await computeMonthlyNetIncome(year, month);
+  const metrics = metricsBatch.get(monthKey(year, month)) ?? EMPTY_MONTH;
   const currentShareCents = investorShareCents(
     metrics.netIncomeCents,
     agreement.sharePercent,
   );
-
-  const payouts = await db
-    .select({
-      payoutCents: investorPayouts.payoutCents,
-      status: investorPayouts.status,
-      periodYear: investorPayouts.periodYear,
-    })
-    .from(investorPayouts)
-    .where(eq(investorPayouts.investorId, investor.id));
 
   const paidOutYtdCents = payouts
     .filter((p) => p.periodYear === year && p.status === "Paid")
@@ -197,4 +268,4 @@ export async function getInvestorSummary(): Promise<InvestorSummary | null> {
     paidOutYtdCents,
     accruedUnpaidCents,
   };
-}
+});

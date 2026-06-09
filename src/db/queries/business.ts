@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq, gte, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -13,7 +14,7 @@ function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-export async function getBusinessInsights() {
+export const getBusinessInsights = cache(async () => {
   const now = new Date();
   const todayStart = startOfDay(now);
   const last7Start = new Date(todayStart.getTime() - 6 * MS_PER_DAY);
@@ -125,4 +126,4 @@ export async function getBusinessInsights() {
     potentialStockIncomeCents: inventoryValuation.potentialIncomeCents,
     profitPotentialCents: inventoryValuation.profitPotentialCents,
   };
-}
+});
