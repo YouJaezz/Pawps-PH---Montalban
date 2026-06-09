@@ -56,6 +56,7 @@ export default async function OrderReceiptPage(props: {
     totalAmount: order.totalAmount,
     amountPaid: order.amountPaid,
     createdAt: order.createdAt.toISOString(),
+    cashierName: order.cashierName,
     lines: lines.map((line) => ({
       label: productById.get(line.productId) ?? "Item",
       qtyLabel: line.isExcessSale

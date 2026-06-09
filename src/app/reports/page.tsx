@@ -4,10 +4,12 @@ import { TopProductsTable } from "@/app/reports/TopProductsTable";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getBusinessInsights } from "@/db/queries/business";
+import { requireAdmin } from "@/lib/auth-guard";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 
 export default async function ReportsPage() {
+  await requireAdmin();
   const insights = await getBusinessInsights();
 
   const topProductRows = insights.topProductsLast30Days.map((p) => ({

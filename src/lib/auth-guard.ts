@@ -1,4 +1,5 @@
 import { getSession, type SessionUser } from "@/lib/session";
+import { isAdmin } from "@/lib/roles";
 
 export async function requireAuth(): Promise<SessionUser> {
   const session = await getSession();
@@ -10,7 +11,7 @@ export async function requireAuth(): Promise<SessionUser> {
 
 export async function requireAdmin(): Promise<SessionUser> {
   const session = await requireAuth();
-  if (session.role !== "admin") {
+  if (!isAdmin(session.role)) {
     throw new Error("Admin access required.");
   }
   return session;

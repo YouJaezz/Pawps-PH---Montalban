@@ -1,6 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
+import type { UserRole } from "@/db/schema";
+import { normalizeRole } from "@/lib/roles";
+
 export const SESSION_COOKIE = "pawps_session";
 const SESSION_DAYS = 7;
 
@@ -8,7 +11,7 @@ export type SessionUser = {
   userId: number;
   email: string;
   name: string | null;
-  role: "admin" | "staff";
+  role: UserRole;
 };
 
 function getSecret() {
@@ -44,13 +47,12 @@ export async function verifySessionToken(
     const userId = Number(payload.userId);
     if (!Number.isFinite(userId) || userId <= 0) return null;
     const email = String(payload.email ?? "");
-    const role = payload.role === "admin" ? "admin" : "staff";
     if (!email) return null;
     return {
       userId,
       email,
       name: payload.name ? String(payload.name) : null,
-      role,
+      role: normalizeRole(String(payload.role ?? "")),
     };
   } catch {
     return null;

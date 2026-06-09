@@ -94,8 +94,8 @@ export function AddAccountForm() {
         </label>
         <label className="space-y-0.5">
           <span className="text-[11px] text-zinc-400">Role</span>
-          <select name="role" className={fieldClass} defaultValue="staff">
-            <option value="staff">Staff</option>
+          <select name="role" className={fieldClass} defaultValue="cashier">
+            <option value="cashier">Cashier</option>
             <option value="admin">Admin</option>
           </select>
         </label>
@@ -125,7 +125,7 @@ export type AccountRow = {
   id: number;
   email: string;
   name: string | null;
-  role: "admin" | "staff";
+  role: "admin" | "cashier";
   active: boolean;
 };
 

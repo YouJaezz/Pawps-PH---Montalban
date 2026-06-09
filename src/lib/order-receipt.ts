@@ -20,5 +20,6 @@ export type OrderReceiptData = {
   totalAmount: number;
   amountPaid: number;
   createdAt: string;
+  cashierName?: string | null;
   lines: OrderReceiptLine[];
 };

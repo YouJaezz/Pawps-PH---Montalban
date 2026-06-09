@@ -74,6 +74,12 @@ export function OrderReceiptView(props: {
             <dt className="text-zinc-600">Store</dt>
             <dd>{receipt.storeType}</dd>
           </div>
+          {receipt.cashierName ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-zinc-600">Cashier</dt>
+              <dd className="text-right font-medium">{receipt.cashierName}</dd>
+            </div>
+          ) : null}
           {receipt.deliveryMethod ? (
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-600">Delivery</dt>

@@ -58,8 +58,8 @@ export async function createAccount(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const roleRaw = String(formData.get("role") ?? "staff");
-  const role = roleRaw === "admin" ? "admin" : "staff";
+  const roleRaw = String(formData.get("role") ?? "cashier");
+  const role = roleRaw === "admin" ? "admin" : "cashier";
 
   if (!email || !password) {
     return { error: "Email and password are required." };

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAuth } from "@/lib/auth-guard";
+import { requireAuth, requireAdmin } from "@/lib/auth-guard";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
 import { normalizeOrderStatus } from "@/lib/order-status";
 import {
@@ -180,7 +180,7 @@ export async function quickSell(
   formData: FormData,
 ): Promise<OrderActionResult> {
   try {
-    await requireAuth();
+    const session = await requireAuth();
 
     const customerName = String(formData.get("customerName") ?? "").trim();
     const contactRaw = String(formData.get("contact") ?? "").trim();
@@ -447,6 +447,8 @@ export async function quickSell(
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
         stockDeducted: false,
+        createdByUserId: session.userId,
+        cashierName: session.name ?? session.email,
       })
       .returning({ id: orders.id, createdAt: orders.createdAt });
 
@@ -544,6 +546,7 @@ export async function quickSell(
           totalAmount,
           amountPaid: totalAmount,
           createdAt: createdAt.toISOString(),
+          cashierName: session.name ?? session.email,
           lines: receiptLines,
         },
       },
@@ -559,7 +562,7 @@ export async function createBulkOrder(
   formData: FormData,
 ): Promise<OrderActionResult> {
   try {
-    await requireAuth();
+    const session = await requireAuth();
 
     const customerName = String(formData.get("customerName") ?? "").trim();
     const contactRaw = String(formData.get("contact") ?? "").trim();
@@ -677,6 +680,8 @@ export async function createBulkOrder(
         paymentStatus: "30% Deposit",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
+        createdByUserId: session.userId,
+        cashierName: session.name ?? session.email,
       })
       .returning({ id: orders.id, createdAt: orders.createdAt });
 
@@ -753,6 +758,7 @@ export async function createBulkOrder(
           totalAmount: total,
           amountPaid: deposit,
           createdAt: createdAt.toISOString(),
+          cashierName: session.name ?? session.email,
           lines: receiptLines,
         },
       },
@@ -764,7 +770,7 @@ export async function createBulkOrder(
 }
 
 export async function cancelOrder(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   if (!orderId) throw new Error("Invalid order.");
@@ -890,7 +896,7 @@ export async function cancelOrder(formData: FormData) {
 }
 
 export async function updateOrderStatus(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   const nextStatus = String(formData.get("orderStatus") ?? "") as OrderStatus;
@@ -945,7 +951,7 @@ export async function updateOrderStatus(formData: FormData) {
 }
 
 export async function markOrderPaid(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   if (!orderId) throw new Error("Invalid order.");
@@ -980,7 +986,7 @@ export async function markOrderPaid(formData: FormData) {
 }
 
 export async function addPayment(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   const addAmount = parseMoneyToCents(formData.get("addAmount"));
@@ -1024,7 +1030,7 @@ export async function addPayment(formData: FormData) {
 }
 
 export async function updateOrderLineItem(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const lineId = parseIntOr(formData.get("lineId"), 0);
   const orderId = parseIntOr(formData.get("orderId"), 0);
@@ -1116,7 +1122,7 @@ export async function updateOrderLineItem(formData: FormData) {
 }
 
 export async function updateOrderDetails(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   if (!orderId) throw new Error("Invalid order.");

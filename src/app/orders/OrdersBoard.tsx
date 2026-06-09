@@ -33,6 +33,7 @@ export type OrderBoardRow = {
   paymentStatus: string;
   deliveryMethod: string | null;
   storeType: string;
+  cashierName: string | null;
   createdAt: string;
   itemsSummary: string;
   itemsSearchText: string;
@@ -51,7 +52,9 @@ function formatWhen(iso: string) {
 export function OrdersBoard(props: {
   rows: OrderBoardRow[];
   editableByOrderId: Record<number, OrderEditPayload>;
+  adminMode?: boolean;
 }) {
+  const adminMode = props.adminMode ?? true;
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
@@ -168,7 +171,8 @@ export function OrdersBoard(props: {
             <tr>
               <th className="px-2 py-1.5">Order</th>
               <th className="px-2 py-1.5">Customer</th>
-              <th className="hidden px-2 py-1.5 md:table-cell">Items</th>
+              <th className="hidden px-2 py-1.5 md:table-cell">Cashier</th>
+              <th className="hidden px-2 py-1.5 lg:table-cell">Items</th>
               <th className="px-2 py-1.5">Payment</th>
               <th className="px-2 py-1.5">Status</th>
               <th className="px-2 py-1.5">Actions</th>
@@ -177,7 +181,7 @@ export function OrdersBoard(props: {
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-2 py-4 text-zinc-500">
+                <td colSpan={7} className="px-2 py-4 text-zinc-500">
                   No orders match your filters.
                 </td>
               </tr>
@@ -209,6 +213,9 @@ export function OrdersBoard(props: {
                       </div>
                     </td>
                     <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                      {o.cashierName ?? "—"}
+                    </td>
+                    <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
                       <div>{o.itemsSummary}</div>
                       {o.itemCount > 1 ? (
                         <div className="text-[9px] text-zinc-600">
@@ -222,7 +229,9 @@ export function OrdersBoard(props: {
                         {formatPhpFromCents(o.totalAmount)}
                       </div>
                       <div className="text-[10px] text-zinc-500">{o.paymentStatus}</div>
-                      {o.paymentStatus !== "Paid" && status !== "Cancelled" ? (
+                      {adminMode &&
+                      o.paymentStatus !== "Paid" &&
+                      status !== "Cancelled" ? (
                         <div className="mt-1 flex flex-wrap gap-1">
                           <form action={addPayment} className="flex gap-1">
                             <input type="hidden" name="orderId" value={o.id} />
@@ -252,13 +261,9 @@ export function OrdersBoard(props: {
                       ) : null}
                     </td>
                     <td className="px-2 py-2">
-                      {status === "Cancelled" || status === "Completed" ? (
-                        <span
-                          className={`inline-block rounded-full border px-2 py-0.5 text-[10px] ${ORDER_STATUS_STYLES[status]}`}
-                        >
-                          {ORDER_STATUS_LABELS[status]}
-                        </span>
-                      ) : (
+                      {adminMode &&
+                      status !== "Cancelled" &&
+                      status !== "Completed" ? (
                         <form action={updateOrderStatus} className="space-y-1">
                           <input type="hidden" name="orderId" value={o.id} />
                           <select
@@ -276,6 +281,12 @@ export function OrdersBoard(props: {
                             )}
                           </select>
                         </form>
+                      ) : (
+                        <span
+                          className={`inline-block rounded-full border px-2 py-0.5 text-[10px] ${ORDER_STATUS_STYLES[status]}`}
+                        >
+                          {ORDER_STATUS_LABELS[status]}
+                        </span>
                       )}
                     </td>
                     <td className="px-2 py-2">
@@ -288,7 +299,7 @@ export function OrdersBoard(props: {
                         >
                           Receipt
                         </Link>
-                        {props.editableByOrderId[o.id] ? (
+                        {adminMode && props.editableByOrderId[o.id] ? (
                           <button
                             type="button"
                             onClick={() => setEditingOrderId(o.id)}
@@ -297,7 +308,7 @@ export function OrdersBoard(props: {
                             Edit
                           </button>
                         ) : null}
-                        {canCancel ? (
+                        {adminMode && canCancel ? (
                           <form action={cancelOrder}>
                             <input type="hidden" name="orderId" value={o.id} />
                             <button

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireAdmin } from "@/lib/auth-guard";
 import { desc } from "drizzle-orm";
 
 function startOfDay(d: Date) {
@@ -10,7 +10,7 @@ function startOfDay(d: Date) {
 }
 
 export async function GET() {
-  await requireAuth();
+  await requireAdmin();
 
   const now = new Date();
   const start = startOfDay(now);

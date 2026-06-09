@@ -36,7 +36,9 @@ export type InventorySupplierOption = { id: number; name: string };
 export function InventoryTable(props: {
   rows: InventoryTableRow[];
   suppliers: InventorySupplierOption[];
+  limitedView?: boolean;
 }) {
+  const limited = props.limitedView ?? false;
   const [query, setQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
@@ -105,15 +107,23 @@ export function InventoryTable(props: {
               <th className="px-2 py-2">Item</th>
               <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
               <th className="px-2 py-2">Flavor</th>
-              <th className="hidden px-2 py-2 md:table-cell">Type</th>
-              <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
-              <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
-              <th className="hidden px-2 py-2 lg:table-cell">Sup. WS</th>
-              <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
-              <th className="hidden px-2 py-2 sm:table-cell">Our retail</th>
-              <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
+              {!limited ? (
+                <>
+                  <th className="hidden px-2 py-2 md:table-cell">Type</th>
+                  <th className="hidden px-2 py-2 md:table-cell">Supplier</th>
+                  <th className="hidden px-2 py-2 lg:table-cell">Sup. retail</th>
+                  <th className="hidden px-2 py-2 lg:table-cell">Sup. WS</th>
+                  <th className="hidden px-2 py-2 md:table-cell">Bought as</th>
+                </>
+              ) : null}
+              <th className="hidden px-2 py-2 sm:table-cell">Retail</th>
+              {!limited ? (
+                <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
+              ) : null}
               <th className="px-2 py-2">Stock</th>
-              <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
+              {!limited ? (
+                <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
+              ) : null}
               <th className="w-24 px-2 py-2">Actions</th>
             </tr>
           </thead>
@@ -138,28 +148,34 @@ export function InventoryTable(props: {
                     {p.brand}
                   </td>
                   <td className="px-2 py-2 text-zinc-300">{p.flavor}</td>
-                  <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                    {p.itemTypeLabel}
-                  </td>
-                  <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                    {p.supplierName}
-                  </td>
-                  <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                    {p.supplierRetail}
-                  </td>
-                  <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
-                    {p.supplierWs}
-                  </td>
-                  <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
-                    {p.purchaseTier}
-                  </td>
+                  {!limited ? (
+                    <>
+                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                        {p.itemTypeLabel}
+                      </td>
+                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                        {p.supplierName}
+                      </td>
+                      <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                        {p.supplierRetail}
+                      </td>
+                      <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                        {p.supplierWs}
+                      </td>
+                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                        {p.purchaseTier}
+                      </td>
+                    </>
+                  ) : null}
                   <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
                     {p.ourRetail}
                     <span className="text-[9px] text-zinc-600">{p.unitSuffix}</span>
                   </td>
-                  <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
-                    {p.ourWs}
-                  </td>
+                  {!limited ? (
+                    <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
+                      {p.ourWs}
+                    </td>
+                  ) : null}
                   <td className="px-2 py-2 font-medium">
                     <div>{p.stockPrimary}</div>
                     {p.stockSecondary !== "—" ? (
@@ -168,30 +184,34 @@ export function InventoryTable(props: {
                       </div>
                     ) : null}
                   </td>
-                  <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
-                    <div>
-                      R: +{p.profitRetail}
-                      {p.unitSuffix}
-                    </div>
-                    {p.profitBulk ? (
-                      <div className="text-[10px] text-emerald-500/80">
-                        W: +{p.profitBulk}
+                  {!limited ? (
+                    <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
+                      <div>
+                        R: +{p.profitRetail}
                         {p.unitSuffix}
                       </div>
-                    ) : null}
-                  </td>
+                      {p.profitBulk ? (
+                        <div className="text-[10px] text-emerald-500/80">
+                          W: +{p.profitBulk}
+                          {p.unitSuffix}
+                        </div>
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td className="px-2 py-2 align-top">
                     <div className="flex flex-col gap-1.5">
                       <ProductEditButton product={p.productEdit} />
-                      <form action={deleteProduct}>
-                        <input type="hidden" name="productId" value={p.id} />
-                        <button
-                          type="submit"
-                          className="text-[10px] text-red-400/80 hover:text-red-300"
-                        >
-                          Delete
-                        </button>
-                      </form>
+                      {!limited ? (
+                        <form action={deleteProduct}>
+                          <input type="hidden" name="productId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="text-[10px] text-red-400/80 hover:text-red-300"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   </td>
                 </tr>

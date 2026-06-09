@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { sql } from "drizzle-orm";
 
-import { users } from "./schema";
+import { investorAgreements, investors, users } from "./schema";
 import { hashPassword } from "../lib/password";
 
 const MIGRATIONS_TABLE = "__drizzle_migrations";
@@ -89,6 +89,37 @@ async function seedAdminUser(db: ReturnType<typeof drizzle>) {
   console.log(`Seeded admin user: ${email}`);
 }
 
+async function seedDefaultInvestor(db: ReturnType<typeof drizzle>) {
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(investors);
+  if (Number(rows[0]?.count ?? 0) > 0) return;
+
+  const [inv] = await db
+    .insert(investors)
+    .values({
+      fullName: "Primary Investor",
+      contact: null,
+      email: null,
+      address: null,
+      notes: "Update profile with investor legal name and contact details.",
+    })
+    .returning({ id: investors.id });
+
+  if (!inv) return;
+
+  await db.insert(investorAgreements).values({
+    investorId: inv.id,
+    agreementHolder: "The PAWps PH — Montalban",
+    capitalCents: 5_000_000,
+    sharePercent: 10,
+    agreementDate: new Date(),
+    effectiveFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    termsNotes:
+      "10% of monthly net income (paid sales revenue minus COGS) in exchange for ₱50,000 capital contribution.",
+  });
+
+  console.log("Seeded default investor (₱50,000 · 10% share)");
+}
+
 async function main() {
   const url = process.env.DATABASE_URL ?? "file:./db.sqlite";
   const authToken = process.env.DATABASE_AUTH_TOKEN;
@@ -111,6 +142,7 @@ async function main() {
 
   await applyMigrations(client);
   await seedAdminUser(db);
+  await seedDefaultInvestor(db);
 
   client.close();
   console.log("✓ Migrations complete");

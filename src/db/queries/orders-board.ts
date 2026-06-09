@@ -45,6 +45,7 @@ export const getOrdersPageData = cache(async () => {
         deliveryMethod: orders.deliveryMethod,
         storeType: orders.storeType,
         notes: orders.notes,
+        cashierName: orders.cashierName,
         createdAt: orders.createdAt,
       })
       .from(orders)
@@ -157,6 +158,7 @@ export const getOrdersPageData = cache(async () => {
       paymentStatus: o.paymentStatus,
       deliveryMethod: o.deliveryMethod,
       storeType: o.storeType,
+      cashierName: o.cashierName,
       createdAt: o.createdAt.toISOString(),
       itemsSummary: formatItemsSummary(items),
       itemsSearchText: items.join(" "),

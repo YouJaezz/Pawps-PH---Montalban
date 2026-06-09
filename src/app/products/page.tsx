@@ -10,6 +10,8 @@ import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { products, suppliers } from "@/db/schema";
+import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/roles";
 import {
   resolveInventoryLabels,
 } from "@/lib/catalog-item-display";
@@ -24,6 +26,9 @@ import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function ProductsPage() {
+  const session = await getSession();
+  const admin = isAdmin(session?.role);
+
   const [supplierRows, catalogData] = await Promise.all([
     db
       .select({ id: suppliers.id, name: suppliers.name })
@@ -212,23 +217,28 @@ export default async function ProductsPage() {
               suppliers={suppliersForForm}
               catalogItems={catalogPickItems}
             />
-            <Link
-              href="/suppliers"
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
-            >
-              Suppliers
-            </Link>
-            <CustomerPricelistExport />
-            <a
-              href="/api/export/stock-levels.csv"
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
-              title="Internal stock export with costs and quantities"
-            >
-              Stock CSV
-            </a>
+            {admin ? (
+              <>
+                <Link
+                  href="/suppliers"
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
+                >
+                  Suppliers
+                </Link>
+                <CustomerPricelistExport />
+                <a
+                  href="/api/export/stock-levels.csv"
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
+                  title="Internal stock export with costs and quantities"
+                >
+                  Stock CSV
+                </a>
+              </>
+            ) : null}
           </div>
         </div>
 
+        {admin ? (
         <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:max-w-2xl">
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
             <div className="text-[10px] text-zinc-500">Stock value</div>
@@ -249,6 +259,7 @@ export default async function ProductsPage() {
             </div>
           </div>
         </div>
+        ) : null}
 
         <div className="mt-5">
           <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -259,6 +270,7 @@ export default async function ProductsPage() {
             <InventoryTable
               rows={inventoryTableRows}
               suppliers={inventorySuppliers}
+              limitedView={!admin}
             />
           </div>
         </div>

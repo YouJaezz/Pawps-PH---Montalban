@@ -84,6 +84,10 @@ export const orders = sqliteTable("orders", {
   storeType: text("store_type", { enum: ["Online", "Walk-in"] })
     .notNull()
     .default("Online"),
+  /** User who recorded the sale (cashier on duty). */
+  createdByUserId: integer("created_by_user_id"),
+  /** Snapshot of cashier display name at sale time. */
+  cashierName: text("cashier_name"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -342,12 +346,67 @@ export const supplierPriceChanges = sqliteTable("supplier_price_changes", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const USER_ROLES = ["admin", "cashier"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const investors = sqliteTable("investors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  fullName: text("full_name").notNull(),
+  contact: text("contact"),
+  email: text("email"),
+  address: text("address"),
+  idReference: text("id_reference"),
+  notes: text("notes"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const investorAgreements = sqliteTable("investor_agreements", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  investorId: integer("investor_id").notNull(),
+  /** Authorized signatory / agreement holder on behalf of the business. */
+  agreementHolder: text("agreement_holder").notNull(),
+  capitalCents: integer("capital_cents").notNull(),
+  /** Whole percent, e.g. 10 = 10% of monthly net income. */
+  sharePercent: integer("share_percent").notNull(),
+  agreementDate: integer("agreement_date", { mode: "timestamp" }),
+  effectiveFrom: integer("effective_from", { mode: "timestamp" }),
+  termsNotes: text("terms_notes"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const investorPayouts = sqliteTable("investor_payouts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  investorId: integer("investor_id").notNull(),
+  agreementId: integer("agreement_id").notNull(),
+  periodYear: integer("period_year").notNull(),
+  periodMonth: integer("period_month").notNull(),
+  grossRevenueCents: integer("gross_revenue_cents").notNull(),
+  cogsCents: integer("cogs_cents").notNull(),
+  netIncomeCents: integer("net_income_cents").notNull(),
+  sharePercent: integer("share_percent").notNull(),
+  payoutCents: integer("payout_cents").notNull(),
+  status: text("status", { enum: ["Accrued", "Paid"] })
+    .notNull()
+    .default("Accrued"),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
-  role: text("role", { enum: ["admin", "staff"] }).notNull().default("staff"),
+  role: text("role", { enum: USER_ROLES }).notNull().default("cashier"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

@@ -3,6 +3,11 @@
 import { redirect } from "next/navigation";
 
 import { findUserByEmail } from "@/db/queries/users";
+import {
+  defaultPathForRole,
+  isCashierPathAllowed,
+  normalizeRole,
+} from "@/lib/roles";
 import { verifyPassword } from "@/lib/password";
 import { clearSessionCookie, setSessionCookie } from "@/lib/session";
 
@@ -36,10 +41,16 @@ export async function loginAction(
     userId: user.id,
     email: user.email,
     name: user.name,
-    role: user.role,
+    role: normalizeRole(user.role),
   });
 
-  redirect(nextPath.startsWith("/") ? nextPath : "/");
+  const role = normalizeRole(user.role);
+  let destination = nextPath.startsWith("/") ? nextPath : "/";
+  if (role === "cashier" && !isCashierPathAllowed(destination)) {
+    destination = defaultPathForRole(role);
+  }
+
+  redirect(destination);
 }
 
 export async function logoutAction() {

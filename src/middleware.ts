@@ -1,6 +1,13 @@
 import { jwtVerify } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  CASHIER_HOME,
+  defaultPathForRole,
+  isAdminOnlyPath,
+  isCashierPathAllowed,
+  normalizeRole,
+} from "@/lib/roles";
 import { SESSION_COOKIE } from "@/lib/session";
 
 function getSecret() {
@@ -25,7 +32,7 @@ async function readSession(request: NextRequest) {
     if (!Number.isFinite(userId) || userId <= 0) return null;
     return {
       userId,
-      role: payload.role === "admin" ? ("admin" as const) : ("staff" as const),
+      role: normalizeRole(String(payload.role ?? "")),
     };
   } catch {
     return null;
@@ -43,7 +50,9 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/login")) {
       const session = await readSession(request);
       if (session) {
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(
+          new URL(defaultPathForRole(session.role), request.url),
+        );
       }
     }
     return NextResponse.next();
@@ -56,8 +65,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/settings") && session.role !== "admin") {
-    return NextResponse.redirect(new URL("/", request.url));
+  const { role } = session;
+
+  if (pathname.startsWith("/settings") && role !== "admin") {
+    return NextResponse.redirect(new URL(CASHIER_HOME, request.url));
+  }
+
+  if (role === "cashier") {
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL(CASHIER_HOME, request.url));
+    }
+    if (isAdminOnlyPath(pathname)) {
+      return NextResponse.redirect(new URL(CASHIER_HOME, request.url));
+    }
+    if (!isCashierPathAllowed(pathname)) {
+      return NextResponse.redirect(new URL(CASHIER_HOME, request.url));
+    }
   }
 
   return NextResponse.next();

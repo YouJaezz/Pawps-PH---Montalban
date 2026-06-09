@@ -5,7 +5,7 @@ import {
   getCustomerPricelistRows,
   type CustomerPriceTier,
 } from "@/lib/customer-pricelist";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireAdmin } from "@/lib/auth-guard";
 
 function parseTier(raw: string | null): CustomerPriceTier | null {
   if (raw === "retail" || raw === "wholesale") return raw;
@@ -14,7 +14,7 @@ function parseTier(raw: string | null): CustomerPriceTier | null {
 
 export async function GET(request: Request) {
   try {
-    await requireAuth();
+    await requireAdmin();
   } catch {
     return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
   }

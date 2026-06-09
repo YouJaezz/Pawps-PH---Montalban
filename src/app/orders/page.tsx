@@ -5,7 +5,13 @@ import { QuickSellPanel } from "@/app/orders/QuickSellPanel";
 import { AppShell } from "@/components/AppShell";
 import { getOrdersPageData } from "@/db/queries/orders-board";
 
+import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/roles";
+
 export default async function OrdersPage() {
+  const session = await getSession();
+  const admin = isAdmin(session?.role);
+
   const { customerRows, quickSellProducts, boardRows, editableByOrderId } =
     await getOrdersPageData();
 
@@ -25,25 +31,33 @@ export default async function OrdersPage() {
               products={quickSellProducts}
               customers={customerRows}
             />
-            <BulkOrderModal
-              products={quickSellProducts}
-              customers={customerRows}
-            />
-            <ExcessSaleModal
-              products={quickSellProducts}
-              customers={customerRows}
-            />
-            <a
-              href="/api/export/daily-sales.csv"
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-zinc-200 hover:bg-white/10"
-            >
-              Export CSV
-            </a>
+            {admin ? (
+              <>
+                <BulkOrderModal
+                  products={quickSellProducts}
+                  customers={customerRows}
+                />
+                <ExcessSaleModal
+                  products={quickSellProducts}
+                  customers={customerRows}
+                />
+                <a
+                  href="/api/export/daily-sales.csv"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-zinc-200 hover:bg-white/10"
+                >
+                  Export CSV
+                </a>
+              </>
+            ) : null}
           </div>
         </div>
 
         <div className="mt-3 min-h-0 flex-1">
-          <OrdersBoard rows={boardRows} editableByOrderId={editableByOrderId} />
+          <OrdersBoard
+            rows={boardRows}
+            editableByOrderId={admin ? editableByOrderId : {}}
+            adminMode={admin}
+          />
         </div>
       </div>
     </AppShell>

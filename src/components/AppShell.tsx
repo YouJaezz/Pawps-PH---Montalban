@@ -2,10 +2,11 @@ import Link from "next/link";
 import { ReactNode } from "react";
 
 import { logoutAction } from "@/app/login/actions";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { isAdmin, roleLabel } from "@/lib/roles";
+import { getSession, type SessionUser } from "@/lib/session";
 import { db } from "@/db";
 import { deliveryLogs } from "@/db/schema";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
-import { getSession, type SessionUser } from "@/lib/session";
 import { inArray, sql } from "drizzle-orm";
 
 function NavItem(props: { href: string; label: string; hint?: string }) {
@@ -35,8 +36,9 @@ export async function AppShell(props: {
   children: ReactNode;
   session?: SessionUser | null;
 }) {
-  const pendingDeliveryCount = await getPendingDeliveryCount();
   const session = props.session ?? (await getSession());
+  const admin = isAdmin(session?.role);
+  const pendingDeliveryCount = admin ? await getPendingDeliveryCount() : 0;
 
   return (
     <div className="h-dvh overflow-hidden bg-[#07070a] text-zinc-50">
@@ -48,30 +50,41 @@ export async function AppShell(props: {
             </div>
             <div className="mt-1 text-xs text-zinc-400">{BRAND_TAGLINE}</div>
             <div className="mt-4 flex-1 space-y-1 overflow-y-auto">
-              <NavItem href="/" label="Dashboard" />
-              <NavItem href="/products" label="Inventory" hint="CRUD" />
-              <NavItem href="/orders" label="Sales & Orders" hint="next" />
-              <NavItem href="/customers" label="Customers" hint="next" />
-              <NavItem href="/preorders" label="Pre-orders" hint="customers" />
-              <NavItem
-                href="/delivery"
-                label="Delivery Log"
-                hint={
-                  pendingDeliveryCount > 0 ? `${pendingDeliveryCount} pending` : "—"
-                }
-              />
-              <NavItem href="/reports" label="Reports" hint="insights" />
-              <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
-              <NavItem
-                href="/suppliers/normalize"
-                label="Pricelist AI"
-                hint="normalize"
-              />
-              <NavItem href="/transport" label="Pet Transport" hint="driver" />
-              <NavItem href="/pos" label="Future POS" hint="placeholder" />
-              {session?.role === "admin" ? (
-                <NavItem href="/settings" label="Settings" hint="admin" />
+              {admin ? (
+                <>
+                  <NavItem href="/" label="Dashboard" />
+                  <NavItem href="/reports" label="Reports" hint="insights" />
+                  <NavItem href="/investors" label="Investors" hint="confidential" />
+                </>
               ) : null}
+              <NavItem href="/products" label="Inventory" hint={admin ? "CRUD" : "add stock"} />
+              <NavItem href="/orders" label="Sales & Orders" hint="POS" />
+              {admin ? (
+                <>
+                  <NavItem href="/customers" label="Customers" hint="CRM" />
+                  <NavItem href="/preorders" label="Pre-orders" hint="customers" />
+                  <NavItem
+                    href="/delivery"
+                    label="Delivery Log"
+                    hint={
+                      pendingDeliveryCount > 0
+                        ? `${pendingDeliveryCount} pending`
+                        : "—"
+                    }
+                  />
+                  <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
+                  <NavItem
+                    href="/suppliers/normalize"
+                    label="Pricelist AI"
+                    hint="normalize"
+                  />
+                  <NavItem href="/transport" label="Pet Transport" hint="driver" />
+                  <NavItem href="/pos" label="Future POS" hint="placeholder" />
+                  <NavItem href="/settings" label="Settings" hint="admin" />
+                </>
+              ) : (
+                <NavItem href="/customers" label="Customers" hint="checkout" />
+              )}
             </div>
             {session ? (
               <div className="mt-4 border-t border-white/10 pt-3">
@@ -79,7 +92,8 @@ export async function AppShell(props: {
                   {session.name ?? session.email}
                 </div>
                 <div className="truncate text-[10px] text-zinc-600">
-                  {session.role}
+                  {roleLabel(session.role)}
+                  {!admin ? " · on duty" : ""}
                 </div>
                 <form action={logoutAction} className="mt-2">
                   <button
