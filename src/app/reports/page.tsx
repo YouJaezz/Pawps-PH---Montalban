@@ -9,6 +9,8 @@ import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReportsPage() {
   await requireAdmin();
   const [insights, investor] = await Promise.all([

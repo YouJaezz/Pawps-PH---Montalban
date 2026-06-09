@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orderItems, orders } from "@/db/schema";
@@ -7,64 +7,58 @@ import {
   getActiveInventoryProducts,
   inventoryValuationFromRows,
 } from "@/db/queries/inventory-products";
+import { phStartOfToday } from "@/lib/ph-time";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function orderCreatedMsColumn() {
+  return sql<number>`CASE WHEN ${orders.createdAt} < 1000000000000 THEN ${orders.createdAt} * 1000 ELSE ${orders.createdAt} END`;
 }
 
 export const getBusinessInsights = cache(async () => {
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const last7Start = new Date(todayStart.getTime() - 6 * MS_PER_DAY);
-  const last30Start = new Date(todayStart.getTime() - 29 * MS_PER_DAY);
+  const todayStart = phStartOfToday();
+  const todayMs = todayStart.getTime();
+  const last7Ms = todayMs - 6 * MS_PER_DAY;
+  const last30Ms = todayMs - 29 * MS_PER_DAY;
 
-  const inventoryProducts = await getActiveInventoryProducts();
-  const inventoryValuation = inventoryValuationFromRows(inventoryProducts);
+  const createdMs = orderCreatedMsColumn();
 
-  const [todayOrders, last7Orders, last30Orders, allOrders] = await Promise.all([
+  const [inventoryProducts, orderRows] = await Promise.all([
+    getActiveInventoryProducts(),
     db
       .select({
-        amountPaid: orders.amountPaid,
-      })
-      .from(orders)
-      .where(gte(orders.createdAt, todayStart)),
-    db
-      .select({
-        amountPaid: orders.amountPaid,
-      })
-      .from(orders)
-      .where(gte(orders.createdAt, last7Start)),
-    db
-      .select({
-        amountPaid: orders.amountPaid,
-      })
-      .from(orders)
-      .where(gte(orders.createdAt, last30Start)),
-    db
-      .select({
+        id: orders.id,
         amountPaid: orders.amountPaid,
         totalAmount: orders.totalAmount,
+        paymentStatus: orders.paymentStatus,
+        createdMs: orderCreatedMsColumn(),
       })
       .from(orders),
   ]);
 
-  const sumPaid = (rows: Array<{ amountPaid: number }>) =>
-    rows.reduce((acc, r) => acc + r.amountPaid, 0);
-  const sumTotal = (rows: Array<{ totalAmount: number }>) =>
-    rows.reduce((acc, r) => acc + r.totalAmount, 0);
+  const inventoryValuation = inventoryValuationFromRows(inventoryProducts);
 
-  const receivablesCents = sumTotal(allOrders) - sumPaid(allOrders);
+  let incomeTodayCents = 0;
+  let incomeLast7DaysCents = 0;
+  let incomeLast30DaysCents = 0;
+  let receivablesCents = 0;
+  const paidLast30Ids: number[] = [];
 
-  const last30PaidOrders = await db
-    .select({ id: orders.id })
-    .from(orders)
-    .where(and(gte(orders.createdAt, last30Start), eq(orders.paymentStatus, "Paid")));
-  const paidOrderIds = last30PaidOrders.map((o) => o.id);
+  for (const row of orderRows) {
+    const ts = Number(row.createdMs);
+    const paid = row.amountPaid;
+    receivablesCents += row.totalAmount - paid;
+
+    if (ts >= last30Ms) {
+      incomeLast30DaysCents += paid;
+      if (row.paymentStatus === "Paid") paidLast30Ids.push(row.id);
+    }
+    if (ts >= last7Ms) incomeLast7DaysCents += paid;
+    if (ts >= todayMs) incomeTodayCents += paid;
+  }
 
   const lines =
-    paidOrderIds.length === 0
+    paidLast30Ids.length === 0
       ? []
       : await db
           .select({
@@ -75,7 +69,7 @@ export const getBusinessInsights = cache(async () => {
             isExcessSale: orderItems.isExcessSale,
           })
           .from(orderItems)
-          .where(inArray(orderItems.orderId, paidOrderIds));
+          .where(inArray(orderItems.orderId, paidLast30Ids));
 
   const productAgg = new Map<
     number,
@@ -117,9 +111,9 @@ export const getBusinessInsights = cache(async () => {
     .slice(0, 8);
 
   return {
-    incomeTodayCents: sumPaid(todayOrders),
-    incomeLast7DaysCents: sumPaid(last7Orders),
-    incomeLast30DaysCents: sumPaid(last30Orders),
+    incomeTodayCents,
+    incomeLast7DaysCents,
+    incomeLast30DaysCents,
     receivablesCents,
     topProductsLast30Days: topProducts,
     stockValueCents: inventoryValuation.stockValueCents,

@@ -18,6 +18,8 @@ function formatDateShort(d: Date) {
   }).format(d);
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const [glance, insights, investor] = await Promise.all([
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),

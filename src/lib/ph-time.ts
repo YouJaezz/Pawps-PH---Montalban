@@ -54,3 +54,9 @@ export function phMonthLabel(year: number, month: number) {
     { month: "long", year: "numeric", timeZone: PH_TIMEZONE },
   );
 }
+
+/** Start of today in Philippines time. */
+export function phStartOfToday() {
+  const { year, month, day } = phNow();
+  return new Date(`${year}-${pad2(month)}-${pad2(day)}T00:00:00+08:00`);
+}

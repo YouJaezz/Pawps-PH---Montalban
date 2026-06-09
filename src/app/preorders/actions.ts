@@ -41,13 +41,11 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+import { revalidateSalesPages } from "@/lib/revalidate-sales";
+
 function revalidatePreOrderPaths() {
   revalidatePath("/preorders");
-  revalidatePath("/orders");
-  revalidatePath("/products");
-  revalidatePath("/customers");
-  revalidatePath("/delivery");
-  revalidatePath("/");
+  revalidateSalesPages();
 }
 
 async function resolveSupplierId(
