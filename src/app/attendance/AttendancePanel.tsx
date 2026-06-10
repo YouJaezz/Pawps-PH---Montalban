@@ -8,7 +8,7 @@ import {
   type AttendanceActionResult,
 } from "@/app/attendance/actions";
 import { ScrollableTable } from "@/components/ScrollableTable";
-import { formatDuration } from "@/db/queries/time-attendance";
+import { formatDuration } from "@/lib/time-duration";
 
 function Banner(props: { state: AttendanceActionResult | null }) {
   if (!props.state) return null;

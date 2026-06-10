@@ -13,7 +13,10 @@ import {
 import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
 import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
 import type { QuickSellProduct } from "@/app/orders/QuickSellPanel";
-import { displayCatalogItemType } from "@/lib/catalog-item-types";
+import {
+  ProductSelectField,
+  type ProductSelectOption,
+} from "@/components/ProductSelectField";
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -27,11 +30,14 @@ type ExcessLine = {
 
 type ModalStep = "form" | "confirm" | "receipt";
 
-function productLabel(p: QuickSellProduct) {
-  const typeTag = p.itemType
-    ? `[${displayCatalogItemType(p.itemType)}] `
-    : "";
-  return `${typeTag}${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
+function toSelectOptions(products: QuickSellProduct[]): ProductSelectOption[] {
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    variant: p.variant,
+    itemType: p.itemType,
+  }));
 }
 
 export function ExcessSaleModal(props: {
@@ -72,6 +78,11 @@ export function ExcessSaleModal(props: {
     for (const p of props.products) m.set(p.id, p);
     return m;
   }, [props.products]);
+
+  const productOptions = useMemo(
+    () => toSelectOptions(props.products),
+    [props.products],
+  );
 
   const totalCents = useMemo(
     () =>
@@ -299,24 +310,14 @@ export function ExcessSaleModal(props: {
                           key={idx}
                           className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2"
                         >
-                          <label className="block space-y-1">
-                            <div className="text-[11px] text-zinc-400">Related product</div>
-                            <select
-                              value={line.productId}
-                              onChange={(e) =>
-                                updateLine(idx, {
-                                  productId: Number(e.target.value),
-                                })
-                              }
-                              className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
-                            >
-                              {props.products.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {productLabel(p)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                          <ProductSelectField
+                            label="Related product"
+                            products={productOptions}
+                            value={line.productId}
+                            onChange={(productId) =>
+                              updateLine(idx, { productId })
+                            }
+                          />
 
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <label className="space-y-1">

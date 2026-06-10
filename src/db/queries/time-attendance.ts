@@ -4,21 +4,9 @@ import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { timeEntries, users } from "@/db/schema";
 import { phMonthBounds, phMonthLabel, phNow } from "@/lib/ph-time";
+import { entryMinutes } from "@/lib/time-duration";
 
-export function entryMinutes(clockIn: Date, clockOut: Date | null) {
-  if (!clockOut) return 0;
-  return Math.max(
-    0,
-    Math.round((clockOut.getTime() - clockIn.getTime()) / 60_000),
-  );
-}
-
-export function formatDuration(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
+export { entryMinutes, formatDuration } from "@/lib/time-duration";
 
 export const getAttendancePageData = cache(
   async (viewerUserId: number, adminView: boolean) => {

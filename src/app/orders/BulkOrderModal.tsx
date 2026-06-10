@@ -13,6 +13,10 @@ import {
 import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
 import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
 import {
+  ProductSelectField,
+  type ProductSelectOption,
+} from "@/components/ProductSelectField";
+import {
   lineTotalCents,
   parseQuantityInput,
   saleUnitsForProduct,
@@ -28,6 +32,7 @@ export type BulkOrderProduct = {
   name: string;
   brand: string;
   variant: string | null;
+  itemType: string | null;
   retailPrice: number;
   bulkPrice: number;
   stockUnit: StockUnit;
@@ -51,7 +56,6 @@ export function BulkOrderModal(props: {
     OrderActionResult | null,
     FormData
   >(createBulkOrder, null);
-  const [search, setSearch] = useState("");
   const [priceTier, setPriceTier] = useState<"Bulk" | "Retail">("Bulk");
   const [saleUnit, setSaleUnit] = useState<SaleUnit>("Piece");
   const [lines, setLines] = useState<Line[]>([
@@ -90,20 +94,23 @@ export function BulkOrderModal(props: {
     setOpen(true);
   }
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return props.products;
-    return props.products.filter((p) => {
-      const label = `${p.name} ${p.brand} ${p.variant ?? ""}`.toLowerCase();
-      return label.includes(q);
-    });
-  }, [props.products, search]);
-
   const priceById = useMemo(() => {
     const m = new Map<number, BulkOrderProduct>();
     for (const p of props.products) m.set(p.id, p);
     return m;
   }, [props.products]);
+
+  const productOptions = useMemo<ProductSelectOption[]>(
+    () =>
+      props.products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        variant: p.variant,
+        itemType: p.itemType,
+      })),
+    [props.products],
+  );
 
   const total = useMemo(() => {
     return lines.reduce((acc, l) => {
@@ -347,12 +354,6 @@ export function BulkOrderModal(props: {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm font-medium text-zinc-100">Items</div>
                   <div className="flex items-center gap-3">
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search products..."
-                      className="w-64 max-w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                    />
                     <button
                       type="button"
                       onClick={addLine}
@@ -391,24 +392,15 @@ export function BulkOrderModal(props: {
                         className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:grid-cols-12"
                       >
                         <div className="sm:col-span-7">
-                          <div className="text-xs text-zinc-400">Product</div>
-                          <select
-                            name="productId"
+                          <ProductSelectField
+                            label="Product"
+                            products={productOptions}
                             value={l.productId}
-                            onChange={(e) =>
-                              updateLine(idx, {
-                                productId: Number(e.target.value),
-                              })
+                            onChange={(productId) =>
+                              updateLine(idx, { productId })
                             }
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                          >
-                            {filtered.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} — {p.brand}
-                                {p.variant ? ` (${p.variant})` : ""}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                          <input type="hidden" name="productId" value={l.productId} />
                           <div className="mt-1 text-xs text-zinc-500">
                             Unit: {formatPhpFromCents(unit)}
                           </div>

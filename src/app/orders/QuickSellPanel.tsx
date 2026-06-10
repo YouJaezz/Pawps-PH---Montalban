@@ -12,6 +12,11 @@ import {
 } from "@/app/orders/CustomerPicker";
 import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
 import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
+import {
+  ProductSelectField,
+  type ProductSelectOption,
+} from "@/components/ProductSelectField";
+import { ItemTypeBadge } from "@/components/ItemTypeBadge";
 import type { StockUnit } from "@/db/schema";
 import {
   formatQuantityLabel,
@@ -22,7 +27,6 @@ import {
   unitPriceForSale,
   type SaleUnit,
 } from "@/lib/order-line-math";
-import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
@@ -65,11 +69,19 @@ const KG_QUICK_AMOUNTS = ["0.25", "0.5", "0.75", "1"] as const;
 
 type ModalStep = "form" | "confirm" | "receipt";
 
-function productLabel(p: QuickSellProduct) {
-  const typeTag = p.itemType
-    ? `[${displayCatalogItemType(p.itemType)}] `
-    : "";
-  return `${typeTag}${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
+function toSelectOptions(products: QuickSellProduct[]): ProductSelectOption[] {
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    variant: p.variant,
+    itemType: p.itemType,
+    meta: `Stock ${formatStockLabel(p.stockUnit, p.stockQuantity, p.kgPerSack, p.unitsPerCase)}`,
+  }));
+}
+
+function productLineLabel(p: QuickSellProduct) {
+  return `${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
 }
 
 export function QuickSellPanel(props: {
@@ -116,6 +128,11 @@ export function QuickSellPanel(props: {
     for (const p of props.products) m.set(p.id, p);
     return m;
   }, [props.products]);
+
+  const productOptions = useMemo(
+    () => toSelectOptions(props.products),
+    [props.products],
+  );
 
   const draftProduct = productById.get(draftProductId);
 
@@ -288,7 +305,7 @@ export function QuickSellPanel(props: {
           return p ? `${p.name} · excess ${qty}` : `excess ${qty}`;
         }
         const p = productById.get(line.productId);
-        return p ? productLabel(p) : "item";
+        return p ? productLineLabel(p) : "item";
       })
       .join(" · ");
   }, [cart, productById]);
@@ -453,30 +470,17 @@ export function QuickSellPanel(props: {
                       Add to cart
                     </div>
                     <label className="mt-2 block space-y-1">
-                      <div className="text-[11px] text-zinc-400">Product</div>
-                      <select
-                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                      <ProductSelectField
+                        label="Product"
+                        products={productOptions}
                         value={draftProductId}
-                        onChange={(e) => {
-                          const nextId = Number(e.target.value);
+                        onChange={(nextId) => {
                           setDraftProductId(nextId);
                           const nextProduct = productById.get(nextId);
                           setDeductStock((nextProduct?.stockQuantity ?? 0) > 0);
                           setDraftSaleUnit("Piece");
                         }}
-                      >
-                        {props.products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {productLabel(p)} | stock{" "}
-                            {formatStockLabel(
-                              p.stockUnit,
-                              p.stockQuantity,
-                              p.kgPerSack,
-                              p.unitsPerCase,
-                            )}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </label>
 
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -601,7 +605,7 @@ export function QuickSellPanel(props: {
                                       isCustom ? "text-zinc-100" : "text-emerald-100"
                                     }`}
                                   >
-                                    {productLabel(p)} · {isCustom ? "custom qty" : "excess"}
+                                    {productLineLabel(p)} · {isCustom ? "custom qty" : "excess"}
                                   </div>
                                   <div
                                     className={
@@ -644,9 +648,10 @@ export function QuickSellPanel(props: {
                               className="flex items-start justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2"
                             >
                               <div className="min-w-0 text-[11px]">
-                                <div className="truncate font-medium text-zinc-100">
-                                  {productLabel(p)}
-                                </div>
+                                  <div className="flex min-w-0 items-center gap-1.5 truncate font-medium text-zinc-100">
+                                    <ItemTypeBadge itemType={p.itemType} size="xs" />
+                                    <span className="truncate">{productLineLabel(p)}</span>
+                                  </div>
                                 <div className="text-zinc-500">
                                   {qtyLabel} · {line.priceTier} ·{" "}
                                   {formatPhpFromCents(lineTotal(line))}
@@ -675,22 +680,12 @@ export function QuickSellPanel(props: {
                       Choose Custom to sell a specific amount that deducts inventory.
                     </p>
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-400">Related product</div>
-                        <select
-                          value={excessProductId}
-                          onChange={(e) =>
-                            setExcessProductId(Number(e.target.value))
-                          }
-                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
-                        >
-                          {props.products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {productLabel(p)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <ProductSelectField
+                        label="Related product"
+                        products={productOptions}
+                        value={excessProductId}
+                        onChange={setExcessProductId}
+                      />
                       <label className="space-y-1">
                         <div className="text-[11px] text-zinc-400">What was sold</div>
                         <select

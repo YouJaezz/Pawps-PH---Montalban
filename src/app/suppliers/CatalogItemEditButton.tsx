@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { updateSupplierCatalogItem } from "@/app/suppliers/actions";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
+import { ItemTypePicker } from "@/components/ItemTypePicker";
 import type { PriceUnit } from "@/db/schema";
 import {
-  CATALOG_ITEM_TYPES,
   defaultPackUnitForItemType,
   defaultPriceUnitForItemType,
   normalizeCatalogItemType,
@@ -94,21 +94,16 @@ export function CatalogItemEditButton(props: {
             />
           </div>
           <p className="text-[9px] text-zinc-600">{packSizeHintForItemType(itemType)}</p>
-          <select
+          <ItemTypePicker
             name="itemType"
+            label="Item type"
             value={itemType}
-            onChange={(e) => {
-              setItemType(e.target.value);
-              setPriceUnit(defaultPriceUnitForItemType(e.target.value));
+            onChange={(next) => {
+              setItemType(next);
+              setPriceUnit(defaultPriceUnitForItemType(next));
             }}
-            className={modalFieldClass}
-          >
-            {CATALOG_ITEM_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+            compact
+          />
           <select
             name="priceUnit"
             value={priceUnit}

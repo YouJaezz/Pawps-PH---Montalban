@@ -6,6 +6,9 @@ import {
   createProduct,
   type CreateProductResult,
 } from "@/app/products/actions";
+import { CatalogItemSelect } from "@/components/CatalogItemSelect";
+import { ItemTypeBadge } from "@/components/ItemTypeBadge";
+import { ItemTypePicker } from "@/components/ItemTypePicker";
 import {
   displayCatalogBrand,
   displayCatalogFlavor,
@@ -14,7 +17,6 @@ import {
 import { formatPhpFromCents } from "@/lib/money";
 import {
   CATALOG_ITEM_TYPES,
-  displayCatalogItemType,
   normalizeCatalogItemType,
 } from "@/lib/catalog-item-types";
 import {
@@ -308,37 +310,16 @@ export function ProductForm(props: {
         </select>
       </label>
 
-      <label className="block space-y-0.5">
+      <label className="block space-y-1">
         <span className="text-[11px] text-zinc-400">
           Catalog item ({catalogForSupplier.length} for this supplier)
         </span>
-        <select
+        <CatalogItemSelect
           name="supplierCatalogItemId"
+          items={catalogForSupplier}
           value={catalogItemId}
-          onChange={(e) => handleCatalogChange(e.target.value)}
-          className={fieldClass}
-        >
-          <option value="">Manual entry</option>
-          {catalogForSupplier.map((c) => {
-            const item = displayCatalogProductName(c);
-            const brand = displayCatalogBrand(c.brand);
-            const flavor = displayCatalogFlavor(c.variant, c.itemName);
-            const label = [
-              item,
-              brand !== "—" && brand.toLowerCase() !== item.toLowerCase()
-                ? brand
-                : null,
-              flavor !== "—" ? flavor : null,
-            ]
-              .filter(Boolean)
-              .join(" · ");
-            return (
-              <option key={c.id} value={c.id}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
+          onChange={handleCatalogChange}
+        />
       </label>
 
       {selectedCatalog ? (
@@ -371,21 +352,13 @@ export function ProductForm(props: {
             <span className="text-[11px] text-zinc-400">Flavor</span>
             <input name="variant" className={fieldClass} placeholder="Tuna" />
           </label>
-          <label className="col-span-2 space-y-0.5">
-            <span className="text-[11px] text-zinc-400">Item type *</span>
-            <select
-              name="itemType"
-              value={manualItemType}
-              onChange={(e) => setManualItemType(e.target.value)}
-              className={fieldClass}
-            >
-              {CATALOG_ITEM_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ItemTypePicker
+            name="itemType"
+            label="Item type *"
+            value={manualItemType}
+            onChange={setManualItemType}
+            compact
+          />
         </div>
       )}
 
@@ -410,11 +383,9 @@ export function ProductForm(props: {
           <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
             From supplier pricelist
           </div>
-          <div className="mt-1 text-zinc-300">
-            Type:{" "}
-            <span className="text-zinc-100">
-              {displayCatalogItemType(selectedCatalog.itemType)}
-            </span>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <ItemTypeBadge itemType={selectedCatalog.itemType} />
+            <span className="text-zinc-300">{previewItem}</span>
           </div>
           <input
             type="hidden"

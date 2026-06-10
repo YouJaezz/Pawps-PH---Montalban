@@ -1,3 +1,7 @@
+if (typeof window !== "undefined") {
+  throw new Error("Database client cannot be imported in the browser.");
+}
+
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 

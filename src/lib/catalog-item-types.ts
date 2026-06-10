@@ -14,6 +14,31 @@ export const CATALOG_ITEM_TYPES = [
   { value: "Other", label: "Other" },
 ] as const;
 
+/** Visual groups for item-type pickers in forms. */
+export const CATALOG_ITEM_TYPE_GROUPS = [
+  {
+    label: "Dry food",
+    types: CATALOG_ITEM_TYPES.filter((t) => t.value.includes("Dry Food")),
+  },
+  {
+    label: "Wet food",
+    types: CATALOG_ITEM_TYPES.filter(
+      (t) => t.value.includes("Wet Food") || t.value.includes("Can") || t.value.includes("Pouch"),
+    ),
+  },
+  {
+    label: "Treats & extras",
+    types: CATALOG_ITEM_TYPES.filter(
+      (t) =>
+        t.value.includes("Treats") ||
+        t.value === "Toys" ||
+        t.value === "Cat Litter" ||
+        t.value === "Medicine & Vitamins" ||
+        t.value === "Other",
+    ),
+  },
+] as const;
+
 export type CatalogItemTypeValue = (typeof CATALOG_ITEM_TYPES)[number]["value"];
 
 const TYPE_VALUE_SET = new Set<string>(CATALOG_ITEM_TYPES.map((t) => t.value));

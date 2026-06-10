@@ -11,7 +11,7 @@ import {
 } from "@/app/payroll/actions";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { ScrollableTable } from "@/components/ScrollableTable";
-import { formatDuration } from "@/db/queries/time-attendance";
+import { formatDuration } from "@/lib/time-duration";
 import { formatPhpFromCents } from "@/lib/money";
 
 function Banner(props: { state: PayrollActionResult | null }) {

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createSupplierCatalogItem } from "@/app/suppliers/actions";
+import { ItemTypePicker } from "@/components/ItemTypePicker";
 import type { PriceUnit } from "@/db/schema";
 import {
   CATALOG_ITEM_TYPES,
@@ -115,22 +116,13 @@ export function AddCatalogItemButton(props: {
             placeholder="Item name *"
             className={inputClass}
           />
-          <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-400">Item type *</span>
-            <select
-              name="itemType"
-              required
-              value={itemType}
-              onChange={(e) => handleItemTypeChange(e.target.value)}
-              className={inputClass}
-            >
-              {CATALOG_ITEM_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ItemTypePicker
+            name="itemType"
+            label="Item type *"
+            value={itemType}
+            onChange={handleItemTypeChange}
+            compact
+          />
 
           <div className="grid grid-cols-2 gap-2">
             <input name="brand" placeholder="Brand" className={inputClass} />

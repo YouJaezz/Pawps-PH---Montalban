@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { updateProduct } from "@/app/products/actions";
+import { ItemTypePicker } from "@/components/ItemTypePicker";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
-import { CATALOG_ITEM_TYPES, displayCatalogItemType } from "@/lib/catalog-item-types";
+import { CATALOG_ITEM_TYPES } from "@/lib/catalog-item-types";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
 import { displayStockQuantity, stockQtyLabel } from "@/lib/product-stock";
@@ -45,6 +46,9 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
       ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
       : "",
   );
+  const [itemType, setItemType] = useState(
+    props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -79,6 +83,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
               : "",
           );
+          setItemType(props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value);
           setOpen(true);
         }}
         className="rounded border border-[#e8a44a]/30 px-2 py-0.5 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/10"
@@ -166,31 +171,23 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Item type</span>
-                  <select
-                    name="itemType"
-                    defaultValue={p.itemType ?? CATALOG_ITEM_TYPES[0]!.value}
-                    className={inputClass}
-                  >
-                    {CATALOG_ITEM_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Pack size</span>
-                  <input
-                    name="packSize"
-                    defaultValue={p.packSize ?? ""}
-                    placeholder="20kg, 400g, 7kg"
-                    className={inputClass}
-                  />
-                </label>
-              </div>
+              <ItemTypePicker
+                name="itemType"
+                label="Item type"
+                value={itemType}
+                onChange={setItemType}
+                compact
+              />
+
+              <label className="block space-y-1">
+                <span className="text-xs text-zinc-400">Pack size</span>
+                <input
+                  name="packSize"
+                  defaultValue={p.packSize ?? ""}
+                  placeholder="20kg, 400g, 7kg"
+                  className={inputClass}
+                />
+              </label>
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
