@@ -407,7 +407,38 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
   role: text("role", { enum: USER_ROLES }).notNull().default("cashier"),
+  /** Hourly wage in centavos for payroll. */
+  hourlyRateCents: integer("hourly_rate_cents").notNull().default(0),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const timeEntries = sqliteTable("time_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clockInAt: integer("clock_in_at", { mode: "timestamp" }).notNull(),
+  clockOutAt: integer("clock_out_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const payrollPayouts = sqliteTable("payroll_payouts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  periodYear: integer("period_year").notNull(),
+  periodMonth: integer("period_month").notNull(),
+  minutesWorked: integer("minutes_worked").notNull(),
+  hourlyRateCents: integer("hourly_rate_cents").notNull(),
+  grossPayCents: integer("gross_pay_cents").notNull(),
+  status: text("status", { enum: ["Accrued", "Paid"] })
+    .notNull()
+    .default("Accrued"),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+  notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

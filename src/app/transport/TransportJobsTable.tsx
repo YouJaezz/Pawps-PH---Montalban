@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { CopyTrackingLink } from "@/app/transport/CopyTrackingLink";
 import { deleteTransportJob } from "@/app/transport/delete-actions";
 import { updateTransportStatus } from "@/app/transport/actions";
+import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { TableToolbar } from "@/components/TableToolbar";
 import { formatPhpFromCents } from "@/lib/money";
 import { matchesQuery, rowSearchText } from "@/lib/table-filter";
@@ -36,6 +37,9 @@ const statuses = [
 export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [editId, setEditId] = useState<number | null>(null);
+
+  const editRow = props.rows.find((j) => j.id === editId) ?? null;
 
   const filtered = useMemo(() => {
     let list = props.rows;
@@ -84,87 +88,107 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
       />
 
       <div className="space-y-2">
-      {props.rows.length === 0 ? (
-        <p className="text-sm text-zinc-500">No transport jobs yet.</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-zinc-500">No jobs match your search or filters.</p>
-      ) : (
-        filtered.map((j) => (
-          <div
-            key={j.id}
-            className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div className="font-medium text-zinc-50">{j.customerName}</div>
-                <div className="text-xs text-zinc-400">
-                  {j.pickupLocation} → {j.dropoffLocation}
+        {props.rows.length === 0 ? (
+          <p className="text-sm text-zinc-500">No transport jobs yet.</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-zinc-500">No jobs match your search or filters.</p>
+        ) : (
+          filtered.map((j) => (
+            <div
+              key={j.id}
+              className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="font-medium text-zinc-50">{j.customerName}</div>
+                  <div className="text-xs text-zinc-400">
+                    {j.pickupLocation} → {j.dropoffLocation}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-500">
+                    {j.serviceType} · {tenthsToKm(j.distanceKmTenths)} km ·{" "}
+                    {formatPhpFromCents(j.fee)} · {j.status}
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  {j.serviceType} · {tenthsToKm(j.distanceKmTenths)} km ·{" "}
-                  {formatPhpFromCents(j.fee)}
-                </div>
-              </div>
-              <form action={updateTransportStatus} className="flex items-center gap-1">
-                <input type="hidden" name="id" value={j.id} />
-                <select
-                  name="status"
-                  defaultValue={j.status}
-                  className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs"
-                >
-                  {statuses.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
                 <button
-                  type="submit"
-                  className="rounded border border-emerald-500/30 px-2 py-1 text-[10px] text-emerald-200"
+                  type="button"
+                  onClick={() => setEditId(j.id)}
+                  className="text-[10px] text-[#e8a44a] underline"
                 >
-                  Save
+                  Edit
                 </button>
-              </form>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-              <Link
-                href={`/transport/driver/${j.id}`}
-                className="rounded border border-sky-500/30 px-2 py-0.5 text-sky-200"
-              >
-                Driver mode
-              </Link>
-              {j.receiptNumber ? (
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
                 <Link
-                  href={`/transport/receipt/${j.id}`}
-                  className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+                  href={`/transport/driver/${j.id}`}
+                  className="rounded border border-sky-500/30 px-2 py-0.5 text-sky-200"
                 >
-                  Receipt
+                  Driver mode
                 </Link>
-              ) : null}
-              {j.trackingToken ? (
-                <>
-                  <CopyTrackingLink token={j.trackingToken} />
+                {j.receiptNumber ? (
                   <Link
-                    href={`/track/${j.trackingToken}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/transport/receipt/${j.id}`}
                     className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
                   >
-                    Preview
+                    Receipt
                   </Link>
-                </>
-              ) : null}
-              <form action={deleteTransportJob}>
-                <input type="hidden" name="id" value={j.id} />
-                <button type="submit" className="text-red-400/80 hover:text-red-300">
-                  Delete
-                </button>
-              </form>
+                ) : null}
+                {j.trackingToken ? (
+                  <>
+                    <CopyTrackingLink token={j.trackingToken} />
+                    <Link
+                      href={`/track/${j.trackingToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+                    >
+                      Preview
+                    </Link>
+                  </>
+                ) : null}
+                <form action={deleteTransportJob}>
+                  <input type="hidden" name="id" value={j.id} />
+                  <button type="submit" className="text-red-400/80 hover:text-red-300">
+                    Delete
+                  </button>
+                </form>
+              </div>
             </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
       </div>
+
+      <EditModal
+        open={editRow != null}
+        onClose={() => setEditId(null)}
+        title="Edit transport job"
+        subtitle={editRow?.customerName}
+      >
+        {editRow ? (
+          <form action={updateTransportStatus} className="space-y-3">
+            <input type="hidden" name="id" value={editRow.id} />
+            <label className="block space-y-1">
+              <span className="text-[11px] text-zinc-400">Status</span>
+              <select
+                name="status"
+                defaultValue={editRow.status}
+                className={modalFieldClass}
+              >
+                {statuses.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900"
+            >
+              Save status
+            </button>
+          </form>
+        ) : null}
+      </EditModal>
     </div>
   );
 }

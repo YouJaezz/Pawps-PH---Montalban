@@ -13,6 +13,7 @@ import {
 import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
 import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
 import type { QuickSellProduct } from "@/app/orders/QuickSellPanel";
+import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -27,7 +28,10 @@ type ExcessLine = {
 type ModalStep = "form" | "confirm" | "receipt";
 
 function productLabel(p: QuickSellProduct) {
-  return `${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
+  const typeTag = p.itemType
+    ? `[${displayCatalogItemType(p.itemType)}] `
+    : "";
+  return `${typeTag}${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
 }
 
 export function ExcessSaleModal(props: {

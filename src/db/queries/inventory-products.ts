@@ -14,6 +14,7 @@ export const getActiveInventoryProducts = cache(async () => {
       name: products.name,
       brand: products.brand,
       variant: products.variant,
+      itemType: products.itemType,
       costPrice: products.costPrice,
       retailPrice: products.retailPrice,
       bulkPrice: products.bulkPrice,

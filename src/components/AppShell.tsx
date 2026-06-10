@@ -43,11 +43,13 @@ export async function AppShell(props: {
                 <>
                   <NavItem href="/" label="Dashboard" />
                   <NavItem href="/reports" label="Reports" hint="insights" />
+                  <NavItem href="/payroll" label="Payroll" hint="employees" />
                   <NavItem href="/investors" label="Investors" hint="confidential" />
                 </>
               ) : null}
               <NavItem href="/products" label="Inventory" hint={admin ? "CRUD" : "add stock"} />
               <NavItem href="/orders" label="Sales & Orders" hint="POS" />
+              <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
               {admin ? (
                 <>
                   <NavItem href="/customers" label="Customers" hint="CRM" />

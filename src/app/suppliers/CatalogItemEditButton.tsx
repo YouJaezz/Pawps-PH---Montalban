@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { updateSupplierCatalogItem } from "@/app/suppliers/actions";
+import { EditModal, modalFieldClass } from "@/components/EditModal";
 import type { PriceUnit } from "@/db/schema";
 import {
   CATALOG_ITEM_TYPES,
@@ -12,9 +13,6 @@ import {
   packSizeHintForItemType,
 } from "@/lib/catalog-item-types";
 import { priceUnitLabel } from "@/lib/price-units";
-
-const inputClass =
-  "w-full rounded border border-white/10 bg-black/30 px-1 py-0.5 text-[10px] text-zinc-50 outline-none";
 
 function centsToInput(cents: number | null | undefined) {
   if (cents == null) return "";
@@ -42,8 +40,8 @@ export function CatalogItemEditButton(props: {
     (props.priceUnit as PriceUnit) ?? defaultPriceUnitForItemType(normalizedType),
   );
 
-  if (!open) {
-    return (
+  return (
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -51,124 +49,118 @@ export function CatalogItemEditButton(props: {
       >
         Edit
       </button>
-    );
-  }
-
-  return (
-    <div className="mt-1 rounded-lg border border-[#e8a44a]/20 bg-black/30 p-2">
-      <form action={updateSupplierCatalogItem} className="space-y-1">
-        <input type="hidden" name="id" value={props.id} />
-        <input
-          name="itemName"
-          required
-          defaultValue={props.itemName}
-          placeholder="Item name"
-          className={inputClass}
-        />
-        <div className="grid grid-cols-2 gap-1">
+      <EditModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Edit catalog item"
+        subtitle={props.itemName}
+        maxWidth="lg"
+      >
+        <form action={updateSupplierCatalogItem} className="space-y-2">
+          <input type="hidden" name="id" value={props.id} />
           <input
-            name="brand"
-            defaultValue={props.brand ?? ""}
-            placeholder="Brand"
-            className={inputClass}
+            name="itemName"
+            required
+            defaultValue={props.itemName}
+            placeholder="Item name"
+            className={modalFieldClass}
           />
-          <input
-            name="variant"
-            defaultValue={props.variant ?? ""}
-            placeholder="Flavor"
-            className={inputClass}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-1">
-          <input
-            name="packSize"
-            defaultValue={props.packSize ?? ""}
-            placeholder="Pack #"
-            className={inputClass}
-          />
-          <input
-            name="packUnit"
-            defaultValue={props.packUnit ?? defaultPackUnitForItemType(itemType)}
-            placeholder="kg, g…"
-            className={inputClass}
-          />
-        </div>
-        <p className="text-[9px] text-zinc-600">{packSizeHintForItemType(itemType)}</p>
-        <select
-          name="itemType"
-          value={itemType}
-          onChange={(e) => {
-            setItemType(e.target.value);
-            setPriceUnit(defaultPriceUnitForItemType(e.target.value));
-          }}
-          className={inputClass}
-        >
-          {CATALOG_ITEM_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-        <select
-          name="priceUnit"
-          value={priceUnit}
-          onChange={(e) => setPriceUnit(e.target.value as PriceUnit)}
-          className={inputClass}
-        >
-          <option value="Sack">Sack</option>
-          <option value="Piece">Piece</option>
-          <option value="Case">Case</option>
-        </select>
-        {priceUnit === "Case" ? (
-          <input
-            name="unitsPerCase"
-            type="number"
-            min={1}
-            defaultValue={props.unitsPerCase ?? 24}
-            placeholder="Cans per case"
-            className={inputClass}
-          />
-        ) : (
-          <input type="hidden" name="unitsPerCase" value={props.unitsPerCase ?? 24} />
-        )}
-        <div className="grid grid-cols-2 gap-1">
-          <input
-            name="unitCost"
-            defaultValue={centsToInput(props.unitCost)}
-            placeholder={`WS ${priceUnitLabel(priceUnit)}`}
-            className={inputClass}
-          />
-          <input
-            name="retailPrice"
-            defaultValue={centsToInput(props.retailPrice)}
-            placeholder={`Retail ${priceUnitLabel(priceUnit)}`}
-            className={inputClass}
-          />
-        </div>
-        {priceUnit === "Sack" ? (
-          <input
-            name="perKiloPrice"
-            defaultValue={centsToInput(props.perKiloPrice)}
-            placeholder="Per kg WS"
-            className={inputClass}
-          />
-        ) : null}
-        <div className="flex gap-1">
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              name="brand"
+              defaultValue={props.brand ?? ""}
+              placeholder="Brand"
+              className={modalFieldClass}
+            />
+            <input
+              name="variant"
+              defaultValue={props.variant ?? ""}
+              placeholder="Flavor"
+              className={modalFieldClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              name="packSize"
+              defaultValue={props.packSize ?? ""}
+              placeholder="Pack #"
+              className={modalFieldClass}
+            />
+            <input
+              name="packUnit"
+              defaultValue={props.packUnit ?? defaultPackUnitForItemType(itemType)}
+              placeholder="kg, g…"
+              className={modalFieldClass}
+            />
+          </div>
+          <p className="text-[9px] text-zinc-600">{packSizeHintForItemType(itemType)}</p>
+          <select
+            name="itemType"
+            value={itemType}
+            onChange={(e) => {
+              setItemType(e.target.value);
+              setPriceUnit(defaultPriceUnitForItemType(e.target.value));
+            }}
+            className={modalFieldClass}
+          >
+            {CATALOG_ITEM_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <select
+            name="priceUnit"
+            value={priceUnit}
+            onChange={(e) => setPriceUnit(e.target.value as PriceUnit)}
+            className={modalFieldClass}
+          >
+            <option value="Sack">Sack</option>
+            <option value="Piece">Piece</option>
+            <option value="Case">Case</option>
+          </select>
+          {priceUnit === "Case" ? (
+            <input
+              name="unitsPerCase"
+              type="number"
+              min={1}
+              defaultValue={props.unitsPerCase ?? 24}
+              placeholder="Cans per case"
+              className={modalFieldClass}
+            />
+          ) : (
+            <input type="hidden" name="unitsPerCase" value={props.unitsPerCase ?? 24} />
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              name="unitCost"
+              defaultValue={centsToInput(props.unitCost)}
+              placeholder={`WS ${priceUnitLabel(priceUnit)}`}
+              className={modalFieldClass}
+            />
+            <input
+              name="retailPrice"
+              defaultValue={centsToInput(props.retailPrice)}
+              placeholder={`Retail ${priceUnitLabel(priceUnit)}`}
+              className={modalFieldClass}
+            />
+          </div>
+          {priceUnit === "Sack" ? (
+            <input
+              name="perKiloPrice"
+              defaultValue={centsToInput(props.perKiloPrice)}
+              placeholder="Per kg WS"
+              className={modalFieldClass}
+            />
+          ) : null}
           <button
             type="submit"
-            className="rounded border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-200"
+            className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900"
           >
-            Save
+            Save catalog item
           </button>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </EditModal>
+    </>
   );
 }

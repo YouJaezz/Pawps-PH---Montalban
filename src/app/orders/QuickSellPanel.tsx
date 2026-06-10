@@ -22,6 +22,7 @@ import {
   unitPriceForSale,
   type SaleUnit,
 } from "@/lib/order-line-math";
+import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
@@ -32,6 +33,7 @@ export type QuickSellProduct = {
   name: string;
   brand: string;
   variant: string | null;
+  itemType: string | null;
   retailPrice: number;
   bulkPrice: number;
   stockQuantity: number;
@@ -64,7 +66,10 @@ const KG_QUICK_AMOUNTS = ["0.25", "0.5", "0.75", "1"] as const;
 type ModalStep = "form" | "confirm" | "receipt";
 
 function productLabel(p: QuickSellProduct) {
-  return `${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
+  const typeTag = p.itemType
+    ? `[${displayCatalogItemType(p.itemType)}] `
+    : "";
+  return `${typeTag}${p.name} — ${p.brand}${p.variant ? ` (${p.variant})` : ""}`;
 }
 
 export function QuickSellPanel(props: {

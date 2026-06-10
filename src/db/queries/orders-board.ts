@@ -59,6 +59,7 @@ export const getOrdersPageData = cache(async () => {
     name: p.name,
     brand: p.brand,
     variant: p.variant,
+    itemType: p.itemType,
     retailPrice: p.retailPrice,
     bulkPrice: p.bulkPrice,
     stockQuantity: p.stockQuantity,

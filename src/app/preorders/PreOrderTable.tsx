@@ -9,6 +9,7 @@ import {
   updatePreOrderStatus,
   type PreOrderActionResult,
 } from "@/app/preorders/actions";
+import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { TableToolbar } from "@/components/TableToolbar";
 import { formatPhpFromCents } from "@/lib/money";
 import { matchesQuery, rowSearchText } from "@/lib/table-filter";
@@ -78,6 +79,7 @@ function FeedbackBanner(props: { state: PreOrderActionResult | null }) {
 
 export function PreOrderTable(props: { rows: PreOrderRow[] }) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [statusState, statusAction, statusPending] = useActionState<
@@ -90,6 +92,7 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
   >(receivePreOrderItem, null);
 
   const feedback = statusState ?? receiveState;
+  const editRow = props.rows.find((r) => r.id === editId) ?? null;
 
   const filtered = useMemo(() => {
     let list = props.rows;
@@ -188,28 +191,14 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                     </div>
                   ) : null}
                 </div>
-                <form action={statusAction} className="flex items-center gap-1">
-                  <input type="hidden" name="id" value={row.id} />
-                  <select
-                    name="status"
-                    defaultValue={row.status}
-                    disabled={statusPending || !!row.fulfillmentOrderId}
-                    className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-zinc-50 disabled:opacity-50"
-                  >
-                    {statuses.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={statusPending || !!row.fulfillmentOrderId}
-                    className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200 disabled:opacity-50"
-                  >
-                    {statusPending ? "…" : "Update"}
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  disabled={!!row.fulfillmentOrderId}
+                  onClick={() => setEditId(row.id)}
+                  className="text-[10px] text-[#e8a44a] underline hover:text-[#e8a44a] disabled:opacity-50"
+                >
+                  Edit
+                </button>
               </div>
 
               <div className="mt-2 flex flex-wrap gap-2">
@@ -296,6 +285,41 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
           ))
         )}
       </div>
+
+      <EditModal
+        open={editRow != null}
+        onClose={() => setEditId(null)}
+        title="Edit pre-order"
+        subtitle={editRow ? `#${editRow.id}` : undefined}
+      >
+        {editRow ? (
+          <form action={statusAction} className="space-y-3">
+            <input type="hidden" name="id" value={editRow.id} />
+            <label className="block space-y-1">
+              <span className="text-[11px] text-zinc-400">Status</span>
+              <select
+                name="status"
+                defaultValue={editRow.status}
+                disabled={statusPending}
+                className={modalFieldClass}
+              >
+                {statuses.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              disabled={statusPending}
+              className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            >
+              {statusPending ? "Saving…" : "Save status"}
+            </button>
+          </form>
+        ) : null}
+      </EditModal>
     </div>
   );
 }

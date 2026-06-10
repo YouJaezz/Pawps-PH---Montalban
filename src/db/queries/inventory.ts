@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { getActiveInventoryProducts, inventoryValuationFromRows } from "@/db/queries/inventory-products";
+import { toStockAlertRow, type StockAlertRow } from "@/lib/stock-alerts";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -23,3 +24,34 @@ export const getInventoryAtAGlance = cache(async (opts?: { daysUntilExpiry?: num
     cutoff,
   };
 });
+
+export const getStockAlerts = cache(async () => {
+  const allProducts = await getActiveInventoryProducts();
+  const alerts = allProducts
+    .map((p) =>
+      toStockAlertRow({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        variant: p.variant,
+        itemType: p.itemType,
+        stockUnit: p.stockUnit,
+        stockQuantity: p.stockQuantity,
+        kgPerSack: p.kgPerSack,
+        unitsPerCase: p.unitsPerCase,
+      }),
+    )
+    .filter((p) => p.level !== "ok")
+    .sort((a, b) => {
+      if (a.level !== b.level) return a.level === "empty" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  return {
+    empty: alerts.filter((a) => a.level === "empty"),
+    low: alerts.filter((a) => a.level === "low"),
+    all: alerts,
+  };
+});
+
+export type { StockAlertRow };

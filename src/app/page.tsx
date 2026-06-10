@@ -1,13 +1,14 @@
 import { StatCard } from "@/components/StatCard";
 import { AppShell } from "@/components/AppShell";
 import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
-import { getInventoryAtAGlance } from "@/db/queries/inventory";
+import { getInventoryAtAGlance, getStockAlerts } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
 import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 import { formatStockLabel } from "@/lib/product-stock";
 import type { StockUnit } from "@/db/schema";
+import { StockAlertsTable } from "@/components/StockAlertsTable";
 import Link from "next/link";
 
 function formatDateShort(d: Date) {
@@ -21,10 +22,11 @@ function formatDateShort(d: Date) {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [glance, insights, investor] = await Promise.all([
+  const [glance, insights, investor, stockAlerts] = await Promise.all([
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),
     getBusinessInsights(),
     getInvestorSummary(),
+    getStockAlerts(),
   ]);
 
   const expiringRows = glance.expiringSoon.map((p) => ({
@@ -72,7 +74,7 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard
             title="Total stock value (cost basis)"
             value={formatPhpFromCents(glance.totalStockValueCents)}
@@ -82,6 +84,16 @@ export default async function Home() {
             title="Items expiring soon"
             value={`${glance.expiringSoonCount}`}
             subtitle={`Within 30 days (by ${formatDateShort(glance.cutoff)})`}
+          />
+          <StatCard
+            title="Out of stock"
+            value={`${stockAlerts.empty.length}`}
+            subtitle="Items at zero — restock needed"
+          />
+          <StatCard
+            title="Low stock"
+            value={`${stockAlerts.low.length}`}
+            subtitle="Running low — check Inventory"
           />
           <StatCard
             title="Income (last 30 days)"
@@ -153,6 +165,16 @@ export default async function Home() {
             View Business Insights
           </Link>
         </div>
+
+        {stockAlerts.all.length > 0 ? (
+          <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+            <div className="text-sm text-zinc-300">Stock alerts</div>
+            <div className="mt-1 text-xs text-zinc-400">
+              Items that are out of stock or running low.
+            </div>
+            <StockAlertsTable rows={stockAlerts.all} showLink />
+          </div>
+        ) : null}
 
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center justify-between gap-4">

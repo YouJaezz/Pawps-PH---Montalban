@@ -55,6 +55,8 @@ export function InventoryTable(props: {
       list = list.filter((r) => r.stockQuantity > 0);
     } else if (stockFilter === "out") {
       list = list.filter((r) => r.stockQuantity <= 0);
+    } else if (stockFilter === "low") {
+      list = list.filter((r) => r.stockQuantity > 0 && r.stockQuantity <= 50);
     }
 
     if (query.trim()) {
@@ -94,6 +96,7 @@ export function InventoryTable(props: {
             options: [
               { value: "all", label: "All stock" },
               { value: "in", label: "In stock" },
+              { value: "low", label: "Low stock" },
               { value: "out", label: "Out of stock" },
             ],
           },
