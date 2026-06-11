@@ -17,6 +17,9 @@ export type OrderReceiptData = {
   deliveryMethod: string | null;
   orderStatus: string;
   paymentStatus: string;
+  subtotalCents?: number;
+  discountCents?: number;
+  discountNote?: string | null;
   totalAmount: number;
   amountPaid: number;
   createdAt: string;

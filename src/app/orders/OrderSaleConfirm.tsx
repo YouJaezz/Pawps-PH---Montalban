@@ -7,6 +7,9 @@ export function OrderSaleConfirm(props: {
   customerName: string;
   contact?: string;
   location?: string;
+  subtotalCents?: number;
+  discountCents?: number;
+  discountNote?: string | null;
   totalLabel: string;
   totalCents: number;
   paidLabel?: string;
@@ -58,6 +61,31 @@ export function OrderSaleConfirm(props: {
             {props.itemSummary}
           </dd>
         </div>
+        {props.subtotalCents != null &&
+        props.discountCents != null &&
+        props.discountCents > 0 ? (
+          <>
+            <div className="flex justify-between gap-3 border-t border-white/10 pt-2">
+              <dt className="text-zinc-400">Subtotal</dt>
+              <dd className="text-zinc-200">
+                {formatPhpFromCents(props.subtotalCents)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-400">
+                Discount
+                {props.discountNote ? (
+                  <span className="block text-[10px] text-zinc-500">
+                    {props.discountNote}
+                  </span>
+                ) : null}
+              </dt>
+              <dd className="text-amber-200">
+                −{formatPhpFromCents(props.discountCents)}
+              </dd>
+            </div>
+          </>
+        ) : null}
         <div className="flex justify-between gap-3 border-t border-white/10 pt-2">
           <dt className="text-zinc-400">{props.totalLabel}</dt>
           <dd className="font-semibold text-zinc-50">

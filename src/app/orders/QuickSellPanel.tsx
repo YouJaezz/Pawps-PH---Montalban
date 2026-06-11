@@ -17,6 +17,11 @@ import {
   type ProductSelectOption,
 } from "@/components/ProductSelectField";
 import { ItemTypeBadge } from "@/components/ItemTypeBadge";
+import { OrderDiscountFields } from "@/components/OrderDiscountFields";
+import {
+  orderTotalsFromSubtotal,
+  type DiscountType,
+} from "@/lib/order-discount";
 import type { StockUnit } from "@/db/schema";
 import {
   formatQuantityLabel,
@@ -122,6 +127,9 @@ export function QuickSellPanel(props: {
   const [excessCustomQty, setExcessCustomQty] = useState("");
   const [excessAmount, setExcessAmount] = useState("");
   const [excessNote, setExcessNote] = useState("");
+  const [discountType, setDiscountType] = useState<DiscountType>("None");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountNote, setDiscountNote] = useState("");
 
   const productById = useMemo(() => {
     const m = new Map<number, QuickSellProduct>();
@@ -176,6 +184,9 @@ export function QuickSellPanel(props: {
     setCustomerId("");
     setStoreType("Online");
     setDeliveryMethod("Montalban Free Delivery");
+    setDiscountType("None");
+    setDiscountValue("");
+    setDiscountNote("");
   }
 
   function openModal() {
@@ -219,6 +230,22 @@ export function QuickSellPanel(props: {
       }, 0),
     [cart, productById],
   );
+
+  const orderPricing = useMemo(() => {
+    const input =
+      discountType === "None"
+        ? { type: "None" as const, value: 0 }
+        : discountType === "Fixed"
+          ? {
+              type: "Fixed" as const,
+              value: Math.round(Number(discountValue) * 100) || 0,
+            }
+          : {
+              type: "Percent" as const,
+              value: Math.min(100, Math.round(Number(discountValue))) || 0,
+            };
+    return orderTotalsFromSubtotal(cartTotal, input);
+  }, [cartTotal, discountType, discountValue]);
 
   function addToCart() {
     const p = productById.get(draftProductId);
@@ -431,15 +458,29 @@ export function QuickSellPanel(props: {
                         {state.error}
                       </div>
                     ) : null}
+                    <div className="space-y-4 overflow-y-auto px-6 pb-2">
+                      <OrderDiscountFields
+                        subtotalCents={cartTotal}
+                        discountType={discountType}
+                        discountValue={discountValue}
+                        discountNote={discountNote}
+                        onTypeChange={setDiscountType}
+                        onValueChange={setDiscountValue}
+                        onNoteChange={setDiscountNote}
+                      />
+                    </div>
                     <OrderSaleConfirm
                     title="Confirm Quick Sell"
                     customerName={customerName}
                     contact={contact}
                     location={location}
+                    subtotalCents={cartTotal}
+                    discountCents={orderPricing.discountCents}
+                    discountNote={discountNote}
                     totalLabel="Total due"
-                    totalCents={cartTotal}
+                    totalCents={orderPricing.totalAmount}
                     paidLabel="Collect now"
-                    paidCents={cartTotal}
+                    paidCents={orderPricing.totalAmount}
                     itemSummary={cartSummary}
                     extraNotes={[
                       deductStock

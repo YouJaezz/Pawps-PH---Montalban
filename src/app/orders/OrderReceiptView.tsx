@@ -134,7 +134,26 @@ export function OrderReceiptView(props: {
         </div>
 
         <div className="mt-4 space-y-1 border-t border-zinc-200 pt-4 text-sm">
-          <div className="flex justify-between">
+          {receipt.discountCents != null && receipt.discountCents > 0 ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-zinc-600">Subtotal</span>
+                <span>{formatPhpFromCents(receipt.subtotalCents ?? receipt.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between text-amber-800">
+                <span>
+                  Discount
+                  {receipt.discountNote ? (
+                    <span className="block text-[10px] font-normal text-zinc-500">
+                      {receipt.discountNote}
+                    </span>
+                  ) : null}
+                </span>
+                <span>−{formatPhpFromCents(receipt.discountCents)}</span>
+              </div>
+            </>
+          ) : null}
+          <div className="flex justify-between font-medium">
             <span className="text-zinc-600">Total</span>
             <span>{formatPhpFromCents(receipt.totalAmount)}</span>
           </div>

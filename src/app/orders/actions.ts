@@ -17,6 +17,12 @@ import {
 } from "@/lib/order-line-math";
 import { formatStockLabel } from "@/lib/product-stock";
 import { formatPhpFromCents } from "@/lib/money";
+import {
+  orderTotalsFromSubtotal,
+  parseDiscountFromForm,
+  paymentStatusFor,
+  type DiscountType,
+} from "@/lib/order-discount";
 import type { OrderReceiptData } from "@/lib/order-receipt";
 import {
   buildCustomSaleLineNote,
@@ -148,11 +154,13 @@ async function recalcOrderTotal(orderId: number) {
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
 
-  const total = Number(sumRow?.total ?? 0);
+  const subtotalCents = Number(sumRow?.total ?? 0);
 
   const [order] = await db
     .select({
       amountPaid: orders.amountPaid,
+      discountType: orders.discountType,
+      discountValue: orders.discountValue,
     })
     .from(orders)
     .where(eq(orders.id, orderId))
@@ -160,17 +168,22 @@ async function recalcOrderTotal(orderId: number) {
 
   if (!order) return;
 
-  const amountPaid = Math.min(order.amountPaid, total);
-  const paymentStatus =
-    amountPaid >= total
-      ? ("Paid" as const)
-      : amountPaid >= Math.round(total * 0.3)
-        ? ("30% Deposit" as const)
-        : ("Pending" as const);
+  const pricing = orderTotalsFromSubtotal(subtotalCents, {
+    type: (order.discountType ?? "None") as DiscountType,
+    value: order.discountValue ?? 0,
+  });
+  const amountPaid = Math.min(order.amountPaid, pricing.totalAmount);
+  const paymentStatus = paymentStatusFor(pricing.totalAmount, amountPaid);
 
   await db
     .update(orders)
-    .set({ totalAmount: total, amountPaid, paymentStatus })
+    .set({
+      subtotalCents,
+      discountCents: pricing.discountCents,
+      totalAmount: pricing.totalAmount,
+      amountPaid,
+      paymentStatus,
+    })
     .where(eq(orders.id, orderId));
 }
 
@@ -252,7 +265,7 @@ export async function quickSell(
 
     const productById = new Map(selected.map((p) => [p.id, p]));
 
-    let totalAmount = 0;
+    let subtotalCents = 0;
     const lines: Array<{
       productId: number;
       quantity: number;
@@ -308,7 +321,7 @@ export async function quickSell(
         quantityTenths,
       );
 
-      totalAmount += lineTotal;
+      subtotalCents += lineTotal;
       lines.push({
         productId,
         quantity,
@@ -366,7 +379,7 @@ export async function quickSell(
         const unitPrice =
           effQty > 0 ? Math.round(lineTotal / effQty) : lineTotal;
 
-        totalAmount += lineTotal;
+        subtotalCents += lineTotal;
         lines.push({
           productId,
           quantity: parsed.quantity,
@@ -382,7 +395,7 @@ export async function quickSell(
         continue;
       }
 
-      totalAmount += lineTotal;
+      subtotalCents += lineTotal;
       lines.push({
         productId,
         quantity: 1,
@@ -431,6 +444,12 @@ export async function quickSell(
     if (!deductStock) noteParts.push("[no-stock-deduct]");
     const notes = noteParts.length ? noteParts.join("\n") : null;
 
+    const discountInput = parseDiscountFromForm(formData);
+    const discountNote =
+      String(formData.get("discountNote") ?? "").trim() || null;
+    const pricing = orderTotalsFromSubtotal(subtotalCents, discountInput);
+    const totalAmount = pricing.totalAmount;
+
     const insertedOrder = await db
       .insert(orders)
       .values({
@@ -440,6 +459,11 @@ export async function quickSell(
         location: locationRaw.length ? locationRaw : null,
         notes,
         orderStatus: "Pending",
+        subtotalCents,
+        discountCents: pricing.discountCents,
+        discountType: discountInput.type,
+        discountValue: discountInput.value,
+        discountNote,
         totalAmount,
         amountPaid: totalAmount,
         paymentStatus: "Paid",
@@ -538,6 +562,9 @@ export async function quickSell(
           deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
           orderStatus: "Pending",
           paymentStatus: "Paid",
+          subtotalCents,
+          discountCents: pricing.discountCents,
+          discountNote,
           totalAmount,
           amountPaid: totalAmount,
           createdAt: createdAt.toISOString(),
@@ -604,7 +631,7 @@ export async function createBulkOrder(
 
     const priceById = new Map(selected.map((p) => [p.id, p]));
 
-    let total = 0;
+    let subtotalCents = 0;
     const lines: Array<{
       productId: number;
       quantity: number;
@@ -638,7 +665,7 @@ export async function createBulkOrder(
         qtyParsed.quantity,
         qtyParsed.quantityTenths,
       );
-      total += lineTotal;
+      subtotalCents += lineTotal;
       lines.push({
         productId: id,
         quantity: qtyParsed.quantity,
@@ -652,7 +679,12 @@ export async function createBulkOrder(
 
     if (lines.length === 0) return actionError("Invalid items.");
 
-    const deposit = Math.round(total * 0.3);
+    const discountInput = parseDiscountFromForm(formData);
+    const discountNote =
+      String(formData.get("discountNote") ?? "").trim() || null;
+    const pricing = orderTotalsFromSubtotal(subtotalCents, discountInput);
+    const totalAmount = pricing.totalAmount;
+    const deposit = Math.round(totalAmount * 0.3);
 
     const customerId = await resolveCustomerForOrder({
       customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
@@ -670,7 +702,12 @@ export async function createBulkOrder(
         location: locationRaw.length ? locationRaw : null,
         notes: notesRaw.length ? notesRaw : null,
         orderStatus: "Pending",
-        totalAmount: total,
+        subtotalCents,
+        discountCents: pricing.discountCents,
+        discountType: discountInput.type,
+        discountValue: discountInput.value,
+        discountNote,
+        totalAmount,
         amountPaid: deposit,
         paymentStatus: "30% Deposit",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
@@ -748,7 +785,10 @@ export async function createBulkOrder(
           deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
           orderStatus: "Pending",
           paymentStatus: "30% Deposit",
-          totalAmount: total,
+          subtotalCents,
+          discountCents: pricing.discountCents,
+          discountNote,
+          totalAmount,
           amountPaid: deposit,
           createdAt: createdAt.toISOString(),
           cashierName: session.name ?? session.email,

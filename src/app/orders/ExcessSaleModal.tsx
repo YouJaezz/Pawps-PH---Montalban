@@ -17,6 +17,11 @@ import {
   ProductSelectField,
   type ProductSelectOption,
 } from "@/components/ProductSelectField";
+import { OrderDiscountFields } from "@/components/OrderDiscountFields";
+import {
+  orderTotalsFromSubtotal,
+  type DiscountType,
+} from "@/lib/order-discount";
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -68,6 +73,9 @@ export function ExcessSaleModal(props: {
   const [customerId, setCustomerId] = useState("");
   const [storeType, setStoreType] = useState("Walk-in");
   const [deliveryMethod, setDeliveryMethod] = useState("Montalban Free Delivery");
+  const [discountType, setDiscountType] = useState<DiscountType>("None");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountNote, setDiscountNote] = useState("");
 
   useEffect(() => {
     if (state?.ok && state.receipt) setStep("receipt");
@@ -93,6 +101,22 @@ export function ExcessSaleModal(props: {
       }, 0),
     [lines],
   );
+
+  const orderPricing = useMemo(() => {
+    const input =
+      discountType === "None"
+        ? { type: "None" as const, value: 0 }
+        : discountType === "Fixed"
+          ? {
+              type: "Fixed" as const,
+              value: Math.round(Number(discountValue) * 100) || 0,
+            }
+          : {
+              type: "Percent" as const,
+              value: Math.min(100, Math.round(Number(discountValue))) || 0,
+            };
+    return orderTotalsFromSubtotal(totalCents, input);
+  }, [totalCents, discountType, discountValue]);
 
   const itemSummary = useMemo(() => {
     if (lines.length === 0) return "—";
@@ -125,6 +149,9 @@ export function ExcessSaleModal(props: {
     setContact("");
     setLocation("");
     setCustomerId("");
+    setDiscountType("None");
+    setDiscountValue("");
+    setDiscountNote("");
   }
 
   function updateLine(index: number, patch: Partial<ExcessLine>) {
@@ -272,15 +299,29 @@ export function ExcessSaleModal(props: {
                         {state.error}
                       </div>
                     ) : null}
+                    <div className="space-y-4 overflow-y-auto px-6 pb-2">
+                      <OrderDiscountFields
+                        subtotalCents={totalCents}
+                        discountType={discountType}
+                        discountValue={discountValue}
+                        discountNote={discountNote}
+                        onTypeChange={setDiscountType}
+                        onValueChange={setDiscountValue}
+                        onNoteChange={setDiscountNote}
+                      />
+                    </div>
                     <OrderSaleConfirm
                       title="Confirm excess / bonus sale"
                       customerName={customerName}
                       contact={contact}
                       location={location}
+                      subtotalCents={totalCents}
+                      discountCents={orderPricing.discountCents}
+                      discountNote={discountNote}
                       totalLabel="Total collected"
-                      totalCents={totalCents}
+                      totalCents={orderPricing.totalAmount}
                       paidLabel="Collect now"
-                      paidCents={totalCents}
+                      paidCents={orderPricing.totalAmount}
                       itemSummary={itemSummary}
                       extraNotes={[
                         lines.some((line) => line.qtyPreset === "Custom")

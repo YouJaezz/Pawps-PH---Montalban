@@ -94,7 +94,14 @@ export function StockAlertsTable(props: {
                   <td className="px-3 py-2 text-zinc-400">
                     {displayCatalogItemType(r.itemType)}
                   </td>
-                  <td className="px-3 py-2 text-zinc-300">{r.displayQty}</td>
+                  <td className="px-3 py-2 text-zinc-300">
+                    <div>{r.displayQty}</div>
+                    {r.displayQtyDetail !== "—" ? (
+                      <div className="text-[10px] text-zinc-500">
+                        {r.displayQtyDetail}
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2">
                     <span
                       className={

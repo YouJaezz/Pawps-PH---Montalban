@@ -12,6 +12,11 @@ import {
 } from "@/app/orders/CustomerPicker";
 import { OrderReceiptView } from "@/app/orders/OrderReceiptView";
 import { OrderSaleConfirm } from "@/app/orders/OrderSaleConfirm";
+import { OrderDiscountFields } from "@/components/OrderDiscountFields";
+import {
+  orderTotalsFromSubtotal,
+  type DiscountType,
+} from "@/lib/order-discount";
 import {
   ProductSelectField,
   type ProductSelectOption,
@@ -67,6 +72,9 @@ export function BulkOrderModal(props: {
   const [customerId, setCustomerId] = useState("");
   const [storeType, setStoreType] = useState("Online");
   const [deliveryMethod, setDeliveryMethod] = useState("Lalamove");
+  const [discountType, setDiscountType] = useState<DiscountType>("None");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountNote, setDiscountNote] = useState("");
 
   useEffect(() => {
     if (state?.ok && state.receipt) {
@@ -86,6 +94,9 @@ export function BulkOrderModal(props: {
     setDeliveryMethod("Lalamove");
     setLines([{ productId: props.products[0]?.id ?? 0, quantity: "1" }]);
     setSaleUnit("Piece");
+    setDiscountType("None");
+    setDiscountValue("");
+    setDiscountNote("");
   }
 
   function openModal() {
@@ -152,7 +163,23 @@ export function BulkOrderModal(props: {
     return set.size > 0 ? [...set] : (["Piece"] as SaleUnit[]);
   }, [props.products]);
 
-  const deposit = Math.round(total * 0.3);
+  const orderPricing = useMemo(() => {
+    const input =
+      discountType === "None"
+        ? { type: "None" as const, value: 0 }
+        : discountType === "Fixed"
+          ? {
+              type: "Fixed" as const,
+              value: Math.round(Number(discountValue) * 100) || 0,
+            }
+          : {
+              type: "Percent" as const,
+              value: Math.min(100, Math.round(Number(discountValue))) || 0,
+            };
+    return orderTotalsFromSubtotal(total, input);
+  }, [total, discountType, discountValue]);
+
+  const deposit = Math.round(orderPricing.totalAmount * 0.3);
 
   const itemSummary = useMemo(() => {
     if (lines.length === 0) return "—";
@@ -260,13 +287,25 @@ export function BulkOrderModal(props: {
                       {state.error}
                     </div>
                   ) : null}
+                  <OrderDiscountFields
+                    subtotalCents={total}
+                    discountType={discountType}
+                    discountValue={discountValue}
+                    discountNote={discountNote}
+                    onTypeChange={setDiscountType}
+                    onValueChange={setDiscountValue}
+                    onNoteChange={setDiscountNote}
+                  />
                   <OrderSaleConfirm
                   title="Confirm bulk order"
                   customerName={customerName}
                   contact={contact}
                   location={location}
+                  subtotalCents={total}
+                  discountCents={orderPricing.discountCents}
+                  discountNote={discountNote}
                   totalLabel="Order total"
-                  totalCents={total}
+                  totalCents={orderPricing.totalAmount}
                   paidLabel="30% deposit now"
                   paidCents={deposit}
                   itemSummary={itemSummary}

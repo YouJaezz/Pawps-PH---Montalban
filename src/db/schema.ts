@@ -73,6 +73,17 @@ export const orders = sqliteTable("orders", {
   stockDeducted: integer("stock_deducted", { mode: "boolean" })
     .notNull()
     .default(false),
+  /** Sum of line totals before order-level discount. */
+  subtotalCents: integer("subtotal_cents").notNull().default(0),
+  discountCents: integer("discount_cents").notNull().default(0),
+  discountType: text("discount_type", {
+    enum: ["None", "Fixed", "Percent"],
+  })
+    .notNull()
+    .default("None"),
+  /** Fixed: centavos stored. Percent: whole percent (10 = 10%). */
+  discountValue: integer("discount_value").notNull().default(0),
+  discountNote: text("discount_note"),
   totalAmount: integer("total_amount").notNull(),
   amountPaid: integer("amount_paid").notNull().default(0),
   paymentStatus: text("payment_status", {

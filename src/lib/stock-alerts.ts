@@ -1,5 +1,5 @@
 import type { StockUnit } from "@/db/schema";
-import { displayStockQuantity } from "@/lib/product-stock";
+import { formatDualStock } from "@/lib/product-stock";
 
 export type StockAlertLevel = "empty" | "low" | "ok";
 
@@ -33,6 +33,7 @@ export type StockAlertRow = {
   unitsPerCase: number | null;
   level: StockAlertLevel;
   displayQty: string;
+  displayQtyDetail: string;
 };
 
 export function toStockAlertRow(p: {
@@ -47,13 +48,14 @@ export function toStockAlertRow(p: {
   unitsPerCase: number | null;
 }): StockAlertRow {
   const level = stockAlertLevel(p.stockUnit, p.stockQuantity);
-  const displayQty = displayStockQuantity(
-    p.stockUnit === "Sack" ? "Kilogram" : p.stockUnit,
-    p.stockQuantity,
-  );
+  const dual = formatDualStock(p.stockUnit, p.stockQuantity, {
+    kgPerSack: p.kgPerSack,
+    unitsPerCase: p.unitsPerCase,
+  });
   return {
     ...p,
     level,
-    displayQty: String(displayQty),
+    displayQty: dual.primary,
+    displayQtyDetail: dual.secondary,
   };
 }

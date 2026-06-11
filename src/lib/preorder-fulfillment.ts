@@ -264,6 +264,7 @@ async function createCustomerOrderFromPreOrder(
       location: null,
       notes: noteParts.join(" · "),
       orderStatus: "Confirmed",
+      subtotalCents: totalAmount,
       totalAmount,
       amountPaid,
       paymentStatus,
