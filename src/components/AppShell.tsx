@@ -2,7 +2,10 @@ import Link from "next/link";
 import { ReactNode } from "react";
 
 import { getPendingDeliveryCount } from "@/db/queries/delivery-nav";
+import { getUserOpenShift } from "@/db/queries/time-attendance";
 import { logoutAction } from "@/app/login/actions";
+import { SidebarShiftStatus } from "@/components/SidebarShiftStatus";
+import { TeamChatWidget } from "@/components/TeamChatWidget";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { isAdmin, roleLabel } from "@/lib/roles";
 import { getSession, type SessionUser } from "@/lib/session";
@@ -27,7 +30,10 @@ export async function AppShell(props: {
 }) {
   const session = props.session ?? (await getSession());
   const admin = isAdmin(session?.role);
-  const pendingDeliveryCount = admin ? await getPendingDeliveryCount() : 0;
+  const [pendingDeliveryCount, openShift] = await Promise.all([
+    admin ? getPendingDeliveryCount() : Promise.resolve(0),
+    session ? getUserOpenShift(session.userId) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="h-dvh overflow-hidden bg-[#07070a] text-zinc-50">
@@ -50,6 +56,7 @@ export async function AppShell(props: {
               <NavItem href="/products" label="Inventory" hint={admin ? "CRUD" : "add stock"} />
               <NavItem href="/orders" label="Sales & Orders" hint="POS" />
               <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
+              <NavItem href="/team-chat" label="Team chat" hint="staff" />
               {admin ? (
                 <>
                   <NavItem href="/customers" label="Customers" hint="CRM" />
@@ -84,8 +91,10 @@ export async function AppShell(props: {
                 </div>
                 <div className="truncate text-[10px] text-zinc-600">
                   {roleLabel(session.role)}
-                  {!admin ? " · on duty" : ""}
                 </div>
+                <SidebarShiftStatus
+                  clockInAt={openShift?.clockInAt.toISOString() ?? null}
+                />
                 <form action={logoutAction} className="mt-2">
                   <button
                     type="submit"
@@ -101,6 +110,13 @@ export async function AppShell(props: {
 
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{props.children}</main>
       </div>
+      {session ? (
+        <TeamChatWidget
+          userId={session.userId}
+          userName={session.name ?? session.email}
+          isAdmin={admin}
+        />
+      ) : null}
     </div>
   );
 }

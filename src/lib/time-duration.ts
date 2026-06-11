@@ -14,3 +14,19 @@ export function formatDuration(minutes: number) {
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
 }
+
+/** Elapsed ms → HH:MM:SS or MM:SS for live shift timers. */
+export function formatLiveDuration(elapsedMs: number) {
+  const totalSec = Math.max(0, Math.floor(elapsedMs / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  if (h > 0) return `${h}:${mm}:${ss}`;
+  return `${m}:${ss}`;
+}
+
+export function liveElapsedMs(clockInAt: Date | string) {
+  return Math.max(0, Date.now() - new Date(clockInAt).getTime());
+}

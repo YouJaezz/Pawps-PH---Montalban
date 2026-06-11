@@ -437,6 +437,26 @@ export const timeEntries = sqliteTable("time_entries", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const teamMessages = sqliteTable("team_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  senderUserId: integer("sender_user_id").notNull(),
+  body: text("body").notNull(),
+  isAnnouncement: integer("is_announcement", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const teamChatReads = sqliteTable("team_chat_reads", {
+  userId: integer("user_id").primaryKey(),
+  lastReadMessageId: integer("last_read_message_id").notNull().default(0),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export const payrollPayouts = sqliteTable("payroll_payouts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),

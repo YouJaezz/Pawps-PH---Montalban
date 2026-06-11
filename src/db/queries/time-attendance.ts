@@ -8,6 +8,41 @@ import { entryMinutes } from "@/lib/time-duration";
 
 export { entryMinutes, formatDuration } from "@/lib/time-duration";
 
+export async function getUserOpenShift(userId: number) {
+  const [row] = await db
+    .select({
+      id: timeEntries.id,
+      clockInAt: timeEntries.clockInAt,
+    })
+    .from(timeEntries)
+    .where(and(eq(timeEntries.userId, userId), isNull(timeEntries.clockOutAt)))
+    .orderBy(desc(timeEntries.clockInAt))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getActiveShifts() {
+  const rows = await db
+    .select({
+      entryId: timeEntries.id,
+      userId: timeEntries.userId,
+      clockInAt: timeEntries.clockInAt,
+      name: users.name,
+      email: users.email,
+    })
+    .from(timeEntries)
+    .innerJoin(users, eq(timeEntries.userId, users.id))
+    .where(and(isNull(timeEntries.clockOutAt), eq(users.active, true)))
+    .orderBy(timeEntries.clockInAt);
+
+  return rows.map((r) => ({
+    entryId: r.entryId,
+    userId: r.userId,
+    clockInAt: r.clockInAt.toISOString(),
+    name: r.name ?? r.email,
+  }));
+}
+
 export const getAttendancePageData = cache(
   async (viewerUserId: number, adminView: boolean) => {
     const { year, month } = phNow();
@@ -77,6 +112,8 @@ export const getAttendancePageData = cache(
       monthMinutes += entryMinutes(e.clockInAt, e.clockOutAt);
     }
 
+    const activeShifts = adminView ? await getActiveShifts() : [];
+
     const teamTotals = employeeRows.map((emp) => {
       const entries = monthEntries.filter((e) => e.userId === emp.id);
       const minutes = entries.reduce(
@@ -104,6 +141,7 @@ export const getAttendancePageData = cache(
         employeeName: userNameById.get(e.userId) ?? `#${e.userId}`,
       })),
       teamTotals,
+      activeShifts,
       employees: employeeRows,
     };
   },

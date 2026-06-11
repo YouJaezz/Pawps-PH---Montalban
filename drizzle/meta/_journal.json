@@ -169,6 +169,13 @@
       "when": 1780084000000,
       "tag": "0024_order_discount",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1780085000000,
+      "tag": "0025_team_chat",
+      "breakpoints": true
     }
   ]
 }

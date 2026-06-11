@@ -25,6 +25,8 @@ export function isCashierPathAllowed(pathname: string) {
   if (pathname === "/products") return true;
   if (pathname === "/customers") return true;
   if (pathname === "/attendance") return true;
+  if (pathname === "/team-chat") return true;
+  if (pathname.startsWith("/api/chat")) return true;
   return false;
 }
 

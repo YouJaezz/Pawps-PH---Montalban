@@ -7,6 +7,7 @@ import {
   clockOut,
   type AttendanceActionResult,
 } from "@/app/attendance/actions";
+import { LiveShiftTimer } from "@/components/LiveShiftTimer";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { formatDuration } from "@/lib/time-duration";
 
@@ -43,6 +44,7 @@ export function AttendancePanel(props: {
   monthLabel: string;
   monthMinutes: number;
   openEntry: { id: number; clockInAt: Date } | null;
+  openClockInAt: string | null;
   monthEntries: Array<{
     id: number;
     userId: number;
@@ -58,6 +60,12 @@ export function AttendancePanel(props: {
     entryCount: number;
     hourlyRateCents: number;
   }>;
+  activeShifts: Array<{
+    entryId: number;
+    userId: number;
+    clockInAt: string;
+    name: string;
+  }>;
 }) {
   const [inState, inAction, inPending] = useActionState<
     AttendanceActionResult | null,
@@ -70,10 +78,25 @@ export function AttendancePanel(props: {
 
   const feedback = inState ?? outState;
   const clockedIn = !!props.openEntry;
+  const liveClockIn = props.openClockInAt;
 
   return (
     <div className="space-y-6">
       <Banner state={feedback} />
+
+      {clockedIn && liveClockIn ? (
+        <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 to-transparent p-5">
+          <div className="text-xs uppercase tracking-wide text-emerald-400">
+            Live shift · counting now
+          </div>
+          <div className="mt-2">
+            <LiveShiftTimer clockInAt={liveClockIn} size="lg" />
+          </div>
+          <p className="mt-2 text-xs text-zinc-400">
+            Started {fmtWhen(props.openEntry!.clockInAt)} · updates every second
+          </p>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/10 to-transparent p-5">
         <div className="text-xs uppercase tracking-wide text-[#e8a44a]">
@@ -84,6 +107,12 @@ export function AttendancePanel(props: {
         </div>
         <div className="mt-1 text-xs text-zinc-400">
           {props.monthEntries.filter((e) => e.clockOutAt).length} completed shift(s)
+          {clockedIn && liveClockIn ? (
+            <span className="text-emerald-400">
+              {" "}
+              · current shift not included until you clock out
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -94,6 +123,11 @@ export function AttendancePanel(props: {
             <p className="mt-2 text-xs text-emerald-300">
               Clocked in since {fmtWhen(props.openEntry!.clockInAt)}
             </p>
+            {liveClockIn ? (
+              <div className="mt-2">
+                <LiveShiftTimer clockInAt={liveClockIn} />
+              </div>
+            ) : null}
             <form action={outAction} className="mt-3">
               <button
                 type="submit"
@@ -116,6 +150,26 @@ export function AttendancePanel(props: {
           </form>
         )}
       </div>
+
+      {props.adminView && props.activeShifts.length > 0 ? (
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div className="text-sm font-medium text-emerald-100">On duty now</div>
+          <p className="mt-1 text-[10px] text-emerald-200/70">
+            Live hours for everyone currently clocked in.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {props.activeShifts.map((s) => (
+              <li
+                key={s.entryId}
+                className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2"
+              >
+                <span className="text-sm text-zinc-200">{s.name}</span>
+                <LiveShiftTimer clockInAt={s.clockInAt} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {props.adminView && props.teamTotals.length > 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -175,12 +229,29 @@ export function AttendancePanel(props: {
                     ) : null}
                     <td className="px-3 py-2">{fmtWhen(e.clockInAt)}</td>
                     <td className="px-3 py-2">
-                      {e.clockOutAt ? fmtWhen(e.clockOutAt) : (
-                        <span className="text-emerald-400">On duty</span>
+                      {e.clockOutAt ? (
+                        fmtWhen(e.clockOutAt)
+                      ) : (
+                        <span className="inline-flex items-center gap-2 text-emerald-400">
+                          On duty
+                          <LiveShiftTimer
+                            clockInAt={e.clockInAt.toISOString()}
+                            showPulse={false}
+                            size="sm"
+                          />
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-2 font-medium">
-                      {e.clockOutAt ? formatDuration(e.minutes) : "—"}
+                      {e.clockOutAt ? (
+                        formatDuration(e.minutes)
+                      ) : (
+                        <LiveShiftTimer
+                          clockInAt={e.clockInAt.toISOString()}
+                          showPulse={false}
+                          size="sm"
+                        />
+                      )}
                     </td>
                   </tr>
                 ))
