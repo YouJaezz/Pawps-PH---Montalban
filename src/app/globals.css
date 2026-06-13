@@ -125,4 +125,31 @@ body {
     background: #fff !important;
     color: #111 !important;
   }
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  .payroll-slip-print {
+    font-size: 9pt;
+    line-height: 1.2;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .payroll-slip-days-table {
+    font-size: 7.5pt;
+    line-height: 1.15;
+  }
+
+  .payroll-slip-days-table th,
+  .payroll-slip-days-table td {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+
+  .payroll-slip-days-cols {
+    column-gap: 6mm;
+  }
 }

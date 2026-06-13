@@ -6,6 +6,7 @@ import { payrollPayouts, timeEntries, users } from "@/db/schema";
 import { employeeCode } from "@/db/queries/payroll-attendance";
 import { entryMinutes } from "@/db/queries/time-attendance";
 import type { PayrollSlipData } from "@/lib/payroll-slip";
+import { buildPayrollSlipDaySummaries } from "@/lib/payroll-slip-format";
 import {
   phIsCurrentMonth,
   phMonthBounds,
@@ -247,5 +248,6 @@ export async function getPayrollSlipData(
     shiftCount: entries.length,
     daysWorked,
     punches,
+    daySummaries: buildPayrollSlipDaySummaries(punches),
   };
 }

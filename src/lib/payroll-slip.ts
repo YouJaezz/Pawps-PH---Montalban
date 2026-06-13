@@ -17,4 +17,12 @@ export type PayrollSlipData = {
     clockOut: string | null;
     minutes: number;
   }>;
+  daySummaries: Array<{
+    dateKey: string;
+    weekday: string;
+    dayLabel: string;
+    totalMinutes: number;
+    shiftCount: number;
+    scheduleCompact: string;
+  }>;
 };

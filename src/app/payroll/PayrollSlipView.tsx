@@ -4,23 +4,54 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { PrintButton } from "@/components/PrintButton";
 import { BRAND_TAGLINE } from "@/lib/brand";
 import type { PayrollSlipData } from "@/lib/payroll-slip";
+import {
+  formatDurationLong,
+  formatDurationTable,
+  splitDaySummariesForPrint,
+  type PayrollSlipDaySummary,
+} from "@/lib/payroll-slip-format";
 import { formatPhpFromCents } from "@/lib/money";
-import { formatDuration } from "@/lib/time-duration";
 import { formatOrderWhenLong } from "@/lib/order-timestamp";
 
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleString("en-PH", {
-    timeZone: "Asia/Manila",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+function DaySummaryTable(props: { rows: PayrollSlipDaySummary[] }) {
+  if (props.rows.length === 0) return null;
+
+  return (
+    <table className="payroll-slip-days-table w-full border-collapse">
+      <thead>
+        <tr className="border-b border-zinc-300 text-left text-zinc-600">
+          <th className="py-0.5 pr-1 font-semibold">Day</th>
+          <th className="py-0.5 pr-1 font-semibold">Time in / out</th>
+          <th className="py-0.5 text-right font-semibold">Hrs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.rows.map((day) => (
+          <tr key={day.dateKey} className="border-b border-zinc-100 align-top">
+            <td className="whitespace-nowrap py-0.5 pr-1 font-medium">
+              {day.weekday} {day.dayLabel}
+              {day.shiftCount > 1 ? (
+                <span className="ml-0.5 font-normal text-zinc-500">
+                  ×{day.shiftCount}
+                </span>
+              ) : null}
+            </td>
+            <td className="py-0.5 pr-1 leading-tight text-zinc-700">
+              {day.scheduleCompact}
+            </td>
+            <td className="whitespace-nowrap py-0.5 text-right font-medium">
+              {formatDurationTable(day.totalMinutes)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export function PayrollSlipView(props: { slip: PayrollSlipData }) {
   const { slip } = props;
+  const [leftDays, rightDays] = splitDaySummariesForPrint(slip.daySummaries);
 
   return (
     <div className="space-y-4">
@@ -30,101 +61,106 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
 
       <div
         id="payroll-slip"
-        className="rounded-2xl border border-white/10 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
+        className="payroll-slip-print rounded-2xl border border-white/10 bg-white p-5 text-zinc-900 print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
-        <div className="flex flex-col items-center text-center">
-          <BrandLogo size="sm" className="max-w-[120px]" />
-          <div className="mt-1 text-xs text-zinc-600">{BRAND_TAGLINE}</div>
-          <div className="mt-3 text-sm font-semibold uppercase tracking-wide">
-            Employee payroll slip
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 pb-3">
+          <div className="flex items-center gap-3">
+            <BrandLogo size="sm" className="max-w-[88px] print:max-w-[72px]" />
+            <div>
+              <div className="text-[10px] text-zinc-500 print:text-[8pt]">
+                {BRAND_TAGLINE}
+              </div>
+              <div className="text-sm font-semibold uppercase tracking-wide print:text-[10pt]">
+                Payroll slip
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-zinc-500">
-            {slip.employeeCode} · {slip.periodLabel}
+          <div className="text-right text-[10px] text-zinc-500 print:text-[8pt]">
+            <div>{slip.employeeCode}</div>
+            <div className="font-medium text-zinc-700">{slip.periodLabel}</div>
           </div>
         </div>
 
-        <dl className="mt-6 space-y-2 text-sm">
-          <div className="flex justify-between gap-4 border-b border-zinc-100 pb-2">
-            <dt className="text-zinc-600">Employee</dt>
-            <dd className="text-right font-medium">{slip.employeeName}</dd>
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs print:grid-cols-3 print:text-[8.5pt]">
+          <div>
+            <span className="text-zinc-500">Employee</span>
+            <div className="font-semibold">{slip.employeeName}</div>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Pay period</dt>
-            <dd>{slip.periodLabel}</dd>
+          <div>
+            <span className="text-zinc-500">Total hours</span>
+            <div className="font-semibold">{formatDurationLong(slip.minutesWorked)}</div>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Total hours</dt>
-            <dd className="font-medium">{formatDuration(slip.minutesWorked)}</dd>
+          <div>
+            <span className="text-zinc-500">Days / shifts</span>
+            <div>
+              {slip.daysWorked} day(s) · {slip.shiftCount} shift(s)
+            </div>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Shifts / days</dt>
-            <dd>
-              {slip.shiftCount} shift(s) · {slip.daysWorked} day(s)
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Hourly rate</dt>
-            <dd>
+          <div>
+            <span className="text-zinc-500">Hourly rate</span>
+            <div>
               {slip.hourlyRateCents > 0
                 ? `${formatPhpFromCents(slip.hourlyRateCents)}/hr`
                 : "—"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4 border-t border-zinc-200 pt-2 text-base">
-            <dt className="font-medium text-zinc-700">Gross pay</dt>
-            <dd className="font-bold">{formatPhpFromCents(slip.grossPayCents)}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Status</dt>
-            <dd>
-              {slip.status}
-              {slip.paidAt ? ` · ${formatOrderWhenLong(slip.paidAt)}` : ""}
-            </dd>
-          </div>
-        </dl>
-
-        {slip.punches.length > 0 ? (
-          <div className="mt-6">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Time in / out
             </div>
-            <table className="mt-2 w-full text-xs">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-zinc-500">
-                  <th className="py-1 pr-2">Date</th>
-                  <th className="py-1 pr-2">In</th>
-                  <th className="py-1 pr-2">Out</th>
-                  <th className="py-1 text-right">Hours</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slip.punches.map((p, i) => (
-                  <tr key={`${p.dateKey}-${i}`} className="border-b border-zinc-100">
-                    <td className="py-1 pr-2">{p.dateKey}</td>
-                    <td className="py-1 pr-2">{fmtTime(p.clockIn)}</td>
-                    <td className="py-1 pr-2">
-                      {p.clockOut ? fmtTime(p.clockOut) : "—"}
-                    </td>
-                    <td className="py-1 text-right">
-                      {p.minutes > 0 ? formatDuration(p.minutes) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          </div>
+          <div>
+            <span className="text-zinc-500">Gross pay</span>
+            <div className="text-sm font-bold print:text-[10pt]">
+              {formatPhpFromCents(slip.grossPayCents)}
+            </div>
+          </div>
+          <div>
+            <span className="text-zinc-500">Status</span>
+            <div>
+              {slip.status}
+              {slip.paidAt ? (
+                <span className="block text-[10px] text-zinc-500 print:text-[7.5pt]">
+                  {formatOrderWhenLong(slip.paidAt)}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {slip.daySummaries.length > 0 ? (
+          <div className="mt-3 border-t border-zinc-200 pt-2">
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 print:text-[7.5pt]">
+                Daily attendance
+              </div>
+              <div className="text-[10px] text-zinc-500 print:text-[7.5pt]">
+                One row per day · all punches combined
+              </div>
+            </div>
+
+            {rightDays.length > 0 ? (
+              <div className="payroll-slip-days-cols grid grid-cols-1 gap-x-4 print:grid-cols-2">
+                <DaySummaryTable rows={leftDays} />
+                <DaySummaryTable rows={rightDays} />
+              </div>
+            ) : (
+              <DaySummaryTable rows={leftDays} />
+            )}
+
+            <div className="mt-1 flex justify-end border-t border-zinc-200 pt-1 text-[10px] print:text-[8pt]">
+              <span className="text-zinc-500">Period total&nbsp;</span>
+              <span className="font-bold">{formatDurationLong(slip.minutesWorked)}</span>
+            </div>
           </div>
         ) : null}
 
-        <div className="mt-8 border-t border-dashed border-zinc-300 pt-4 text-center text-[10px] text-zinc-500">
-          Generated from Pawps PH Time In/Out · For internal payroll records
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-8 text-xs text-zinc-600">
+        <div className="mt-4 grid grid-cols-2 gap-6 border-t border-dashed border-zinc-300 pt-3 text-[10px] text-zinc-600 print:mt-3 print:text-[8pt]">
           <div>
             <div className="border-t border-zinc-400 pt-1">Employee signature</div>
           </div>
           <div>
             <div className="border-t border-zinc-400 pt-1">Authorized by</div>
           </div>
+        </div>
+
+        <div className="mt-2 text-center text-[9px] text-zinc-400 print:text-[7pt]">
+          Pawps PH · Time In/Out payroll record
         </div>
       </div>
     </div>
