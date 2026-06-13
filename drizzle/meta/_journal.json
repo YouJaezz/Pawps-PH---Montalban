@@ -176,6 +176,13 @@
       "when": 1780085000000,
       "tag": "0025_team_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1780086000000,
+      "tag": "0026_repair_double_timestamps",
+      "breakpoints": true
     }
   ]
 }

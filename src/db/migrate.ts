@@ -152,6 +152,19 @@ async function seedDefaultInvestor(db: ReturnType<typeof drizzle>) {
   }
 }
 
+async function repairTimestampColumn(client: Client, table: string) {
+  // Undo double/triple ×1000 (shows as year 50417+ in the UI)
+  for (let pass = 0; pass < 3; pass++) {
+    await client.execute(
+      `UPDATE ${table} SET created_at = CAST(created_at / 1000 AS INTEGER) WHERE created_at >= 1000000000000000`,
+    );
+  }
+  // Promote legacy Unix seconds to milliseconds
+  await client.execute(
+    `UPDATE ${table} SET created_at = created_at * 1000 WHERE created_at > 0 AND created_at < 1000000000000`,
+  );
+}
+
 async function fixLegacyTimestamps(client: Client) {
   const tables = [
     "orders",
@@ -164,9 +177,7 @@ async function fixLegacyTimestamps(client: Client) {
     "time_entries",
   ];
   for (const table of tables) {
-    await client.execute(
-      `UPDATE ${table} SET created_at = created_at * 1000 WHERE created_at > 0 AND created_at < 1000000000000`,
-    );
+    await repairTimestampColumn(client, table);
   }
 }
 
