@@ -17,7 +17,7 @@ import type { InvestorMonthlyRow } from "@/db/queries/investors";
 import { formatPhpFromCents } from "@/lib/money";
 
 const fieldClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "";
@@ -28,7 +28,7 @@ function ResultBanner(props: { state: InvestorActionResult | null }) {
   if (!props.state) return null;
   if (props.state.error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-700">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
         {props.state.error}
       </div>
     );
@@ -57,7 +57,7 @@ function SetupSteps(props: { step: number }) {
           className={`rounded-full border px-3 py-1 ${
             props.step >= s.n
               ? "border-brand-blue/40 bg-brand-blue/10 text-brand-blue"
-              : "border-zinc-200 text-zinc-600"
+              : "border-white/10 text-zinc-500"
           }`}
         >
           {s.n}. {s.label}
@@ -165,10 +165,10 @@ export function InvestorDashboard(props: {
     <div className="space-y-6">
       {inv ? (
         <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4">
-          <div className="text-xs font-medium uppercase tracking-wide text-red-700">
+          <div className="text-xs font-medium uppercase tracking-wide text-red-300">
             Testing tools
           </div>
-          <p className="mt-1 text-[11px] text-zinc-600">
+          <p className="mt-1 text-[11px] text-zinc-400">
             Delete removes this investor, agreement, and all payout records so you can
             start fresh. Reset month unlocks a locked period (including Paid).
           </p>
@@ -189,7 +189,7 @@ export function InvestorDashboard(props: {
             <button
               type="submit"
               disabled={deletePending}
-              className="rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-500/25 disabled:opacity-50"
+              className="rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/25 disabled:opacity-50"
             >
               {deletePending ? "Deleting…" : "Delete investor"}
             </button>
@@ -197,15 +197,15 @@ export function InvestorDashboard(props: {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-        <div className="text-xs font-medium text-zinc-700">Setup checklist</div>
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="text-xs font-medium text-zinc-300">Setup checklist</div>
         <div className="mt-2">
           <SetupSteps step={props.setupStep} />
         </div>
         {props.setupStep === 1 ? (
-          <p className="mt-2 text-[11px] text-zinc-600">
+          <p className="mt-2 text-[11px] text-zinc-500">
             Step 1: Enter the investor&apos;s name and contact, then click{" "}
-            <strong className="text-zinc-700">Save profile</strong>.
+            <strong className="text-zinc-300">Save profile</strong>.
           </p>
         ) : props.setupStep === 2 ? (
           <p className="mt-2 text-[11px] text-amber-200/80">
@@ -230,10 +230,10 @@ export function InvestorDashboard(props: {
           <div className="text-xs font-medium text-brand-cyan/80">
             Sales connected · {props.currentMonthLabel}
           </div>
-          <div className="mt-1 text-lg font-semibold text-zinc-900">
+          <div className="mt-1 text-lg font-semibold text-zinc-50">
             {formatPhpFromCents(props.sanityGrossCents)} collected
           </div>
-          <p className="mt-1 text-[11px] text-zinc-600">
+          <p className="mt-1 text-[11px] text-zinc-400">
             From {props.sanityOrderCount} order(s) in Sales &amp; Orders this month
             (Philippines calendar). Investor share below uses the same data minus
             COGS.
@@ -260,15 +260,15 @@ export function InvestorDashboard(props: {
               <div className="text-xs uppercase tracking-wide text-brand-blue">
                 {inv.fullName} · {agr.sharePercent}% profit share
               </div>
-              <div className="mt-1 text-2xl font-bold text-zinc-900">
+              <div className="mt-1 text-2xl font-bold text-zinc-50">
                 {formatPhpFromCents(props.currentShareCents)}
               </div>
-              <div className="mt-1 text-xs text-zinc-600">
+              <div className="mt-1 text-xs text-zinc-400">
                 Her share this month (projected) · capital{" "}
                 {formatPhpFromCents(agr.capitalCents)}
               </div>
             </div>
-            <div className="text-right text-xs text-zinc-600">
+            <div className="text-right text-xs text-zinc-400">
               <div>
                 Paid out YTD:{" "}
                 <span className="font-medium text-brand-cyan/80">
@@ -277,7 +277,7 @@ export function InvestorDashboard(props: {
               </div>
               <div className="mt-1">
                 Accrued (not yet paid):{" "}
-                <span className="font-medium text-amber-800">
+                <span className="font-medium text-amber-300">
                   {formatPhpFromCents(props.accruedUnpaidCents)}
                 </span>
               </div>
@@ -295,25 +295,25 @@ export function InvestorDashboard(props: {
             <>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div>
-                  <div className="text-[10px] text-zinc-600">Cash collected</div>
+                  <div className="text-[10px] text-zinc-500">Cash collected</div>
                   <div className="text-sm font-semibold">
                     {formatPhpFromCents(props.currentMetrics.grossRevenueCents)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-600">COGS</div>
-                  <div className="text-sm font-semibold text-red-700/90">
+                  <div className="text-[10px] text-zinc-500">COGS</div>
+                  <div className="text-sm font-semibold text-red-300/90">
                     {formatPhpFromCents(props.currentMetrics.cogsCents)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-600">Net income</div>
+                  <div className="text-[10px] text-zinc-500">Net income</div>
                   <div className="text-sm font-semibold text-brand-cyan/80">
                     {formatPhpFromCents(props.currentMetrics.netIncomeCents)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-600">
+                  <div className="text-[10px] text-zinc-500">
                     Her {agr.sharePercent}% share
                   </div>
                   <div className="text-lg font-bold text-brand-blue">
@@ -323,10 +323,10 @@ export function InvestorDashboard(props: {
               </div>
               {(props.currentMetrics.orderCount === 0 &&
                 props.sanityOrderCount === 0) ? (
-                <p className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600">
+                <p className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
                   No cash collected in {props.currentMonthLabel} yet — numbers
                   appear when Quick Sell or Bulk orders record payment in{" "}
-                  <Link href="/orders" className="text-zinc-800 underline">
+                  <Link href="/orders" className="text-zinc-200 underline">
                     Sales &amp; Orders
                   </Link>
                   .
@@ -343,21 +343,21 @@ export function InvestorDashboard(props: {
               )}
             </>
           ) : salesConnected ? (
-            <p className="mt-2 text-sm text-zinc-600">
+            <p className="mt-2 text-sm text-zinc-400">
               {formatPhpFromCents(props.sanityGrossCents)} detected from orders —
               saving the agreement below will show net income and exact share.
             </p>
           ) : (
-            <p className="mt-2 text-sm text-zinc-600">
+            <p className="mt-2 text-sm text-zinc-500">
               Save the investor profile and agreement below to calculate profit
               share.
             </p>
           )}
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-          <div className="text-xs font-medium text-zinc-700">How it works</div>
-          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-600">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="text-xs font-medium text-zinc-300">How it works</div>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-400">
             <li>Sales in Orders add cash collected + COGS automatically.</li>
             <li>
               Net income = cash collected − COGS (each month).
@@ -366,8 +366,8 @@ export function InvestorDashboard(props: {
               Her share = net income × {agr?.sharePercent ?? 10}%.
             </li>
             <li>
-              After month ends: <strong className="text-zinc-700">Lock month</strong>{" "}
-              → then <strong className="text-zinc-700">Mark paid</strong> when you send
+              After month ends: <strong className="text-zinc-300">Lock month</strong>{" "}
+              → then <strong className="text-zinc-300">Mark paid</strong> when you send
               money.
             </li>
           </ol>
@@ -375,14 +375,14 @@ export function InvestorDashboard(props: {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-          <div className="text-sm font-medium text-zinc-800">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="text-sm font-medium text-zinc-100">
             1 · Investor profile
           </div>
           <form action={profileAction} className="mt-3 space-y-2">
             <input type="hidden" name="investorId" value={investorId || ""} />
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">Full name *</span>
+              <span className="text-[11px] text-zinc-400">Full name *</span>
               <input
                 name="fullName"
                 required
@@ -392,7 +392,7 @@ export function InvestorDashboard(props: {
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Contact</span>
+                <span className="text-[11px] text-zinc-400">Contact</span>
                 <input
                   name="contact"
                   defaultValue={inv?.contact ?? ""}
@@ -400,7 +400,7 @@ export function InvestorDashboard(props: {
                 />
               </label>
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Email</span>
+                <span className="text-[11px] text-zinc-400">Email</span>
                 <input
                   name="email"
                   type="email"
@@ -410,7 +410,7 @@ export function InvestorDashboard(props: {
               </label>
             </div>
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">Address</span>
+              <span className="text-[11px] text-zinc-400">Address</span>
               <input
                 name="address"
                 defaultValue={inv?.address ?? ""}
@@ -418,7 +418,7 @@ export function InvestorDashboard(props: {
               />
             </label>
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">ID / reference no.</span>
+              <span className="text-[11px] text-zinc-400">ID / reference no.</span>
               <input
                 name="idReference"
                 defaultValue={inv?.idReference ?? ""}
@@ -436,25 +436,25 @@ export function InvestorDashboard(props: {
         </div>
 
         <div
-          className={`rounded-xl border bg-zinc-50 p-4 ${
+          className={`rounded-xl border bg-white/5 p-4 ${
             props.highlightAgreement
               ? "border-brand-blue/40 ring-1 ring-brand-blue/20"
-              : "border-zinc-200"
+              : "border-white/10"
           }`}
         >
-          <div className="text-sm font-medium text-zinc-800">
+          <div className="text-sm font-medium text-zinc-100">
             2 · Investment agreement
           </div>
           <form action={agreementAction} className="mt-3 space-y-2">
             <input type="hidden" name="investorId" value={investorId || ""} />
             <input type="hidden" name="agreementId" value={agr?.id ?? ""} />
             {!investorId ? (
-              <p className="text-[11px] text-amber-800">
+              <p className="text-[11px] text-amber-300">
                 Save the profile first — then this form will unlock.
               </p>
             ) : null}
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">
+              <span className="text-[11px] text-zinc-400">
                 Agreement holder (your business signatory) *
               </span>
               <input
@@ -467,7 +467,7 @@ export function InvestorDashboard(props: {
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Capital (₱) *</span>
+                <span className="text-[11px] text-zinc-400">Capital (₱) *</span>
                 <input
                   name="capitalAmount"
                   inputMode="decimal"
@@ -480,7 +480,7 @@ export function InvestorDashboard(props: {
                 />
               </label>
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Share of net income (%) *</span>
+                <span className="text-[11px] text-zinc-400">Share of net income (%) *</span>
                 <input
                   name="sharePercent"
                   inputMode="decimal"
@@ -493,7 +493,7 @@ export function InvestorDashboard(props: {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Agreement date</span>
+                <span className="text-[11px] text-zinc-400">Agreement date</span>
                 <input
                   name="agreementDate"
                   type="date"
@@ -503,7 +503,7 @@ export function InvestorDashboard(props: {
                 />
               </label>
               <label className="space-y-0.5">
-                <span className="text-[11px] text-zinc-600">Effective from</span>
+                <span className="text-[11px] text-zinc-400">Effective from</span>
                 <input
                   name="effectiveFrom"
                   type="date"
@@ -514,7 +514,7 @@ export function InvestorDashboard(props: {
               </label>
             </div>
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">Terms / notes</span>
+              <span className="text-[11px] text-zinc-400">Terms / notes</span>
               <textarea
                 name="termsNotes"
                 rows={2}
@@ -537,19 +537,19 @@ export function InvestorDashboard(props: {
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-        <div className="text-sm font-medium text-zinc-800">
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="text-sm font-medium text-zinc-100">
           3 · Monthly profit share
         </div>
-        <p className="mt-1 text-[11px] text-zinc-600">
-          <strong className="text-zinc-600">Open</strong> = calculated, not locked ·{" "}
-          <strong className="text-zinc-600">Projected</strong> = this month (still
-          selling) · <strong className="text-zinc-600">Accrued</strong> = locked ·{" "}
-          <strong className="text-zinc-600">Paid</strong> = money sent
+        <p className="mt-1 text-[11px] text-zinc-500">
+          <strong className="text-zinc-400">Open</strong> = calculated, not locked ·{" "}
+          <strong className="text-zinc-400">Projected</strong> = this month (still
+          selling) · <strong className="text-zinc-400">Accrued</strong> = locked ·{" "}
+          <strong className="text-zinc-400">Paid</strong> = money sent
         </p>
         <ScrollableTable maxHeight="max-h-[min(50vh,420px)]" className="mt-3">
           <table className="w-full text-xs">
-            <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
+            <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
               <tr>
                 <th className="px-3 py-2">Period</th>
                 <th className="px-3 py-2">Collected</th>
@@ -563,14 +563,14 @@ export function InvestorDashboard(props: {
             <tbody className="divide-y divide-white/10">
               {!agr || props.monthlyRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-zinc-600">
+                  <td colSpan={7} className="px-3 py-4 text-zinc-500">
                     Save the agreement above to see monthly shares.
                   </td>
                 </tr>
               ) : (
                 props.monthlyRows.map((row) => (
-                  <tr key={`${row.year}-${row.month}`} className="hover:bg-zinc-50">
-                    <td className="px-3 py-2 font-medium text-zinc-800">
+                  <tr key={`${row.year}-${row.month}`} className="hover:bg-white/5">
+                    <td className="px-3 py-2 font-medium text-zinc-200">
                       {row.label}
                       {row.liveDiffers ? (
                         <span className="ml-1 text-[9px] font-normal text-amber-400">
@@ -578,18 +578,18 @@ export function InvestorDashboard(props: {
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 text-zinc-600">
+                    <td className="px-3 py-2 text-zinc-400">
                       {formatPhpFromCents(row.grossRevenueCents)}
                     </td>
-                    <td className="px-3 py-2 text-zinc-600">
+                    <td className="px-3 py-2 text-zinc-400">
                       {formatPhpFromCents(row.cogsCents)}
                     </td>
-                    <td className="px-3 py-2 text-brand-blue">
+                    <td className="px-3 py-2 text-brand-cyan/80/90">
                       {formatPhpFromCents(row.netIncomeCents)}
                     </td>
                     <td className="px-3 py-2 font-medium text-brand-blue">
                       {formatPhpFromCents(row.payoutCents)}{" "}
-                      <span className="text-[10px] font-normal text-zinc-600">
+                      <span className="text-[10px] font-normal text-zinc-500">
                         ({row.sharePercent}%)
                       </span>
                     </td>
@@ -620,9 +620,9 @@ export function InvestorDashboard(props: {
 
 function StatusBadge(props: { status: InvestorMonthlyRow["payoutStatus"] }) {
   const styles = {
-    Open: "text-zinc-600",
+    Open: "text-zinc-400",
     Projected: "text-sky-300",
-    Accrued: "text-amber-800",
+    Accrued: "text-amber-300",
     Paid: "text-brand-cyan",
   };
   const labels = {
@@ -664,7 +664,7 @@ function PayoutActions(props: {
       <button
         type="submit"
         disabled={props.pending}
-        className="text-[10px] text-red-700 underline hover:text-red-800 disabled:opacity-50"
+        className="text-[10px] text-red-300 underline hover:text-red-200 disabled:opacity-50"
       >
         Reset month
       </button>
@@ -707,7 +707,7 @@ function PayoutActions(props: {
           <button
             type="submit"
             disabled={props.pending}
-            className="text-[10px] text-red-700/80 underline hover:text-red-800 disabled:opacity-50"
+            className="text-[10px] text-red-300/80 underline hover:text-red-200 disabled:opacity-50"
           >
             Reset month
           </button>
@@ -727,7 +727,7 @@ function PayoutActions(props: {
           <button
             type="submit"
             disabled={props.pending}
-            className="text-[10px] text-zinc-700 underline hover:text-zinc-800 disabled:opacity-50"
+            className="text-[10px] text-zinc-300 underline hover:text-zinc-100 disabled:opacity-50"
           >
             Lock month
           </button>

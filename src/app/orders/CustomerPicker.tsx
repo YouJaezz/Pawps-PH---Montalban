@@ -48,7 +48,7 @@ export function CustomerPicker(props: {
     <div className="space-y-2">
       <div className="relative">
         <label className="block space-y-1">
-          <span className="text-xs text-zinc-700">Customer *</span>
+          <span className="text-xs text-zinc-300">Customer *</span>
           <input
             name="customerName"
             required
@@ -61,23 +61,23 @@ export function CustomerPicker(props: {
             onBlur={() => window.setTimeout(() => setFocused(false), 150)}
             placeholder="Search or type name…"
             autoComplete="off"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
           />
         </label>
         <input type="hidden" name="customerId" value={props.customerId} />
 
         {focused && matches.length > 0 ? (
-          <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-900 shadow-lg">
+          <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-white/10 bg-zinc-900 shadow-lg">
             {matches.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pickCustomer(c)}
-                  className="w-full px-3 py-2 text-left hover:bg-zinc-50"
+                  className="w-full px-3 py-2 text-left hover:bg-white/5"
                 >
-                  <div className="text-sm font-medium text-zinc-800">{c.name}</div>
-                  <div className="text-[10px] text-zinc-600">
+                  <div className="text-sm font-medium text-zinc-100">{c.name}</div>
+                  <div className="text-[10px] text-zinc-500">
                     {[c.contact, c.location].filter(Boolean).join(" · ") ||
                       "No contact saved"}
                     {c.totalSpend > 0
@@ -93,23 +93,23 @@ export function CustomerPicker(props: {
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-xs text-zinc-700">Contact</span>
+          <span className="text-xs text-zinc-300">Contact</span>
           <input
             name="contact"
             value={props.contact}
             onChange={(e) => props.onContactChange(e.target.value)}
             placeholder="Phone / FB / Viber"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
           />
         </label>
         <label className="space-y-1">
-          <span className="text-xs text-zinc-700">Location</span>
+          <span className="text-xs text-zinc-300">Location</span>
           <input
             name="location"
             value={props.location}
             onChange={(e) => props.onLocationChange(e.target.value)}
             placeholder="Barangay / city"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
           />
         </label>
       </div>

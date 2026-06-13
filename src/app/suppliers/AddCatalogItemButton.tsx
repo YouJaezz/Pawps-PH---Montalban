@@ -15,7 +15,7 @@ import {
 import { priceUnitLabel } from "@/lib/price-units";
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 export function AddCatalogItemButton(props: {
   suppliers: { id: number; name: string }[];
@@ -57,23 +57,23 @@ export function AddCatalogItemButton(props: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-white border border-zinc-300 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-200 bg-zinc-900 p-4 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-medium text-zinc-800">Add pricelist item</div>
+          <div className="text-sm font-medium text-zinc-100">Add pricelist item</div>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="text-xs text-zinc-600 hover:text-zinc-700"
+            className="text-xs text-zinc-500 hover:text-zinc-300"
           >
             Close
           </button>
         </div>
 
-        <p className="mt-2 text-[10px] text-zinc-600">
+        <p className="mt-2 text-[10px] text-zinc-500">
           Prices are what the supplier charges — not your shop retail or wholesale.
         </p>
 
@@ -95,7 +95,7 @@ export function AddCatalogItemButton(props: {
           }}
         >
           <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-600">Supplier *</span>
+            <span className="text-[11px] text-zinc-400">Supplier *</span>
             <select
               name="supplierId"
               required
@@ -129,8 +129,8 @@ export function AddCatalogItemButton(props: {
             <input name="variant" placeholder="Flavor" className={inputClass} />
           </div>
 
-          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-2.5 py-2">
-            <div className="text-[10px] font-medium text-zinc-600">Pack size</div>
+          <div className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2">
+            <div className="text-[10px] font-medium text-zinc-500">Pack size</div>
             <p className="mt-0.5 text-[10px] text-zinc-600">
               {packSizeHintForItemType(itemType)}
             </p>
@@ -151,7 +151,7 @@ export function AddCatalogItemButton(props: {
           </div>
 
           <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-600">Supplier prices are per…</span>
+            <span className="text-[11px] text-zinc-400">Supplier prices are per…</span>
             <select
               name="priceUnit"
               value={priceUnit}
@@ -166,7 +166,7 @@ export function AddCatalogItemButton(props: {
 
           {priceUnit === "Case" ? (
             <label className="block space-y-0.5">
-              <span className="text-[11px] text-zinc-600">Cans per case</span>
+              <span className="text-[11px] text-zinc-400">Cans per case</span>
               <input
                 name="unitsPerCase"
                 type="number"
@@ -181,13 +181,13 @@ export function AddCatalogItemButton(props: {
 
           <div className="grid grid-cols-2 gap-2">
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-600">
+              <span className="text-[10px] text-zinc-500">
                 WS {priceUnitLabel(priceUnit)}
               </span>
               <input name="unitCost" inputMode="decimal" className={inputClass} />
             </label>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-600">
+              <span className="text-[10px] text-zinc-500">
                 Retail {priceUnitLabel(priceUnit)}
               </span>
               <input name="retailPrice" inputMode="decimal" className={inputClass} />
@@ -196,13 +196,13 @@ export function AddCatalogItemButton(props: {
 
           {priceUnit === "Sack" ? (
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-600">Per kg WS (optional)</span>
+              <span className="text-[10px] text-zinc-500">Per kg WS (optional)</span>
               <input name="perKiloPrice" inputMode="decimal" className={inputClass} />
             </label>
           ) : null}
 
           {error ? (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-700">
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
               {error}
             </div>
           ) : null}
@@ -218,7 +218,7 @@ export function AddCatalogItemButton(props: {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-600"
+              className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400"
             >
               Cancel
             </button>

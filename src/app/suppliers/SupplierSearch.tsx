@@ -95,18 +95,18 @@ export function SupplierSearch(props: {
         "supplier");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-white/10 bg-white/5 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-zinc-800">Catalog</div>
-          <div className="text-[10px] text-zinc-600">
+          <div className="text-xs font-medium text-zinc-100">Catalog</div>
+          <div className="text-[10px] text-zinc-500">
             {props.rows.length} items · {filterLabel}
           </div>
         </div>
         <select
           value={supplierFilter}
           onChange={(e) => setSupplierFilter(e.target.value)}
-          className="max-w-[140px] rounded-md border border-zinc-300 bg-white px-2 py-1 text-[10px] text-zinc-900 outline-none"
+          className="max-w-[140px] rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none"
         >
           <option value="all">All ({props.rows.length})</option>
           {props.suppliers.map((s) => (
@@ -119,7 +119,7 @@ export function SupplierSearch(props: {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search…"
-          className="w-28 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[10px] text-zinc-900 outline-none sm:w-36"
+          className="w-28 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none sm:w-36"
         />
         <AddCatalogItemButton
           suppliers={props.suppliers.map((s) => ({ id: s.id, name: s.name }))}
@@ -133,7 +133,7 @@ export function SupplierSearch(props: {
 
       <ScrollableTable maxHeight="max-h-[min(52vh,520px)]" className="mt-2 min-h-0 flex-1">
         <table className="w-full table-auto text-[11px]">
-          <thead className="sticky top-0 z-10 bg-zinc-100 text-left text-[10px] text-zinc-600">
+          <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
             <tr>
               <th className="px-2 py-1.5 font-medium">Supplier</th>
               <th className="px-2 py-1.5 font-medium">Item</th>
@@ -153,7 +153,7 @@ export function SupplierSearch(props: {
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-2 py-3 text-zinc-600" colSpan={9}>
+                <td className="px-2 py-3 text-zinc-500" colSpan={9}>
                   {props.rows.length === 0
                     ? "No items — upload a price list."
                     : `No match for ${filterLabel}.`}
@@ -173,26 +173,26 @@ export function SupplierSearch(props: {
 
                 return (
                   <tr key={r.id} className="hover:bg-white/[0.03]">
-                    <td className="max-w-[88px] truncate px-2 py-1 text-zinc-600">
+                    <td className="max-w-[88px] truncate px-2 py-1 text-zinc-500">
                       {r.supplierName}
                     </td>
-                    <td className="max-w-[140px] truncate px-2 py-1 font-medium text-zinc-800">
+                    <td className="max-w-[140px] truncate px-2 py-1 font-medium text-zinc-100">
                       {item}
                     </td>
-                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-700 sm:table-cell">
+                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-300 sm:table-cell">
                       {brand}
                     </td>
-                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-600 sm:table-cell">
+                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-400 sm:table-cell">
                       {flavor}
                     </td>
-                    <td className="hidden max-w-[120px] truncate px-2 py-1 text-zinc-600 md:table-cell">
+                    <td className="hidden max-w-[120px] truncate px-2 py-1 text-zinc-400 md:table-cell">
                       {displayCatalogItemType(r.itemType)}
                     </td>
-                    <td className="hidden px-2 py-1 text-zinc-600 lg:table-cell">
+                    <td className="hidden px-2 py-1 text-zinc-400 lg:table-cell">
                       {sizeLabel}
                     </td>
                     <td className="px-2 py-1">
-                      <div className="font-medium text-zinc-800">
+                      <div className="font-medium text-zinc-100">
                         {formatSupplierPrice(r.unitCost, r.priceUnit)}
                       </div>
                       {bulkTiers ? (
@@ -201,7 +201,7 @@ export function SupplierSearch(props: {
                         </div>
                       ) : null}
                     </td>
-                    <td className="hidden px-2 py-1 text-zinc-600 lg:table-cell">
+                    <td className="hidden px-2 py-1 text-zinc-400 lg:table-cell">
                       {formatSupplierPrice(details.retailPrice, r.priceUnit)}
                     </td>
                     <td className="px-2 py-1 align-top">

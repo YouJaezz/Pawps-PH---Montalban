@@ -92,24 +92,24 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
 
       <div className="space-y-2">
         {props.rows.length === 0 ? (
-          <p className="text-sm text-zinc-600">No delivery logs yet.</p>
+          <p className="text-sm text-zinc-500">No delivery logs yet.</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-zinc-600">No logs match your search or filters.</p>
+          <p className="text-sm text-zinc-500">No logs match your search or filters.</p>
         ) : (
           filtered.map((d) => (
             <div
               key={d.id}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm"
+              className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <div className="font-medium text-zinc-900">
+                  <div className="font-medium text-zinc-50">
                     {d.customerName ?? "—"}
                     {d.orderId ? (
-                      <span className="ml-2 text-xs text-zinc-600">#{d.orderId}</span>
+                      <span className="ml-2 text-xs text-zinc-500">#{d.orderId}</span>
                     ) : null}
                   </div>
-                  <div className="text-xs text-zinc-600">
+                  <div className="text-xs text-zinc-400">
                     {d.location ?? "—"} · {d.deliveryMethod}
                   </div>
                 </div>
@@ -121,7 +121,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                   Edit
                 </button>
               </div>
-              <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-700">
+              <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-300">
                 <span>{d.status}</span>
                 <span>{formatPhpFromCents(d.fee)}</span>
                 {d.reference ? <span>{d.reference}</span> : null}
@@ -144,7 +144,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
               <input type="hidden" name="id" value={editRow.id} />
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <label className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-600">Status</span>
+                  <span className="text-[10px] text-zinc-500">Status</span>
                   <select
                     name="status"
                     defaultValue={editRow.status}
@@ -158,7 +158,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                   </select>
                 </label>
                 <label className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-600">Fee (₱)</span>
+                  <span className="text-[10px] text-zinc-500">Fee (₱)</span>
                   <input
                     name="fee"
                     defaultValue={(editRow.fee / 100).toFixed(2)}
@@ -166,7 +166,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                   />
                 </label>
                 <label className="col-span-2 space-y-0.5">
-                  <span className="text-[10px] text-zinc-600">Reference</span>
+                  <span className="text-[10px] text-zinc-500">Reference</span>
                   <input
                     name="reference"
                     defaultValue={editRow.reference ?? ""}
@@ -174,7 +174,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                   />
                 </label>
                 <label className="col-span-2 space-y-0.5">
-                  <span className="text-[10px] text-zinc-600">Notes</span>
+                  <span className="text-[10px] text-zinc-500">Notes</span>
                   <input
                     name="notes"
                     defaultValue={editRow.notes ?? ""}
@@ -182,7 +182,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                   />
                 </label>
                 <label className="col-span-2 space-y-0.5">
-                  <span className="text-[10px] text-zinc-600">Status change note</span>
+                  <span className="text-[10px] text-zinc-500">Status change note</span>
                   <input
                     name="historyNote"
                     placeholder="e.g. Lalamove rider picked up"
@@ -199,7 +199,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
             </form>
 
             {editRow.history.length > 0 ? (
-              <ul className="mt-4 space-y-1 border-t border-zinc-200 pt-3 text-[10px] text-zinc-600">
+              <ul className="mt-4 space-y-1 border-t border-white/10 pt-3 text-[10px] text-zinc-500">
                 {editRow.history.map((h) => (
                   <li key={h.id}>
                     {h.previousStatus ?? "—"} → {h.newStatus}
@@ -211,9 +211,9 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
               </ul>
             ) : null}
 
-            <form action={deleteDeliveryLog} className="mt-4 border-t border-zinc-200 pt-3">
+            <form action={deleteDeliveryLog} className="mt-4 border-t border-white/10 pt-3">
               <input type="hidden" name="id" value={editRow.id} />
-              <button type="submit" className="text-[10px] text-red-400/80 hover:text-red-700">
+              <button type="submit" className="text-[10px] text-red-400/80 hover:text-red-300">
                 Delete log
               </button>
             </form>

@@ -31,7 +31,7 @@ export function SupplierEditButton(props: {
         <form action={updateSupplier} className="space-y-2">
           <input type="hidden" name="supplierId" value={props.supplierId} />
           <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-600">Name</span>
+            <span className="text-[11px] text-zinc-400">Name</span>
             <input
               name="name"
               required
@@ -40,7 +40,7 @@ export function SupplierEditButton(props: {
             />
           </label>
           <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-600">Contact</span>
+            <span className="text-[11px] text-zinc-400">Contact</span>
             <input
               name="contact"
               defaultValue={props.contact ?? ""}
@@ -48,7 +48,7 @@ export function SupplierEditButton(props: {
             />
           </label>
           <label className="block space-y-0.5">
-            <span className="text-[11px] text-zinc-600">City</span>
+            <span className="text-[11px] text-zinc-400">City</span>
             <input
               name="location"
               defaultValue={props.location ?? ""}

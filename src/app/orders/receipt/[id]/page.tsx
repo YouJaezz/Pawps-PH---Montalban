@@ -83,7 +83,7 @@ export default async function OrderReceiptPage(props: {
     <AppShell>
       <div className="mx-auto max-w-md px-0 py-4 print:py-0">
         <div className="mb-4 print:hidden">
-          <Link href="/orders" className="text-xs text-zinc-600 hover:text-zinc-800">
+          <Link href="/orders" className="text-xs text-zinc-400 hover:text-zinc-200">
             ← Back to orders
           </Link>
         </div>

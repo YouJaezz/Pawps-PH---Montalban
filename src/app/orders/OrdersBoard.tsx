@@ -103,24 +103,24 @@ export function OrdersBoard(props: {
     editingOrderId != null ? props.editableByOrderId[editingOrderId] ?? null : null;
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
       <OrderEditModal
         order={editingOrder}
         onClose={() => setEditingOrderId(null)}
       />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
-          <div className="text-[10px] text-zinc-600">Open orders</div>
-          <div className="text-lg font-semibold text-zinc-800">{stats.open}</div>
+        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+          <div className="text-[10px] text-zinc-500">Open orders</div>
+          <div className="text-lg font-semibold text-zinc-100">{stats.open}</div>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
-          <div className="text-[10px] text-zinc-600">Awaiting payment</div>
+        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+          <div className="text-[10px] text-zinc-500">Awaiting payment</div>
           <div className="text-lg font-semibold text-amber-200">
             {stats.awaitingPayment}
           </div>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
-          <div className="text-[10px] text-zinc-600">Collected (shown)</div>
+        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+          <div className="text-[10px] text-zinc-500">Collected (shown)</div>
           <div className="text-lg font-semibold text-brand-cyan/70">
             {formatPhpFromCents(stats.paidTotal)}
           </div>
@@ -132,12 +132,12 @@ export function OrdersBoard(props: {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search customer, item, order #…"
-          className="min-w-[160px] flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-[11px] text-zinc-900 outline-none sm:max-w-xs"
+          className="min-w-[160px] flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-50 outline-none sm:max-w-xs"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="app-select rounded-md border border-zinc-200 px-2 py-1.5 text-[10px] outline-none"
+          className="app-select rounded-md border border-white/10 px-2 py-1.5 text-[10px] outline-none"
         >
           <option value="open">Open only</option>
           <option value="all">All statuses</option>
@@ -150,7 +150,7 @@ export function OrdersBoard(props: {
         <select
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value)}
-          className="app-select rounded-md border border-zinc-200 px-2 py-1.5 text-[10px] outline-none"
+          className="app-select rounded-md border border-white/10 px-2 py-1.5 text-[10px] outline-none"
         >
           <option value="all">All payments</option>
           <option value="Pending">Pending</option>
@@ -164,7 +164,7 @@ export function OrdersBoard(props: {
 
       <ScrollableTable maxHeight="max-h-[min(52vh,520px)]" className="mt-2">
         <table className="w-full min-w-[760px] text-[11px]">
-          <thead className="sticky top-0 z-10 bg-zinc-100 text-left text-[10px] text-zinc-600">
+          <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
             <tr>
               <th className="px-2 py-1.5">Order</th>
               <th className="px-2 py-1.5">Customer</th>
@@ -178,7 +178,7 @@ export function OrdersBoard(props: {
           <tbody className="divide-y divide-white/5">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-2 py-4 text-zinc-600">
+                <td colSpan={7} className="px-2 py-4 text-zinc-500">
                   No orders match your filters.
                 </td>
               </tr>
@@ -190,7 +190,7 @@ export function OrdersBoard(props: {
 
                 return (
                   <tr key={o.id} className="align-top hover:bg-white/[0.03]">
-                    <td className="px-2 py-2 text-zinc-600">
+                    <td className="px-2 py-2 text-zinc-400">
                       <div>#{o.id}</div>
                       <div className="text-[9px] text-zinc-600">
                         {formatOrderWhen(o.createdAt)}
@@ -198,10 +198,10 @@ export function OrdersBoard(props: {
                       <div className="text-[9px] text-zinc-600">{o.storeType}</div>
                     </td>
                     <td className="px-2 py-2">
-                      <div className="font-medium text-zinc-800">
+                      <div className="font-medium text-zinc-100">
                         {o.customerName}
                       </div>
-                      <div className="text-[10px] text-zinc-600">
+                      <div className="text-[10px] text-zinc-500">
                         {o.contact ?? "—"}
                       </div>
                       <div className="text-[10px] text-zinc-600">
@@ -209,10 +209,10 @@ export function OrdersBoard(props: {
                         {o.deliveryMethod ? ` · ${o.deliveryMethod}` : ""}
                       </div>
                     </td>
-                    <td className="hidden px-2 py-2 text-zinc-600 md:table-cell">
+                    <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
                       {o.cashierName ?? "—"}
                     </td>
-                    <td className="hidden px-2 py-2 text-zinc-600 lg:table-cell">
+                    <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
                       <div>{o.itemsSummary}</div>
                       {o.itemCount > 1 ? (
                         <div className="text-[9px] text-zinc-600">
@@ -221,11 +221,11 @@ export function OrdersBoard(props: {
                       ) : null}
                     </td>
                     <td className="px-2 py-2">
-                      <div className="font-medium text-zinc-800">
+                      <div className="font-medium text-zinc-100">
                         {formatPhpFromCents(o.amountPaid)} /{" "}
                         {formatPhpFromCents(o.totalAmount)}
                       </div>
-                      <div className="text-[10px] text-zinc-600">{o.paymentStatus}</div>
+                      <div className="text-[10px] text-zinc-500">{o.paymentStatus}</div>
                       {adminMode &&
                       o.paymentStatus !== "Paid" &&
                       status !== "Cancelled" ? (
@@ -236,11 +236,11 @@ export function OrdersBoard(props: {
                               name="addAmount"
                               inputMode="decimal"
                               placeholder="₱"
-                              className="w-14 rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px] outline-none"
+                              className="w-14 rounded border border-white/10 bg-black/30 px-1 py-0.5 text-[10px] outline-none"
                             />
                             <button
                               type="submit"
-                              className="rounded border border-zinc-200 px-1.5 py-0.5 text-[9px] text-zinc-700"
+                              className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-zinc-300"
                             >
                               Add
                             </button>
@@ -292,7 +292,7 @@ export function OrdersBoard(props: {
                           href={`/orders/receipt/${o.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded border border-zinc-200 px-2 py-0.5 text-[9px] text-zinc-700 hover:bg-zinc-50"
+                          className="rounded border border-white/10 px-2 py-0.5 text-[9px] text-zinc-300 hover:bg-white/5"
                         >
                           Receipt
                         </Link>
@@ -310,7 +310,7 @@ export function OrdersBoard(props: {
                             <input type="hidden" name="orderId" value={o.id} />
                             <button
                               type="submit"
-                              className="rounded border border-red-500/30 px-2 py-0.5 text-[9px] text-red-700"
+                              className="rounded border border-red-500/30 px-2 py-0.5 text-[9px] text-red-300"
                             >
                               Cancel
                             </button>

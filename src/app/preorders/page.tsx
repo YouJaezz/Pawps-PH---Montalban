@@ -7,7 +7,7 @@ import { preOrderItems, preOrders, products, suppliers } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 export default async function PreOrdersPage() {
   const [supplierRows, inventoryProducts, orderRows] = await Promise.all([
@@ -104,24 +104,24 @@ export default async function PreOrdersPage() {
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <div className="text-sm text-zinc-600">Pre-orders</div>
+        <div className="text-sm text-zinc-400">Pre-orders</div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">
           Customer pre-orders
         </h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-1 text-sm text-zinc-400">
           Reserve products for customers before stock arrives. Fulfillment follows{" "}
-          <strong className="font-medium text-zinc-700">inventory</strong> — restock
+          <strong className="font-medium text-zinc-300">inventory</strong> — restock
           from any supplier in Inventory, then the pre-order moves to Sales &amp;
           Orders automatically when stock is enough. {pendingCount} active.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-5">
           <div className="xl:col-span-2">
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-sm font-medium text-zinc-800">New pre-order</div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm font-medium text-zinc-100">New pre-order</div>
               <form action={createPreOrder} className="mt-3 space-y-2.5">
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">
+                  <span className="text-[11px] text-zinc-400">
                     Inventory product *
                   </span>
                   <select name="productId" required className={inputClass}>
@@ -138,7 +138,7 @@ export default async function PreOrdersPage() {
                   </select>
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">
+                  <span className="text-[11px] text-zinc-400">
                     Supplier (optional — your internal PO tracking)
                   </span>
                   <select name="supplierId" className={inputClass}>
@@ -151,7 +151,7 @@ export default async function PreOrdersPage() {
                   </select>
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">Quantity *</span>
+                  <span className="text-[11px] text-zinc-400">Quantity *</span>
                   <input
                     name="quantity"
                     type="number"
@@ -162,21 +162,21 @@ export default async function PreOrdersPage() {
                   />
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">
+                  <span className="text-[11px] text-zinc-400">
                     Customer (optional pre-order for)
                   </span>
                   <input name="customerName" className={inputClass} />
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">Expected date</span>
+                  <span className="text-[11px] text-zinc-400">Expected date</span>
                   <input name="expectedDate" type="date" className={inputClass} />
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">Deposit (₱)</span>
+                  <span className="text-[11px] text-zinc-400">Deposit (₱)</span>
                   <input name="deposit" inputMode="decimal" className={inputClass} />
                 </label>
                 <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-600">Notes</span>
+                  <span className="text-[11px] text-zinc-400">Notes</span>
                   <input name="notes" className={inputClass} />
                 </label>
                 <button
@@ -191,8 +191,8 @@ export default async function PreOrdersPage() {
           </div>
 
           <div className="xl:col-span-3">
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-sm font-medium text-zinc-800">Pre-order list</div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm font-medium text-zinc-100">Pre-order list</div>
               <div className="mt-3">
                 <PreOrderTable rows={rows} />
               </div>

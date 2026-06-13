@@ -207,7 +207,7 @@ export default async function ProductsPage() {
       <div className="w-full px-0 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-sm text-zinc-600">Inventory</div>
+            <div className="text-sm text-zinc-400">Inventory</div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Stock &amp; pricing
             </h1>
@@ -221,14 +221,14 @@ export default async function ProductsPage() {
               <>
                 <Link
                   href="/suppliers"
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-50"
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
                 >
                   Suppliers
                 </Link>
                 <CustomerPricelistExport />
                 <a
                   href="/api/export/stock-levels.csv"
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-50"
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
                   title="Internal stock export with costs and quantities"
                 >
                   Stock CSV
@@ -240,20 +240,20 @@ export default async function ProductsPage() {
 
         {admin ? (
         <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:max-w-2xl">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-2">
-            <div className="text-[10px] text-zinc-600">Stock value</div>
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+            <div className="text-[10px] text-zinc-500">Stock value</div>
             <div className="text-sm font-semibold">
               {formatPhpFromCents(valuation.stockValueCents)}
             </div>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-2">
-            <div className="text-[10px] text-zinc-600">Potential income</div>
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+            <div className="text-[10px] text-zinc-500">Potential income</div>
             <div className="text-sm font-semibold">
               {formatPhpFromCents(valuation.potentialIncomeCents)}
             </div>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-2">
-            <div className="text-[10px] text-zinc-600">Profit potential</div>
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+            <div className="text-[10px] text-zinc-500">Profit potential</div>
             <div className="text-sm font-semibold text-brand-cyan/80">
               {formatPhpFromCents(valuation.profitPotentialCents)}
             </div>
@@ -262,8 +262,8 @@ export default async function ProductsPage() {
         ) : null}
 
         <div className="mt-5">
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="mb-3 text-sm font-medium text-zinc-800">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-3 text-sm font-medium text-zinc-100">
               Inventory ({rows.length})
             </div>
 

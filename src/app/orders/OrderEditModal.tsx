@@ -43,7 +43,7 @@ export type OrderEditPayload = {
 };
 
 const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] text-zinc-900 outline-none";
+  "w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-50 outline-none";
 
 function qtyInputValue(line: OrderLineEdit) {
   if (line.saleUnit === "Kilogram" && line.quantityTenths != null) {
@@ -64,17 +64,17 @@ export function OrderEditModal(props: {
   const canEditLines = isOrderOpen(normalizeOrderStatus(o.orderStatus));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white border border-zinc-300 p-3">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-100 p-4 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-surface-elevated p-4 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-xs text-zinc-600">Edit order</div>
-            <h2 className="text-lg font-semibold text-zinc-900">#{o.id}</h2>
+            <div className="text-xs text-zinc-500">Edit order</div>
+            <h2 className="text-lg font-semibold text-zinc-50">#{o.id}</h2>
           </div>
           <button
             type="button"
             onClick={props.onClose}
-            className="rounded border border-zinc-200 px-2 py-0.5 text-[11px] text-zinc-600"
+            className="rounded border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400"
           >
             Close
           </button>
@@ -84,14 +84,14 @@ export function OrderEditModal(props: {
           <button
             type="button"
             onClick={() => setTab("lines")}
-            className={`rounded px-2 py-0.5 text-[10px] ${tab === "lines" ? "bg-zinc-100 text-zinc-800" : "text-zinc-600"}`}
+            className={`rounded px-2 py-0.5 text-[10px] ${tab === "lines" ? "bg-white/10 text-zinc-100" : "text-zinc-500"}`}
           >
             Items &amp; units
           </button>
           <button
             type="button"
             onClick={() => setTab("details")}
-            className={`rounded px-2 py-0.5 text-[10px] ${tab === "details" ? "bg-zinc-100 text-zinc-800" : "text-zinc-600"}`}
+            className={`rounded px-2 py-0.5 text-[10px] ${tab === "details" ? "bg-white/10 text-zinc-100" : "text-zinc-500"}`}
           >
             Order details
           </button>
@@ -100,23 +100,23 @@ export function OrderEditModal(props: {
         {tab === "lines" ? (
           <div className="mt-3 space-y-3">
             {!canEditLines ? (
-              <p className="text-[11px] text-amber-800/90">
+              <p className="text-[11px] text-amber-300/90">
                 Completed or cancelled orders cannot have line items changed.
                 Use Order details for customer info.
               </p>
             ) : null}
             {o.lines.length === 0 ? (
-              <p className="text-[11px] text-zinc-600">No line items.</p>
+              <p className="text-[11px] text-zinc-500">No line items.</p>
             ) : (
               o.lines.map((line) => (
                 <div
                   key={line.id}
-                  className="rounded-lg border border-zinc-200 bg-zinc-50 p-2"
+                  className="rounded-lg border border-white/10 bg-white/5 p-2"
                 >
-                  <div className="text-[11px] font-medium text-zinc-800">
+                  <div className="text-[11px] font-medium text-zinc-100">
                     {line.productLabel}
                   </div>
-                  <div className="mt-0.5 text-[10px] text-zinc-600">
+                  <div className="mt-0.5 text-[10px] text-zinc-500">
                     Current: {formatQuantityLabel(line.saleUnit, line.quantity, line.quantityTenths)}{" "}
                     · {line.priceTier} · {formatPhpFromCents(line.lineTotal)}
                   </div>
@@ -125,7 +125,7 @@ export function OrderEditModal(props: {
                       <input type="hidden" name="orderId" value={o.id} />
                       <input type="hidden" name="lineId" value={line.id} />
                       <div className="grid grid-cols-2 gap-1.5">
-                        <label className="text-[9px] text-zinc-600">
+                        <label className="text-[9px] text-zinc-500">
                           Sale unit
                           <select
                             name="saleUnit"
@@ -143,7 +143,7 @@ export function OrderEditModal(props: {
                             ))}
                           </select>
                         </label>
-                        <label className="text-[9px] text-zinc-600">
+                        <label className="text-[9px] text-zinc-500">
                           Qty
                           <input
                             name="quantity"
@@ -155,7 +155,7 @@ export function OrderEditModal(props: {
                         </label>
                       </div>
                       <div className="grid grid-cols-2 gap-1.5">
-                        <label className="text-[9px] text-zinc-600">
+                        <label className="text-[9px] text-zinc-500">
                           Price tier
                           <select
                             name="priceTier"
@@ -166,7 +166,7 @@ export function OrderEditModal(props: {
                             <option value="Bulk">Bulk</option>
                           </select>
                         </label>
-                        <label className="text-[9px] text-zinc-600">
+                        <label className="text-[9px] text-zinc-500">
                           Unit price override (₱)
                           <input
                             name="unitPrice"
@@ -194,7 +194,7 @@ export function OrderEditModal(props: {
         ) : (
           <form action={updateOrderDetails} className="mt-3 space-y-2">
             <input type="hidden" name="orderId" value={o.id} />
-            <label className="block text-[10px] text-zinc-600">
+            <label className="block text-[10px] text-zinc-500">
               Customer
               <input
                 name="customerName"
@@ -217,7 +217,7 @@ export function OrderEditModal(props: {
                 className={inputClass}
               />
             </div>
-            <label className="block text-[10px] text-zinc-600">
+            <label className="block text-[10px] text-zinc-500">
               Store type
               <select
                 name="storeType"

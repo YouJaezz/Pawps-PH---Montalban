@@ -283,7 +283,7 @@ export function CustomerTrackMap(props: { token: string; hasDriver: boolean }) {
   }, [mapReady, mapData]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-200">
+    <div className="relative overflow-hidden rounded-xl border border-white/10">
       <div
         ref={mapRef}
         className="customer-track-map h-80 w-full sm:h-96"
@@ -297,7 +297,7 @@ export function CustomerTrackMap(props: { token: string; hasDriver: boolean }) {
         </div>
       ) : null}
       {mapError ? (
-        <p className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 text-[10px] text-red-800">
+        <p className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 text-[10px] text-red-200">
           {mapError}
         </p>
       ) : null}

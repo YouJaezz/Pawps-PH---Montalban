@@ -12,10 +12,10 @@ export type TableFilterConfig = {
 };
 
 const inputClass =
-  "min-w-[140px] flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-[11px] text-zinc-900 outline-none focus:border-zinc-300 sm:max-w-xs";
+  "min-w-[140px] flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-50 outline-none focus:border-white/20 sm:max-w-xs";
 
 const selectClass =
-  "rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-[10px] text-zinc-900 outline-none";
+  "rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-zinc-50 outline-none";
 
 export function TableToolbar(props: {
   query: string;
@@ -51,7 +51,7 @@ export function TableToolbar(props: {
           ))}
         </select>
       ))}
-      <span className="text-[10px] text-zinc-600">
+      <span className="text-[10px] text-zinc-500">
         {props.shown === props.total
           ? `${props.total} shown`
           : `${props.shown} / ${props.total}`}

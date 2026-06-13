@@ -27,7 +27,7 @@ export type ProductEditRow = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-sm text-zinc-50 outline-none focus:border-white/20";
 
 function centsToInput(cents: number) {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
@@ -93,22 +93,22 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-white border border-zinc-300 p-3"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3"
           onClick={() => setOpen(false)}
           role="presentation"
         >
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-100 p-4 shadow-xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-white/10 bg-surface-elevated p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="edit-product-title"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-xs text-zinc-600">Inventory</div>
+                <div className="text-xs text-zinc-500">Inventory</div>
                 <h2
                   id="edit-product-title"
-                  className="text-lg font-semibold text-zinc-900"
+                  className="text-lg font-semibold text-zinc-50"
                 >
                   Edit item
                 </h2>
@@ -116,7 +116,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded border border-zinc-200 px-2 py-0.5 text-[11px] text-zinc-600 hover:text-zinc-800"
+                className="rounded border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400 hover:text-zinc-200"
               >
                 Close
               </button>
@@ -141,7 +141,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               <input type="hidden" name="productId" value={p.id} />
 
               <label className="block space-y-1">
-                <span className="text-xs text-zinc-600">Item name *</span>
+                <span className="text-xs text-zinc-400">Item name *</span>
                 <input
                   name="name"
                   required
@@ -152,7 +152,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-600">Brand *</span>
+                  <span className="text-xs text-zinc-400">Brand *</span>
                   <input
                     name="brand"
                     required
@@ -161,7 +161,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-600">Flavor</span>
+                  <span className="text-xs text-zinc-400">Flavor</span>
                   <input
                     name="variant"
                     defaultValue={p.variant ?? ""}
@@ -180,7 +180,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               />
 
               <label className="block space-y-1">
-                <span className="text-xs text-zinc-600">Pack size</span>
+                <span className="text-xs text-zinc-400">Pack size</span>
                 <input
                   name="packSize"
                   defaultValue={p.packSize ?? ""}
@@ -191,7 +191,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-600">Stock unit</span>
+                  <span className="text-xs text-zinc-400">Stock unit</span>
                   <select
                     name="stockUnit"
                     value={stockUnit}
@@ -210,7 +210,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               {isWeight ? (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
-                    <span className="text-xs text-zinc-600">Kg per sack</span>
+                    <span className="text-xs text-zinc-400">Kg per sack</span>
                     <input
                       name="kgPerSack"
                       value={kgPerSackInput}
@@ -221,7 +221,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-xs text-zinc-600">Stock entry</span>
+                    <span className="text-xs text-zinc-400">Stock entry</span>
                     <select
                       name="stockEntryMode"
                       value={stockEntryMode}
@@ -238,7 +238,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               ) : null}
 
               <label className="block space-y-1">
-                <span className="text-xs text-zinc-600">
+                <span className="text-xs text-zinc-400">
                   {stockQtyLabel(
                     stockUnit === "Sack" ? "Kilogram" : stockUnit,
                     isWeight ? stockEntryMode : undefined,
@@ -263,7 +263,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-600">
+                  <span className="text-xs text-zinc-400">
                     {isWeight ? "Our retail (per kg)" : "Our retail (per pc)"}
                   </span>
                   <input
@@ -274,7 +274,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-600">
+                  <span className="text-xs text-zinc-400">
                     {isWeight ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
                   </span>
                   <input
@@ -302,16 +302,16 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                  className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
                 >
                   Cancel
                 </button>
               </div>
             </form>
 
-            <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600">
+            <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-zinc-500">
               Current sell retail:{" "}
-              <span className="text-zinc-800">
+              <span className="text-zinc-200">
                 {formatPhpFromCents(p.retailPrice)}
                 {isWeight ? " / kg" : ""}
               </span>
@@ -319,7 +319,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 <>
                   {" "}
                   · bulk{" "}
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     {formatPhpFromCents(p.bulkPrice)}
                     {isWeight ? " / kg" : ""}
                   </span>

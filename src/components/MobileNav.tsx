@@ -15,10 +15,10 @@ function NavLink(props: { href: string; label: string; badge?: number }) {
   return (
     <Link
       href={props.href}
-      className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium ${
         active
-          ? "bg-brand-blue/20 text-brand-cyan"
-          : "text-zinc-300 hover:bg-white/5 hover:text-white"
+          ? "bg-brand-blue/15 text-brand-blue"
+          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
       }`}
     >
       {props.label}
@@ -52,7 +52,7 @@ export function MobileNav(props: { admin: boolean }) {
   const items = props.admin ? adminItems : cashierItems;
 
   return (
-    <nav className="nav-shell fixed inset-x-0 bottom-0 z-40 border-t border-brand-blue/25 backdrop-blur md:hidden print:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#000000]/95 backdrop-blur md:hidden print:hidden">
       <div className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-2 py-2">
         {items.map((item) => (
           <NavLink

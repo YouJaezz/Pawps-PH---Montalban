@@ -39,21 +39,21 @@ export function ProductAddButton(props: {
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-white border border-zinc-300 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-product-title"
         >
           <div
-            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200 bg-zinc-100 p-5 shadow-xl"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-surface-elevated p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-xs text-zinc-600">Inventory</div>
+                <div className="text-xs text-zinc-500">Inventory</div>
                 <h2
                   id="add-product-title"
-                  className="text-lg font-semibold text-zinc-900"
+                  className="text-lg font-semibold text-zinc-50"
                 >
                   Add item
                 </h2>
@@ -61,7 +61,7 @@ export function ProductAddButton(props: {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded border border-zinc-200 px-2 py-0.5 text-[11px] text-zinc-600 hover:text-zinc-800"
+                className="rounded border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400 hover:text-zinc-200"
               >
                 Close
               </button>

@@ -64,7 +64,7 @@ export function StockAlertsTable(props: {
       />
       <ScrollableTable maxHeight="max-h-[min(50vh,420px)]" className="mt-3">
         <table className="w-full text-xs">
-          <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
+          <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
             <tr>
               <th className="px-3 py-2">Item</th>
               <th className="px-3 py-2">Type</th>
@@ -75,7 +75,7 @@ export function StockAlertsTable(props: {
           <tbody className="divide-y divide-white/10">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-3 py-4 text-zinc-600">
+                <td colSpan={4} className="px-3 py-4 text-zinc-500">
                   {props.rows.length === 0
                     ? "All items are adequately stocked."
                     : "No matches."}
@@ -83,21 +83,21 @@ export function StockAlertsTable(props: {
               </tr>
             ) : (
               filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-50">
+                <tr key={r.id} className="hover:bg-white/5">
                   <td className="px-3 py-2">
-                    <div className="font-medium text-zinc-800">{r.name}</div>
-                    <div className="text-[10px] text-zinc-600">
+                    <div className="font-medium text-zinc-200">{r.name}</div>
+                    <div className="text-[10px] text-zinc-500">
                       {r.brand}
                       {r.variant ? ` · ${r.variant}` : ""}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-zinc-600">
+                  <td className="px-3 py-2 text-zinc-400">
                     {displayCatalogItemType(r.itemType)}
                   </td>
-                  <td className="px-3 py-2 text-zinc-700">
+                  <td className="px-3 py-2 text-zinc-300">
                     <div>{r.displayQty}</div>
                     {r.displayQtyDetail !== "—" ? (
-                      <div className="text-[10px] text-zinc-600">
+                      <div className="text-[10px] text-zinc-500">
                         {r.displayQtyDetail}
                       </div>
                     ) : null}
@@ -107,7 +107,7 @@ export function StockAlertsTable(props: {
                       className={
                         r.level === "empty"
                           ? "text-red-400"
-                          : "text-amber-800"
+                          : "text-amber-300"
                       }
                     >
                       {stockAlertLabel(r.level)}
@@ -122,7 +122,7 @@ export function StockAlertsTable(props: {
       {props.showLink ? (
         <Link
           href="/products"
-          className="mt-3 inline-block text-xs text-zinc-600 underline hover:text-zinc-800"
+          className="mt-3 inline-block text-xs text-zinc-400 underline hover:text-zinc-200"
         >
           Open Inventory →
         </Link>

@@ -211,7 +211,7 @@ export function BulkOrderModal(props: {
     <>
       <button
         onClick={openModal}
-        className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
       >
         Bulk Order
       </button>
@@ -219,18 +219,18 @@ export function BulkOrderModal(props: {
       {open ? (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60"
             onClick={closeModal}
           />
-          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[96vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-zinc-200 bg-white shadow-2xl">
-            <div className="shrink-0 border-b border-zinc-200 p-6 pb-4">
+          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[96vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
+            <div className="shrink-0 border-b border-white/10 p-6 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm text-zinc-600">Orders</div>
+                  <div className="text-sm text-zinc-400">Orders</div>
                   <div className="mt-1 text-xl font-semibold tracking-tight">
                     {step === "receipt" ? "Receipt" : "Bulk Order (30% deposit)"}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-600">
+                  <div className="mt-1 text-xs text-zinc-500">
                     {step === "receipt"
                       ? "Print or save this receipt, then complete the order when ready."
                       : "Search products, add multiple lines, auto-calculates deposit."}
@@ -238,7 +238,7 @@ export function BulkOrderModal(props: {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 hover:bg-white/10"
                 >
                   Close
                 </button>
@@ -283,7 +283,7 @@ export function BulkOrderModal(props: {
               {step === "confirm" ? (
                 <>
                   {state?.error ? (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                       {state.error}
                     </div>
                   ) : null}
@@ -331,12 +331,12 @@ export function BulkOrderModal(props: {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-700">Sale unit (all lines)</div>
+                  <div className="text-xs text-zinc-300">Sale unit (all lines)</div>
                   <select
                     name="saleUnit"
                     value={saleUnit}
                     onChange={(e) => setSaleUnit(e.target.value as SaleUnit)}
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   >
                     {allowedSaleUnits.map((u) => (
                       <option key={u} value={u}>
@@ -346,14 +346,14 @@ export function BulkOrderModal(props: {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-700">Price tier</div>
+                  <div className="text-xs text-zinc-300">Price tier</div>
                   <select
                     name="priceTier"
                     value={priceTier}
                     onChange={(e) =>
                       setPriceTier(e.target.value as "Bulk" | "Retail")
                     }
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   >
                     <option>Bulk</option>
                     <option>Retail</option>
@@ -363,24 +363,24 @@ export function BulkOrderModal(props: {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-700">Store type</div>
+                  <div className="text-xs text-zinc-300">Store type</div>
                   <select
                     name="storeType"
                     value={storeType}
                     onChange={(e) => setStoreType(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   >
                     <option>Online</option>
                     <option>Walk-in</option>
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-700">Delivery method</div>
+                  <div className="text-xs text-zinc-300">Delivery method</div>
                   <select
                     name="deliveryMethod"
                     value={deliveryMethod}
                     onChange={(e) => setDeliveryMethod(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                   >
                     <option>Montalban Free Delivery</option>
                     <option>Lalamove</option>
@@ -389,14 +389,14 @@ export function BulkOrderModal(props: {
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-sm font-medium text-zinc-800">Items</div>
+                  <div className="text-sm font-medium text-zinc-100">Items</div>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={addLine}
-                      className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 hover:bg-white/10"
                     >
                       + Add line
                     </button>
@@ -428,7 +428,7 @@ export function BulkOrderModal(props: {
                     return (
                       <div
                         key={idx}
-                        className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-12"
+                        className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:grid-cols-12"
                       >
                         <div className="sm:col-span-7">
                           <ProductSelectField
@@ -440,13 +440,13 @@ export function BulkOrderModal(props: {
                             }
                           />
                           <input type="hidden" name="productId" value={l.productId} />
-                          <div className="mt-1 text-xs text-zinc-600">
+                          <div className="mt-1 text-xs text-zinc-500">
                             Unit: {formatPhpFromCents(unit)}
                           </div>
                         </div>
 
                         <div className="sm:col-span-3">
-                          <div className="text-xs text-zinc-600">
+                          <div className="text-xs text-zinc-400">
                             {saleUnit === "Kilogram"
                               ? "Weight (kg)"
                               : saleUnit === "Sack"
@@ -467,9 +467,9 @@ export function BulkOrderModal(props: {
                                 quantity: e.target.value,
                               })
                             }
-                            className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                            className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                           />
-                          <div className="mt-1 text-xs text-zinc-600">
+                          <div className="mt-1 text-xs text-zinc-500">
                             Line: {formatPhpFromCents(lineTotal)}
                           </div>
                         </div>
@@ -479,7 +479,7 @@ export function BulkOrderModal(props: {
                             type="button"
                             onClick={() => removeLine(idx)}
                             disabled={lines.length <= 1}
-                            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800 hover:bg-red-500/15 disabled:opacity-50"
+                            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200 hover:bg-red-500/15 disabled:opacity-50"
                           >
                             Remove
                           </button>
@@ -491,15 +491,15 @@ export function BulkOrderModal(props: {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="text-xs text-zinc-600">Total</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-900">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-xs text-zinc-400">Total</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-50">
                     {formatPhpFromCents(total)}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="text-xs text-zinc-600">30% deposit</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-900">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-xs text-zinc-400">30% deposit</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-50">
                     {formatPhpFromCents(deposit)}
                   </div>
                 </div>
@@ -514,7 +514,7 @@ export function BulkOrderModal(props: {
               </div>
 
               {state?.error ? (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                   {state.error}
                 </div>
               ) : null}

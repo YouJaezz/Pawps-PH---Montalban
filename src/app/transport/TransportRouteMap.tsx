@@ -351,7 +351,7 @@ export function TransportRouteMap(props: {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+    <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-2.5 py-2 text-[10px] text-sky-200/90">
         Free maps — OpenStreetMap + road routing (OSRM). No API key or billing.
       </div>
@@ -363,7 +363,7 @@ export function TransportRouteMap(props: {
           className={`rounded-lg px-3 py-1.5 text-xs ${
             activeField === "pickup"
               ? "bg-brand-blue/20 text-brand-cyan/70 ring-1 ring-brand-blue/40"
-              : "border border-zinc-200 text-zinc-600"
+              : "border border-white/10 text-zinc-400"
           }`}
         >
           Set pickup {pickup ? "✓" : ""}
@@ -373,8 +373,8 @@ export function TransportRouteMap(props: {
           onClick={() => setActiveField("dropoff")}
           className={`rounded-lg px-3 py-1.5 text-xs ${
             activeField === "dropoff"
-              ? "bg-red-500/20 text-red-800 ring-1 ring-red-500/40"
-              : "border border-zinc-200 text-zinc-600"
+              ? "bg-red-500/20 text-red-200 ring-1 ring-red-500/40"
+              : "border border-white/10 text-zinc-400"
           }`}
         >
           Set dropoff {dropoff ? "✓" : ""}
@@ -382,7 +382,7 @@ export function TransportRouteMap(props: {
         <button
           type="button"
           onClick={useMyLocation}
-          className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-700"
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-300"
         >
           Use my location
         </button>
@@ -399,21 +399,21 @@ export function TransportRouteMap(props: {
             }
           }}
           placeholder={`Search ${activeField} — barangay, street, landmark…`}
-          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
         {searching ? (
-          <div className="absolute right-3 top-2.5 text-[10px] text-zinc-600">
+          <div className="absolute right-3 top-2.5 text-[10px] text-zinc-500">
             Searching…
           </div>
         ) : null}
         {searchQuery.trim().length >= 3 && searchHits.length > 0 ? (
-          <ul className="absolute z-[1000] mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-900 shadow-lg">
+          <ul className="absolute z-[1000] mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-white/10 bg-zinc-900 shadow-lg">
             {searchHits.map((hit) => (
               <li key={`${hit.lat}-${hit.lng}`}>
                 <button
                   type="button"
                   onClick={() => selectSearchHit(hit)}
-                  className="w-full px-3 py-2 text-left text-xs text-zinc-800 hover:bg-zinc-50"
+                  className="w-full px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/5"
                 >
                   {hit.label}
                 </button>
@@ -421,7 +421,7 @@ export function TransportRouteMap(props: {
             ))}
           </ul>
         ) : searchEmpty && searchQuery.trim().length >= 3 && !searching ? (
-          <div className="absolute z-[1000] mt-1 w-full rounded-lg border border-zinc-200 bg-zinc-900 px-3 py-2 text-xs text-zinc-600">
+          <div className="absolute z-[1000] mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
             No match — include barangay &amp; city, or tap the map to pin the spot.
           </div>
         ) : null}
@@ -430,31 +430,31 @@ export function TransportRouteMap(props: {
       <div className="grid gap-1 text-[11px]">
         <div className="flex gap-2">
           <span className="shrink-0 text-brand-cyan">Pickup:</span>
-          <span className="text-zinc-600">
+          <span className="text-zinc-400">
             {pickup?.label ?? "Search or tap map"}
           </span>
         </div>
         <div className="flex gap-2">
           <span className="shrink-0 text-red-400">Dropoff:</span>
-          <span className="text-zinc-600">
+          <span className="text-zinc-400">
             {dropoff?.label ?? "Search or tap map"}
           </span>
         </div>
       </div>
 
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-500">
         Tap map to pin {activeField}. {pinning ? "Looking up address…" : ""}
         {calculatingRoute ? " Calculating driving route…" : ""}
       </p>
 
       <div
         ref={mapRef}
-        className="transport-map h-56 w-full rounded-lg border border-zinc-200 sm:h-64"
+        className="transport-map h-56 w-full rounded-lg border border-white/10 sm:h-64"
         style={{ minHeight: 224 }}
       />
 
       {routeError ? (
-        <p className="text-[11px] text-red-700/90">{routeError}</p>
+        <p className="text-[11px] text-red-300/90">{routeError}</p>
       ) : null}
 
       {breakdown ? (
@@ -462,7 +462,7 @@ export function TransportRouteMap(props: {
           <div className="font-medium text-amber-100">
             Driving route (actual roads)
           </div>
-          <div className="mt-2 space-y-1 text-zinc-600">
+          <div className="mt-2 space-y-1 text-zinc-400">
             <div className="flex justify-between gap-4">
               <span>Driving distance</span>
               <span className="font-semibold text-amber-200">
@@ -473,7 +473,7 @@ export function TransportRouteMap(props: {
               <>
                 <div className="flex justify-between gap-4 border-t border-amber-500/10 pt-1">
                   <span>Clear-road drive</span>
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     ~{breakdown.travelTime.baseDriveMinutes} min
                   </span>
                 </div>
@@ -481,7 +481,7 @@ export function TransportRouteMap(props: {
                   <span>
                     Traffic buffer (×{breakdown.travelTime.trafficFactor.toFixed(2)})
                   </span>
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     +{breakdown.travelTime.trafficBufferMinutes} min
                   </span>
                 </div>
@@ -490,7 +490,7 @@ export function TransportRouteMap(props: {
                     Stop lights ({breakdown.travelTime.intersectionCount} pauses ×{" "}
                     {breakdown.travelTime.stopLightPauseSec}s)
                   </span>
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     +{breakdown.travelTime.stopLightMinutes} min
                   </span>
                 </div>
@@ -507,7 +507,7 @@ export function TransportRouteMap(props: {
                     Traffic charge ({breakdown.travelTime.trafficBufferMinutes} min ×{" "}
                     {formatPhpFromCents(trafficPerMinCents)}/min)
                   </span>
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     {formatPhpFromCents(breakdown.trafficFeeCents)}
                   </span>
                 </div>
@@ -516,7 +516,7 @@ export function TransportRouteMap(props: {
                     Stop lights ({breakdown.travelTime.intersectionCount} ×{" "}
                     {formatPhpFromCents(stopLightFeeCents)})
                   </span>
-                  <span className="text-zinc-800">
+                  <span className="text-zinc-200">
                     {formatPhpFromCents(breakdown.stopLightFeeCents)}
                   </span>
                 </div>
@@ -524,7 +524,7 @@ export function TransportRouteMap(props: {
             ) : null}
             <div className="flex justify-between gap-4 border-t border-amber-500/10 pt-1">
               <span>Distance charge</span>
-              <span className="text-zinc-800">
+              <span className="text-zinc-200">
                 {breakdown.routeKm} km × {formatPhpFromCents(perKmCents)}/km ={" "}
                 {formatPhpFromCents(breakdown.distanceFeeCents)}
               </span>
@@ -532,25 +532,25 @@ export function TransportRouteMap(props: {
           </div>
         </div>
       ) : (
-        <p className="text-[11px] text-zinc-600">
+        <p className="text-[11px] text-zinc-500">
           Set pickup and dropoff — fare uses real driving distance along roads, not
           straight-line guess.
         </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs text-zinc-600">Distance (km)</label>
+        <label className="text-xs text-zinc-400">Distance (km)</label>
         <input
           value={distanceKmInput}
           onChange={(e) => onDistanceKmInputChange(e.target.value)}
           inputMode="decimal"
           placeholder="From route"
-          className="min-w-[5rem] w-28 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm outline-none"
+          className="min-w-[5rem] w-28 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-sm outline-none"
         />
         {breakdown &&
         distanceKmInput &&
         Number.parseFloat(distanceKmInput) !== breakdown.routeKm ? (
-          <span className="text-[10px] text-amber-800/80">Manual override</span>
+          <span className="text-[10px] text-amber-300/80">Manual override</span>
         ) : null}
       </div>
     </div>

@@ -78,9 +78,9 @@ export function DriverTracker(props: {
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4">
       <div className="text-sm font-medium text-sky-100">Live driver tracking</div>
-      <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-zinc-600">
+      <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-zinc-400">
         <li>Keep this page open on your phone while driving.</li>
-        <li>Tap <span className="text-zinc-800">Start sharing location</span> below.</li>
+        <li>Tap <span className="text-zinc-200">Start sharing location</span> below.</li>
         <li>Allow location/GPS when your browser prompts you.</li>
       </ol>
 
@@ -89,7 +89,7 @@ export function DriverTracker(props: {
           <button
             type="button"
             onClick={stopSharing}
-            className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-800"
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-200"
           >
             Stop sharing
           </button>
@@ -105,9 +105,9 @@ export function DriverTracker(props: {
         )}
       </div>
 
-      <div className="mt-2 text-xs text-zinc-700">{status}</div>
+      <div className="mt-2 text-xs text-zinc-300">{status}</div>
       {lastSent ? (
-        <div className="mt-1 text-[10px] text-zinc-600">Last sent {lastSent}</div>
+        <div className="mt-1 text-[10px] text-zinc-500">Last sent {lastSent}</div>
       ) : null}
     </div>
   );

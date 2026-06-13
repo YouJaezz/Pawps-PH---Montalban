@@ -11,13 +11,13 @@ import { TableToolbar } from "@/components/TableToolbar";
 import { matchesQuery, rowSearchText } from "@/lib/table-filter";
 
 const fieldClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 function ResultBanner(props: { state: SettingsActionResult | null }) {
   if (!props.state) return null;
   if (props.state.error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-700">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
         {props.state.error}
       </div>
     );
@@ -42,7 +42,7 @@ export function ChangePasswordForm() {
     <form action={formAction} className="space-y-3">
       <ResultBanner state={state} />
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-600">Current password</span>
+        <span className="text-[11px] text-zinc-400">Current password</span>
         <input
           name="currentPassword"
           type="password"
@@ -51,11 +51,11 @@ export function ChangePasswordForm() {
         />
       </label>
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-600">New password</span>
+        <span className="text-[11px] text-zinc-400">New password</span>
         <input name="newPassword" type="password" required className={fieldClass} />
       </label>
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-600">Confirm new password</span>
+        <span className="text-[11px] text-zinc-400">Confirm new password</span>
         <input
           name="confirmPassword"
           type="password"
@@ -66,7 +66,7 @@ export function ChangePasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-1.5 text-xs text-zinc-800 hover:bg-white/15 disabled:opacity-50"
+        className="rounded-lg border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-100 hover:bg-white/15 disabled:opacity-50"
       >
         {pending ? "Updating…" : "Update password"}
       </button>
@@ -85,22 +85,22 @@ export function AddAccountForm() {
       <ResultBanner state={state} />
       <div className="grid grid-cols-2 gap-2">
         <label className="col-span-2 space-y-0.5">
-          <span className="text-[11px] text-zinc-600">Email *</span>
+          <span className="text-[11px] text-zinc-400">Email *</span>
           <input name="email" type="email" required className={fieldClass} />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[11px] text-zinc-600">Name</span>
+          <span className="text-[11px] text-zinc-400">Name</span>
           <input name="name" className={fieldClass} />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[11px] text-zinc-600">Role</span>
+          <span className="text-[11px] text-zinc-400">Role</span>
           <select name="role" className={fieldClass} defaultValue="cashier">
             <option value="cashier">Cashier</option>
             <option value="admin">Admin</option>
           </select>
         </label>
         <label className="col-span-2 space-y-0.5">
-          <span className="text-[11px] text-zinc-600">Password *</span>
+          <span className="text-[11px] text-zinc-400">Password *</span>
           <input
             name="password"
             type="password"
@@ -152,9 +152,9 @@ export function AccountsTable(props: {
         shown={filtered.length}
         total={props.accounts.length}
       />
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
+      <div className="overflow-x-auto rounded-lg border border-white/10">
       <table className="w-full text-xs">
-        <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
+        <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
           <tr>
             <th className="px-2 py-2">Email</th>
             <th className="px-2 py-2">Name</th>
@@ -166,7 +166,7 @@ export function AccountsTable(props: {
         <tbody className="divide-y divide-white/10">
           {filtered.length === 0 ? (
             <tr>
-              <td className="px-2 py-4 text-zinc-600" colSpan={5}>
+              <td className="px-2 py-4 text-zinc-500" colSpan={5}>
                 {props.accounts.length === 0
                   ? "No accounts yet."
                   : "No accounts match your search."}
@@ -174,15 +174,15 @@ export function AccountsTable(props: {
             </tr>
           ) : (
           filtered.map((u) => (
-            <tr key={u.id} className="hover:bg-zinc-50">
-              <td className="px-2 py-2 text-zinc-800">{u.email}</td>
-              <td className="px-2 py-2 text-zinc-600">{u.name ?? "—"}</td>
-              <td className="px-2 py-2 capitalize text-zinc-600">{u.role}</td>
+            <tr key={u.id} className="hover:bg-white/5">
+              <td className="px-2 py-2 text-zinc-200">{u.email}</td>
+              <td className="px-2 py-2 text-zinc-400">{u.name ?? "—"}</td>
+              <td className="px-2 py-2 capitalize text-zinc-400">{u.role}</td>
               <td className="px-2 py-2">
                 {u.active ? (
                   <span className="text-brand-cyan">Active</span>
                 ) : (
-                  <span className="text-zinc-600">Inactive</span>
+                  <span className="text-zinc-500">Inactive</span>
                 )}
               </td>
               <td className="px-2 py-2">
@@ -193,7 +193,7 @@ export function AccountsTable(props: {
                     <input type="hidden" name="userId" value={u.id} />
                     <button
                       type="submit"
-                      className="text-[11px] text-zinc-700 underline hover:text-zinc-800"
+                      className="text-[11px] text-zinc-300 underline hover:text-zinc-100"
                     >
                       {u.active ? "Deactivate" : "Activate"}
                     </button>

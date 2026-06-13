@@ -47,18 +47,18 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
   const visibleRows = expanded ? filtered : filtered.slice(0, 8);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-zinc-800">Price comparison</div>
-          <div className="text-[10px] text-zinc-600">
+          <div className="text-xs font-medium text-zinc-100">Price comparison</div>
+          <div className="text-[10px] text-zinc-500">
             Same item across 2+ suppliers · green = cheapest
           </div>
         </div>
         <select
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value as SortMode)}
-          className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-[10px] text-zinc-900 outline-none"
+          className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none"
         >
           <option value="cheap">Cheapest first</option>
           <option value="expensive">Most expensive</option>
@@ -67,7 +67,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
         <select
           value={priceView}
           onChange={(e) => setPriceView(e.target.value as PriceView)}
-          className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-[10px] text-zinc-900 outline-none"
+          className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none"
         >
           <option value="wholesale">Wholesale</option>
           <option value="retail">Retail</option>
@@ -76,12 +76,12 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter…"
-          className="w-24 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[10px] text-zinc-900 outline-none sm:w-32"
+          className="w-24 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-zinc-50 outline-none sm:w-32"
         />
       </div>
 
       {props.rows.length === 0 ? (
-        <p className="mt-2 text-[11px] text-zinc-600">
+        <p className="mt-2 text-[11px] text-zinc-500">
           Upload 2+ suppliers with overlapping items to compare.
         </p>
       ) : (
@@ -90,7 +90,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
           className="mt-2"
         >
           <table className="w-full min-w-[640px] text-[11px]">
-            <thead className="sticky top-0 z-10 bg-zinc-100 text-left text-[10px] text-zinc-600">
+            <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
               <tr>
                 <th className="px-2 py-1.5 font-medium">Item</th>
                 <th className="hidden w-28 px-2 py-1.5 font-medium sm:table-cell">
@@ -127,22 +127,22 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
 
                 return (
                   <tr key={row.itemKey} className="hover:bg-white/[0.03]">
-                    <td className="max-w-[120px] truncate px-2 py-1 font-medium text-zinc-800">
+                    <td className="max-w-[120px] truncate px-2 py-1 font-medium text-zinc-100">
                       {row.itemLabel}
                     </td>
-                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-600 sm:table-cell">
+                    <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-500 sm:table-cell">
                       {row.flavor === "—" ? "" : row.flavor}
                     </td>
                     <td className="px-2 py-1 font-semibold text-brand-cyan/80">
                       {formatPrice(best)}
                     </td>
-                    <td className="max-w-[100px] truncate px-2 py-1 text-zinc-600">
+                    <td className="max-w-[100px] truncate px-2 py-1 text-zinc-400">
                       {bestOffer?.supplierName ?? "—"}
                     </td>
-                    <td className="px-2 py-1 text-zinc-700">
+                    <td className="px-2 py-1 text-zinc-300">
                       {formatPrice(worst)}
                     </td>
-                    <td className="px-2 py-1 text-amber-800/90">
+                    <td className="px-2 py-1 text-amber-300/90">
                       {gap != null ? formatPrice(gap) : "—"}
                     </td>
                     <td className="px-2 py-1">
@@ -159,7 +159,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
                               className={
                                 isBest
                                   ? "text-brand-cyan/80"
-                                  : "text-zinc-600"
+                                  : "text-zinc-500"
                               }
                               title={o.supplierName}
                             >
@@ -177,7 +177,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
         </ScrollableTable>
       )}
 
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-600">
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-500">
         <span>
           {filtered.length} comparable · showing {visibleRows.length}
         </span>

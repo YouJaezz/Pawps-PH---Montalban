@@ -26,7 +26,7 @@ function badgeTone(itemType: string) {
   if (t.includes("toy")) {
     return "bg-teal-500/15 text-teal-200 ring-teal-500/30";
   }
-  return "bg-zinc-500/15 text-zinc-700 ring-zinc-500/30";
+  return "bg-zinc-500/15 text-zinc-300 ring-zinc-500/30";
 }
 
 export function ItemTypeBadge(props: {

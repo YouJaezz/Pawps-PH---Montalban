@@ -20,7 +20,7 @@ export function CustomerPricelistExport() {
       <select
         value={tier}
         onChange={(e) => setTier(e.target.value as PriceTier)}
-        className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none"
+        className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-50 outline-none"
         aria-label="Price list type"
       >
         <option value="retail">Retail prices</option>

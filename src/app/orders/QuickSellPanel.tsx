@@ -341,7 +341,7 @@ export function QuickSellPanel(props: {
     <>
       <button
         onClick={openModal}
-        className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
       >
         Quick Sell
       </button>
@@ -349,18 +349,18 @@ export function QuickSellPanel(props: {
       {open ? (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60"
             onClick={closeModal}
           />
-          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[94vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-zinc-200 bg-white shadow-2xl">
-            <div className="shrink-0 border-b border-zinc-200 p-6 pb-4">
+          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[94vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
+            <div className="shrink-0 border-b border-white/10 p-6 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm text-zinc-600">Sales</div>
+                  <div className="text-sm text-zinc-400">Sales</div>
                   <div className="mt-1 text-xl font-semibold tracking-tight">
                     {step === "receipt" ? "Receipt" : "Quick Sell"}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-600">
+                  <div className="mt-1 text-xs text-zinc-500">
                     {step === "receipt"
                       ? "Print or save this receipt, then complete the order when ready."
                       : "Add multiple items to the cart, then check out as one pending order."}
@@ -368,7 +368,7 @@ export function QuickSellPanel(props: {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 hover:bg-white/10"
                 >
                   Close
                 </button>
@@ -454,7 +454,7 @@ export function QuickSellPanel(props: {
                 {step === "confirm" ? (
                   <>
                     {state?.error ? (
-                      <div className="mx-6 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                      <div className="mx-6 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                         {state.error}
                       </div>
                     ) : null}
@@ -501,13 +501,13 @@ export function QuickSellPanel(props: {
                 ) : (
                   <>
                 {state?.error ? (
-                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                     {state.error}
                   </div>
                 ) : null}
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 pt-4">
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                    <div className="text-xs font-medium text-zinc-800">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs font-medium text-zinc-200">
                       Add to cart
                     </div>
                     <label className="mt-2 block space-y-1">
@@ -526,9 +526,9 @@ export function QuickSellPanel(props: {
 
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">Sale unit</div>
+                        <div className="text-[11px] text-zinc-400">Sale unit</div>
                         <select
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                           value={draftSaleUnit}
                           onChange={(e) =>
                             setDraftSaleUnit(e.target.value as SaleUnit)
@@ -542,7 +542,7 @@ export function QuickSellPanel(props: {
                         </select>
                       </label>
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">
+                        <div className="text-[11px] text-zinc-400">
                           {draftSaleUnit === "Kilogram"
                             ? "Weight (kg)"
                             : draftSaleUnit === "Sack"
@@ -555,7 +555,7 @@ export function QuickSellPanel(props: {
                           inputMode="decimal"
                           step={draftSaleUnit === "Kilogram" ? "0.25" : "1"}
                           min={draftSaleUnit === "Kilogram" ? "0.01" : "1"}
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                           value={draftQuantity}
                           onChange={(e) => setDraftQuantity(e.target.value)}
                           onBlur={() => {
@@ -571,7 +571,7 @@ export function QuickSellPanel(props: {
                                 key={amount}
                                 type="button"
                                 onClick={() => setDraftQuantity(amount)}
-                                className="rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 hover:bg-zinc-50"
+                                className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-white/5"
                               >
                                 {amount === "0.25" ? "¼ kg" : amount === "0.5" ? "½ kg" : amount === "0.75" ? "¾ kg" : "1 kg"}
                               </button>
@@ -580,9 +580,9 @@ export function QuickSellPanel(props: {
                         ) : null}
                       </label>
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">Price tier</div>
+                        <div className="text-[11px] text-zinc-400">Price tier</div>
                         <select
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                           value={draftPriceTier}
                           onChange={(e) =>
                             setDraftPriceTier(e.target.value as "Retail" | "Bulk")
@@ -603,18 +603,18 @@ export function QuickSellPanel(props: {
                     </button>
                   </div>
 
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs font-medium text-zinc-800">
+                      <div className="text-xs font-medium text-zinc-200">
                         Cart ({cart.length} item{cart.length === 1 ? "" : "s"})
                       </div>
-                      <div className="text-sm font-semibold text-zinc-900">
+                      <div className="text-sm font-semibold text-zinc-50">
                         {formatPhpFromCents(cartTotal)}
                       </div>
                     </div>
 
                     {cart.length === 0 ? (
-                      <p className="mt-2 text-[11px] text-zinc-600">
+                      <p className="mt-2 text-[11px] text-zinc-500">
                         No items yet — add products above.
                       </p>
                     ) : (
@@ -636,21 +636,21 @@ export function QuickSellPanel(props: {
                                 key={`excess-${idx}`}
                                 className={`flex items-start justify-between gap-2 rounded-lg border px-2.5 py-2 ${
                                   isCustom
-                                    ? "border-zinc-200 bg-zinc-50"
+                                    ? "border-white/10 bg-black/20"
                                     : "border-brand-blue/20 bg-brand-blue/5"
                                 }`}
                               >
                                 <div className="min-w-0 text-[11px]">
                                   <div
                                     className={`truncate font-medium ${
-                                      isCustom ? "text-zinc-800" : "text-brand-cyan/90"
+                                      isCustom ? "text-zinc-100" : "text-brand-cyan/90"
                                     }`}
                                   >
                                     {productLineLabel(p)} · {isCustom ? "custom qty" : "excess"}
                                   </div>
                                   <div
                                     className={
-                                      isCustom ? "text-zinc-600" : "text-brand-cyan/70/70"
+                                      isCustom ? "text-zinc-500" : "text-brand-cyan/70/70"
                                     }
                                   >
                                     {qty} · {formatPhpFromCents(amountCents)}
@@ -662,7 +662,7 @@ export function QuickSellPanel(props: {
                                 <button
                                   type="button"
                                   onClick={() => removeFromCart(idx)}
-                                  className="shrink-0 text-[10px] text-red-700 hover:text-red-800"
+                                  className="shrink-0 text-[10px] text-red-300 hover:text-red-200"
                                 >
                                   Remove
                                 </button>
@@ -686,14 +686,14 @@ export function QuickSellPanel(props: {
                           return (
                             <li
                               key={`${line.productId}-${line.saleUnit}-${line.priceTier}-${idx}`}
-                              className="flex items-start justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-2"
+                              className="flex items-start justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2"
                             >
                               <div className="min-w-0 text-[11px]">
-                                  <div className="flex min-w-0 items-center gap-1.5 truncate font-medium text-zinc-800">
+                                  <div className="flex min-w-0 items-center gap-1.5 truncate font-medium text-zinc-100">
                                     <ItemTypeBadge itemType={p.itemType} size="xs" />
                                     <span className="truncate">{productLineLabel(p)}</span>
                                   </div>
-                                <div className="text-zinc-600">
+                                <div className="text-zinc-500">
                                   {qtyLabel} · {line.priceTier} ·{" "}
                                   {formatPhpFromCents(lineTotal(line))}
                                 </div>
@@ -701,7 +701,7 @@ export function QuickSellPanel(props: {
                               <button
                                 type="button"
                                 onClick={() => removeFromCart(idx)}
-                                className="shrink-0 text-[10px] text-red-700 hover:text-red-800"
+                                className="shrink-0 text-[10px] text-red-300 hover:text-red-200"
                               >
                                 Remove
                               </button>
@@ -728,11 +728,11 @@ export function QuickSellPanel(props: {
                         onChange={setExcessProductId}
                       />
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">What was sold</div>
+                        <div className="text-[11px] text-zinc-400">What was sold</div>
                         <select
                           value={excessQtyPreset}
                           onChange={(e) => setExcessQtyPreset(e.target.value)}
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                         >
                           {EXCESS_QTY_PRESETS.map((preset) => (
                             <option key={preset} value={preset}>
@@ -742,33 +742,33 @@ export function QuickSellPanel(props: {
                         </select>
                       </label>
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">Amount (₱)</div>
+                        <div className="text-[11px] text-zinc-400">Amount (₱)</div>
                         <input
                           inputMode="decimal"
                           value={excessAmount}
                           onChange={(e) => setExcessAmount(e.target.value)}
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                         />
                       </label>
                       <label className="space-y-1">
-                        <div className="text-[11px] text-zinc-600">Note (optional)</div>
+                        <div className="text-[11px] text-zinc-400">Note (optional)</div>
                         <input
                           value={excessNote}
                           onChange={(e) => setExcessNote(e.target.value)}
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                         />
                       </label>
                     </div>
                     {excessQtyPreset === "Custom" ? (
                       <label className="mt-2 block space-y-1">
-                        <div className="text-[11px] text-zinc-600">
+                        <div className="text-[11px] text-zinc-400">
                           Custom quantity (deducts stock)
                         </div>
                         <input
                           value={excessCustomQty}
                           onChange={(e) => setExcessCustomQty(e.target.value)}
                           placeholder="e.g. 0.25 kg, 1 sack, 3 pcs"
-                          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none"
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                         />
                       </label>
                     ) : null}
@@ -806,24 +806,24 @@ export function QuickSellPanel(props: {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="space-y-1">
-                      <div className="text-xs text-zinc-700">Store type</div>
+                      <div className="text-xs text-zinc-300">Store type</div>
                       <select
                         name="storeType"
                         value={storeType}
                         onChange={(e) => setStoreType(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                       >
                         <option>Online</option>
                         <option>Walk-in</option>
                       </select>
                     </label>
                     <label className="space-y-1">
-                      <div className="text-xs text-zinc-700">Delivery method</div>
+                      <div className="text-xs text-zinc-300">Delivery method</div>
                       <select
                         name="deliveryMethod"
                         value={deliveryMethod}
                         onChange={(e) => setDeliveryMethod(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-300"
+                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                       >
                         <option>Montalban Free Delivery</option>
                         <option>Lalamove</option>
@@ -832,7 +832,7 @@ export function QuickSellPanel(props: {
                     </label>
                   </div>
 
-                  <label className="flex items-center gap-3 text-sm text-zinc-800">
+                  <label className="flex items-center gap-3 text-sm text-zinc-200">
                     <input
                       name="deductStock"
                       type="checkbox"
@@ -844,13 +844,13 @@ export function QuickSellPanel(props: {
                   </label>
 
                   {state?.error ? (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                       {state.error}
                     </div>
                   ) : null}
                 </div>
 
-                <div className="shrink-0 border-t border-zinc-200 p-6 pt-4">
+                <div className="shrink-0 border-t border-white/10 p-6 pt-4">
                   <button
                     type="button"
                     onClick={() => setStep("confirm")}

@@ -32,18 +32,18 @@ export default async function ReportsPage() {
       <div className="w-full px-0 py-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="text-sm text-zinc-600">Reports</div>
+            <div className="text-sm text-zinc-400">Reports</div>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">
               Business Insights
             </h1>
-            <p className="mt-2 text-sm text-zinc-600">
+            <p className="mt-2 text-sm text-zinc-400">
               Cash income, on-hand stock value, and top products.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/orders"
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
             >
               Go to Orders
             </Link>
@@ -72,7 +72,7 @@ export default async function ReportsPage() {
 
         {investor ? (
           <>
-            <div className="mt-8 text-xs font-medium uppercase tracking-wide text-zinc-600">
+            <div className="mt-8 text-xs font-medium uppercase tracking-wide text-zinc-500">
               Investor profit share
             </div>
             <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -106,7 +106,7 @@ export default async function ReportsPage() {
                 title="Accrued (not yet paid)"
                 value={formatPhpFromCents(investor.accruedUnpaidCents)}
                 subtitle={
-                  <Link href="/investors" className="underline hover:text-zinc-800">
+                  <Link href="/investors" className="underline hover:text-zinc-200">
                     Manage in Investors →
                   </Link>
                 }
@@ -115,7 +115,7 @@ export default async function ReportsPage() {
           </>
         ) : null}
 
-        <div className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-600">
+        <div className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-500">
           On-hand inventory
         </div>
         <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -136,19 +136,19 @@ export default async function ReportsPage() {
           />
         </div>
 
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-medium text-zinc-800">
+              <div className="text-sm font-medium text-zinc-100">
                 Top products (last 30 days)
               </div>
-              <div className="mt-1 text-xs text-zinc-600">
+              <div className="mt-1 text-xs text-zinc-400">
                 Based on paid orders. Profit uses unit cost stored at sale time.
               </div>
             </div>
             <a
               href="/api/export/stock-levels.csv"
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
             >
               Export Stock CSV
             </a>

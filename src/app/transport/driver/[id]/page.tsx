@@ -34,17 +34,17 @@ export default async function DriverPage(props: {
   return (
     <AppShell>
       <div className="mx-auto max-w-lg px-0 py-4">
-        <Link href="/transport" className="text-xs text-zinc-600 hover:text-zinc-800">
+        <Link href="/transport" className="text-xs text-zinc-400 hover:text-zinc-200">
           ← Back to transport
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Driver mode · #{job.id}</h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-1 text-sm text-zinc-400">
           {job.customerName}: {job.pickupLocation} → {job.dropoffLocation}
         </p>
-        <p className="text-xs text-zinc-600">Status: {job.status}</p>
+        <p className="text-xs text-zinc-500">Status: {job.status}</p>
 
-        <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600">
-          <div className="font-medium text-zinc-800">Before you drive</div>
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-400">
+          <div className="font-medium text-zinc-200">Before you drive</div>
           <p className="mt-1">
             Customer tracking only works while this page is open and location sharing
             is started below.
@@ -55,19 +55,19 @@ export default async function DriverPage(props: {
           <DriverTracker jobId={job.id} trackingToken={job.trackingToken} />
         </div>
 
-        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-zinc-600">
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-zinc-400">
           <div className="font-medium text-amber-100">Customer tracking link</div>
           <p className="mt-1">
             Send this URL to your customer — it works without login on any phone.
           </p>
-          <p className="mt-2 break-all font-mono text-[11px] text-zinc-800">
+          <p className="mt-2 break-all font-mono text-[11px] text-zinc-200">
             {getTrackingUrl(job.trackingToken)}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <CopyTrackingLink token={job.trackingToken} />
             <Link
               href={getTrackingUrl(job.trackingToken)}
-              className="rounded border border-zinc-200 px-2 py-0.5 text-zinc-700"
+              className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
               target="_blank"
               rel="noopener noreferrer"
             >

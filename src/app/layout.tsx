@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Poppins } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import { BRAND_DESCRIPTION, BRAND_LOGO_PATH, BRAND_NAME } from "@/lib/brand";
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 const poppins = Poppins({
   variable: "--font-brand",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -44,9 +39,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex h-full flex-col overflow-hidden bg-[var(--background)] text-zinc-900">
+      <body className="flex h-full flex-col overflow-hidden bg-brand-black text-zinc-50">
         {children}
       </body>
     </html>

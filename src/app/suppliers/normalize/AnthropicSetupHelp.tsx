@@ -1,25 +1,25 @@
 export function FreeParseTips() {
   return (
-    <div className="space-y-2 text-xs leading-relaxed text-zinc-600">
+    <div className="space-y-2 text-xs leading-relaxed text-zinc-400">
       <p className="font-medium text-brand-cyan/90">Free parsing (no API key needed)</p>
       <ul className="list-disc space-y-1 pl-4">
         <li>
-          <strong className="text-zinc-800">Paste text</strong> — copy product lines from
+          <strong className="text-zinc-200">Paste text</strong> — copy product lines from
           Messenger, Viber, or Google Sheets (include names + wholesale prices).
         </li>
         <li>
-          <strong className="text-zinc-800">Upload PDF</strong> — text-based supplier PDFs
+          <strong className="text-zinc-200">Upload PDF</strong> — text-based supplier PDFs
           work automatically.
         </li>
         <li>
-          <strong className="text-zinc-800">Photos (PNG/JPG)</strong> — OCR runs in your
+          <strong className="text-zinc-200">Photos (PNG/JPG)</strong> — OCR runs in your
           browser, then results are matched to your catalog. For messy photos, use{" "}
-          <strong className="text-zinc-800">Smart scan</strong> (Claude + catalog).
+          <strong className="text-zinc-200">Smart scan</strong> (Claude + catalog).
         </li>
       </ul>
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-500">
         Example line:{" "}
-        <code className="rounded bg-white border border-zinc-300 px-1">
+        <code className="rounded bg-black/40 px-1">
           Aozi Gold Adult 20kg 2975
         </code>{" "}
         or paste a tab-separated sheet with columns like item, size, wholesale.
@@ -31,9 +31,9 @@ export function FreeParseTips() {
 export function AnthropicSetupHelp(props: { compact?: boolean }) {
   if (props.compact) {
     return (
-      <p className="text-xs leading-relaxed text-zinc-600">
+      <p className="text-xs leading-relaxed text-zinc-400">
         Optional: add{" "}
-        <code className="rounded bg-white border border-zinc-300 px-1 py-0.5 text-[10px] text-zinc-800">
+        <code className="rounded bg-black/40 px-1 py-0.5 text-[10px] text-zinc-200">
           ANTHROPIC_API_KEY
         </code>{" "}
         for photo/PDF AI scanning. Text and PDF parsing works without it.
@@ -42,10 +42,10 @@ export function AnthropicSetupHelp(props: { compact?: boolean }) {
   }
 
   return (
-    <div className="space-y-3 text-xs leading-relaxed text-zinc-600">
+    <div className="space-y-3 text-xs leading-relaxed text-zinc-400">
       <FreeParseTips />
-      <div className="border-t border-zinc-200 pt-3">
-        <p className="font-medium text-zinc-700">Smart scan (recommended for PDF/photos)</p>
+      <div className="border-t border-white/10 pt-3">
+        <p className="font-medium text-zinc-300">Smart scan (recommended for PDF/photos)</p>
         <p className="mt-1">
           Add a Claude key from{" "}
           <a
@@ -56,8 +56,8 @@ export function AnthropicSetupHelp(props: { compact?: boolean }) {
           >
             console.anthropic.com
           </a>{" "}
-          to <code className="rounded bg-white border border-zinc-300 px-1">.env.local</code> or Vercel as{" "}
-          <code className="rounded bg-white border border-zinc-300 px-1">ANTHROPIC_API_KEY</code>.
+          to <code className="rounded bg-black/40 px-1">.env.local</code> or Vercel as{" "}
+          <code className="rounded bg-black/40 px-1">ANTHROPIC_API_KEY</code>.
           Smart scan reads the document and sorts rows using your shop&apos;s known
           brands, items, flavors, and pack sizes — not just what the PDF OCR guessed.
         </p>

@@ -84,18 +84,18 @@ export function TransportJobForm(props: {
   return (
     <form action={createTransportJob} className="space-y-4">
       <label className="space-y-1">
-        <div className="text-xs text-zinc-700">Customer name *</div>
+        <div className="text-xs text-zinc-300">Customer name *</div>
         <input
           name="customerName"
           required
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
       </label>
       <label className="space-y-1">
-        <div className="text-xs text-zinc-700">Contact</div>
+        <div className="text-xs text-zinc-300">Contact</div>
         <input
           name="contact"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
       </label>
 
@@ -146,12 +146,12 @@ export function TransportJobForm(props: {
       />
 
       {!pickupPoint || !dropoffPoint ? (
-        <p className="text-[11px] text-amber-800/80">
+        <p className="text-[11px] text-amber-300/80">
           Select pickup and dropoff on the map above before creating the job.
         </p>
       ) : null}
 
-      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-[11px] text-zinc-600">
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-[11px] text-zinc-500">
         Base {formatPhpFromCents(preview.baseFeeCents)} + distance{" "}
         {formatPhpFromCents(preview.distanceFeeCents)}
         {breakdown ? (
@@ -180,7 +180,7 @@ export function TransportJobForm(props: {
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs text-zinc-700">Extras (toll, food, pet needs)</div>
+        <div className="text-xs text-zinc-300">Extras (toll, food, pet needs)</div>
         {extras.map((ex, i) => (
           <div key={i} className="flex gap-2">
             <select
@@ -191,7 +191,7 @@ export function TransportJobForm(props: {
                 next[i] = { ...next[i], label: e.target.value };
                 setExtras(next);
               }}
-              className="flex-1 rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+              className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-xs"
             >
               {EXTRA_PRESETS.map((p) => (
                 <option key={p} value={p}>
@@ -208,33 +208,33 @@ export function TransportJobForm(props: {
                 setExtras(next);
               }}
               placeholder="₱"
-              className="w-20 rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+              className="w-20 rounded border border-white/10 bg-black/30 px-2 py-1 text-xs"
             />
           </div>
         ))}
         <button
           type="button"
           onClick={() => setExtras([...extras, { label: "Other", amount: "" }])}
-          className="text-[10px] text-zinc-600 hover:text-zinc-800"
+          className="text-[10px] text-zinc-400 hover:text-zinc-200"
         >
           + Add extra line
         </button>
       </div>
 
       <label className="space-y-1">
-        <div className="text-xs text-zinc-700">Pet details</div>
+        <div className="text-xs text-zinc-300">Pet details</div>
         <input
           name="petDetails"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="space-y-1">
-          <div className="text-xs text-zinc-700">Service</div>
+          <div className="text-xs text-zinc-300">Service</div>
           <select
             name="serviceType"
             defaultValue="Pet Taxi"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
           >
             <option>Pet Taxi</option>
             <option>Vet Visit</option>
@@ -244,11 +244,11 @@ export function TransportJobForm(props: {
           </select>
         </label>
         <label className="space-y-1">
-          <div className="text-xs text-zinc-700">Status</div>
+          <div className="text-xs text-zinc-300">Status</div>
           <select
             name="status"
             defaultValue="Scheduled"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
           >
             <option>Requested</option>
             <option>Scheduled</option>
@@ -259,10 +259,10 @@ export function TransportJobForm(props: {
         </label>
       </div>
       <label className="space-y-1">
-        <div className="text-xs text-zinc-700">Notes</div>
+        <div className="text-xs text-zinc-300">Notes</div>
         <input
           name="notes"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
         />
       </label>
       <button

@@ -7,7 +7,7 @@ export function PrintButton(props: { label?: string; className?: string }) {
       onClick={() => window.print()}
       className={
         props.className ??
-        "rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50"
+        "rounded border border-white/10 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5"
       }
     >
       {props.label ?? "Print"}

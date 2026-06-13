@@ -9,7 +9,7 @@ import {
 import { formatPhpFromCents } from "@/lib/money";
 
 const fieldClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
+  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
 export function OrderDiscountFields(props: {
   subtotalCents: number;
@@ -39,17 +39,17 @@ export function OrderDiscountFields(props: {
   const netTotal = Math.max(0, props.subtotalCents - discountCents);
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white/[0.03] p-3">
+    <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
       <div>
-        <div className="text-xs font-medium text-zinc-800">Discount (optional)</div>
-        <p className="mt-0.5 text-[10px] text-zinc-600">
+        <div className="text-xs font-medium text-zinc-200">Discount (optional)</div>
+        <p className="mt-0.5 text-[10px] text-zinc-500">
           Applied to the order subtotal before payment. Shown on receipt for audit.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <label className="space-y-1">
-          <span className="text-[10px] text-zinc-600">Type</span>
+          <span className="text-[10px] text-zinc-500">Type</span>
           <select
             name="discountType"
             value={props.discountType}
@@ -66,7 +66,7 @@ export function OrderDiscountFields(props: {
 
         {props.discountType !== "None" ? (
           <label className="space-y-1">
-            <span className="text-[10px] text-zinc-600">
+            <span className="text-[10px] text-zinc-500">
               {props.discountType === "Fixed" ? "Amount (₱)" : "Percent (%)"}
             </span>
             <input
@@ -84,7 +84,7 @@ export function OrderDiscountFields(props: {
 
         {props.discountType !== "None" ? (
           <label className="space-y-1 sm:col-span-1">
-            <span className="text-[10px] text-zinc-600">Reason (optional)</span>
+            <span className="text-[10px] text-zinc-500">Reason (optional)</span>
             <input
               name="discountNote"
               value={props.discountNote}
@@ -98,8 +98,8 @@ export function OrderDiscountFields(props: {
         )}
       </div>
 
-      <dl className="space-y-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px]">
-        <div className="flex justify-between gap-2 text-zinc-600">
+      <dl className="space-y-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px]">
+        <div className="flex justify-between gap-2 text-zinc-400">
           <dt>Subtotal</dt>
           <dd>{formatPhpFromCents(props.subtotalCents)}</dd>
         </div>
@@ -109,7 +109,7 @@ export function OrderDiscountFields(props: {
             <dd>−{formatPhpFromCents(discountCents)}</dd>
           </div>
         ) : null}
-        <div className="flex justify-between gap-2 border-t border-zinc-200 pt-1 font-semibold text-zinc-800">
+        <div className="flex justify-between gap-2 border-t border-white/10 pt-1 font-semibold text-zinc-100">
           <dt>Total due</dt>
           <dd>{formatPhpFromCents(netTotal)}</dd>
         </div>

@@ -35,11 +35,11 @@ export default async function TransportPage() {
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <div className="text-sm text-zinc-600">Pet Transportation</div>
+        <div className="text-sm text-zinc-400">Pet Transportation</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
           Transport jobs
         </h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-zinc-400">
           You are the driver — km-based pricing, extras, receipts, and live
           tracking links for customers. {activeCount} active.
         </p>
@@ -56,8 +56,8 @@ export default async function TransportPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-              <div className="text-sm font-medium text-zinc-800">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="text-sm font-medium text-zinc-100">
                 New transport job
               </div>
               <div className="mt-5">
@@ -73,8 +73,8 @@ export default async function TransportPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-              <div className="text-sm font-medium text-zinc-800">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="text-sm font-medium text-zinc-100">
                 Recent jobs ({rows.length})
               </div>
               <div className="mt-4">
