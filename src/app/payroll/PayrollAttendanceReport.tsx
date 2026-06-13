@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { LiveShiftTimer } from "@/components/LiveShiftTimer";
+import { PayrollPrintSlipLink } from "@/components/PayrollPrintSlipLink";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import type { PayrollAttendanceReport } from "@/db/queries/payroll-attendance";
 import { formatPhpFromCents } from "@/lib/money";
@@ -272,6 +273,7 @@ export function PayrollAttendanceReport(props: {
                   <th className="px-3 py-2">Rate</th>
                   <th className="px-3 py-2">Gross</th>
                   <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Print</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-mono">
@@ -304,6 +306,14 @@ export function PayrollAttendanceReport(props: {
                       ) : (
                         <span className="text-zinc-600">—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <PayrollPrintSlipLink
+                        userId={s.userId}
+                        year={report.year}
+                        month={report.month}
+                        compact
+                      />
                     </td>
                   </tr>
                 ))}

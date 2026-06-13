@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import {
@@ -11,6 +10,7 @@ import {
   type PayrollActionResult,
 } from "@/app/payroll/actions";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
+import { PayrollPrintSlipLink } from "@/components/PayrollPrintSlipLink";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { formatDuration } from "@/lib/time-duration";
 import { formatPhpFromCents } from "@/lib/money";
@@ -166,7 +166,9 @@ export function PayrollPanel(props: {
           {props.reportYear && props.reportMonth
             ? ` for ${props.reportYear}-${String(props.reportMonth).padStart(2, "0")}`
             : ""}
-          . Lock month after it ends, then mark paid when disbursed.
+          . Lock month after it ends, then mark paid when disbursed. Use{" "}
+          <span className="text-[#e8a44a]">Print slip</span> in the last column for
+          a printable employee payroll.
         </p>
         <ScrollableTable maxHeight="max-h-[min(60vh,480px)]" className="mt-3">
           <table className="w-full text-xs">
@@ -177,6 +179,7 @@ export function PayrollPanel(props: {
                 <th className="px-3 py-2">Hours</th>
                 <th className="px-3 py-2">Gross pay</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Print slip</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
@@ -191,16 +194,15 @@ export function PayrollPanel(props: {
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{row.status}</td>
                   <td className="px-3 py-2">
+                    <PayrollPrintSlipLink
+                      userId={row.userId}
+                      year={row.year}
+                      month={row.month}
+                      compact
+                    />
+                  </td>
+                  <td className="px-3 py-2">
                     <div className="flex flex-col gap-1">
-                      {row.minutesWorked > 0 ? (
-                        <Link
-                          href={`/payroll/slip/${row.userId}?year=${row.year}&month=${row.month}`}
-                          target="_blank"
-                          className="text-[10px] text-[#e8a44a] underline"
-                        >
-                          Print slip
-                        </Link>
-                      ) : null}
                     {row.canGenerate ? (
                       <form action={genAction} className="inline">
                         <input type="hidden" name="userId" value={row.userId} />
