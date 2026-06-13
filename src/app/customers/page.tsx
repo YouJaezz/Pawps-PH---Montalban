@@ -3,9 +3,14 @@ import { CustomersTable } from "@/app/customers/CustomersTable";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { customers } from "@/db/schema";
+import { isAdmin } from "@/lib/roles";
+import { getSession } from "@/lib/session";
 import { rowSearchText } from "@/lib/table-filter";
 
 export default async function CustomersPage() {
+  const session = await getSession();
+  const admin = isAdmin(session?.role);
+
   const rows = await db
     .select({
       id: customers.id,
@@ -90,7 +95,7 @@ export default async function CustomersPage() {
                 <div className="text-xs text-zinc-400">{rows.length} customers</div>
               </div>
 
-              <CustomersTable rows={customerTableRows} />
+              <CustomersTable rows={customerTableRows} canDelete={admin} />
             </div>
           </div>
         </div>

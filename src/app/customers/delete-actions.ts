@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { customers } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireAdmin } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
 
 export async function deleteCustomer(formData: FormData) {
-  await requireAuth();
+  await requireAdmin();
 
   const customerId = Number.parseInt(String(formData.get("customerId") ?? ""), 10);
   if (!Number.isFinite(customerId) || customerId <= 0) {

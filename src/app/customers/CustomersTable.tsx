@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
+import {
+  updateCustomer,
+  type CustomerActionResult,
+} from "@/app/customers/actions";
 import { deleteCustomer } from "@/app/customers/delete-actions";
+import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { TableToolbar } from "@/components/TableToolbar";
 import { matchesQuery } from "@/lib/table-filter";
@@ -16,16 +21,34 @@ export type CustomerTableRow = {
   searchText: string;
 };
 
-export function CustomersTable(props: { rows: CustomerTableRow[] }) {
+export function CustomersTable(props: {
+  rows: CustomerTableRow[];
+  canDelete?: boolean;
+}) {
   const [query, setQuery] = useState("");
+  const [editRow, setEditRow] = useState<CustomerTableRow | null>(null);
+  const [updateState, updateAction, updatePending] = useActionState<
+    CustomerActionResult | null,
+    FormData
+  >(updateCustomer, null);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return props.rows;
     return props.rows.filter((r) => matchesQuery(r.searchText, query));
   }, [props.rows, query]);
 
+  useEffect(() => {
+    if (updateState?.ok) setEditRow(null);
+  }, [updateState?.ok]);
+
   return (
     <div>
+      {updateState?.error ? (
+        <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {updateState.error}
+        </div>
+      ) : null}
+
       <TableToolbar
         query={query}
         onQueryChange={setQuery}
@@ -46,7 +69,7 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
                 Location
               </th>
               <th className="w-28 px-4 py-3 font-medium">Spend</th>
-              <th className="w-20 px-4 py-3 font-medium">Actions</th>
+              <th className="w-28 px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
@@ -82,15 +105,26 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
                     ₱{(c.totalSpend / 100).toFixed(2)}
                   </td>
                   <td className="px-4 py-3">
-                    <form action={deleteCustomer}>
-                      <input type="hidden" name="customerId" value={c.id} />
+                    <div className="flex flex-wrap gap-1">
                       <button
-                        type="submit"
-                        className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/15"
+                        type="button"
+                        onClick={() => setEditRow(c)}
+                        className="rounded-lg border border-brand-blue/30 bg-brand-blue/10 px-2 py-1 text-xs text-brand-blue hover:bg-brand-blue/15"
                       >
-                        Delete
+                        Edit
                       </button>
-                    </form>
+                      {props.canDelete ? (
+                        <form action={deleteCustomer}>
+                          <input type="hidden" name="customerId" value={c.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/15"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -98,6 +132,54 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
           </tbody>
         </table>
       </ScrollableTable>
+
+      <EditModal
+        open={editRow != null}
+        onClose={() => setEditRow(null)}
+        title="Edit customer"
+        subtitle={editRow?.name}
+      >
+        {editRow ? (
+          <form action={updateAction} className="space-y-3">
+            <input type="hidden" name="customerId" value={editRow.id} />
+            <label className="block space-y-1">
+              <span className="text-[11px] text-zinc-400">Name *</span>
+              <input
+                name="name"
+                required
+                defaultValue={editRow.name}
+                disabled={updatePending}
+                className={modalFieldClass}
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-[11px] text-zinc-400">Contact</span>
+              <input
+                name="contact"
+                defaultValue={editRow.contact ?? ""}
+                disabled={updatePending}
+                className={modalFieldClass}
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-[11px] text-zinc-400">Location</span>
+              <input
+                name="location"
+                defaultValue={editRow.location ?? ""}
+                disabled={updatePending}
+                className={modalFieldClass}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={updatePending}
+              className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            >
+              {updatePending ? "Saving…" : "Save changes"}
+            </button>
+          </form>
+        ) : null}
+      </EditModal>
     </div>
   );
 }
