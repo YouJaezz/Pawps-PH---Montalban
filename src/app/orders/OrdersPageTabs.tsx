@@ -6,11 +6,14 @@ export function OrdersPageTabs(props: {
   activeTab: "orders" | "daily-sales";
   dateKey?: string;
   showDailySales?: boolean;
+  staffTodayOnly?: boolean;
 }) {
   const ordersHref = "/orders?tab=orders";
-  const dailyHref = props.dateKey
-    ? `/orders?tab=daily-sales&date=${props.dateKey}`
-    : "/orders?tab=daily-sales";
+  const dailyHref = props.staffTodayOnly
+    ? "/orders?tab=daily-sales"
+    : props.dateKey
+      ? `/orders?tab=daily-sales&date=${props.dateKey}`
+      : "/orders?tab=daily-sales";
 
   const tabClass = (active: boolean) =>
     active

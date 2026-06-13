@@ -52,12 +52,12 @@ function ShellBody(props: {
               ) : null}
               <NavItem href="/products" label="Inventory" hint={props.admin ? "CRUD" : "add stock"} />
               <NavItem href="/orders" label="Sales & Orders" hint="quick sell" />
+              <NavItem href="/preorders" label="Pre-orders" hint="customers" />
               <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
               <TeamChatNavLink />
               {props.admin ? (
                 <>
                   <NavItem href="/customers" label="Customers" hint="CRM" />
-                  <NavItem href="/preorders" label="Pre-orders" hint="customers" />
                   <NavItem
                     href="/delivery"
                     label="Delivery Log"

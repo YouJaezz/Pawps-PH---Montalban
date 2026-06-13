@@ -21,10 +21,12 @@ function pad2(n: number) {
 export function DailySalesPanel(props: {
   report: DailySalesReport;
   adminMode?: boolean;
+  todayOnly?: boolean;
 }) {
   const router = useRouter();
   const { report } = props;
   const dateInputValue = report.dateKey;
+  const showDateNav = props.adminMode && !props.todayOnly;
 
   const prevDate = (() => {
     const d = new Date(
@@ -46,30 +48,37 @@ export function DailySalesPanel(props: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-zinc-50">Daily sales</h2>
-          <p className="text-[11px] text-zinc-500">{report.dateLabel}</p>
+          <p className="text-[11px] text-zinc-500">
+            {props.todayOnly ? "Today only · " : ""}
+            {report.dateLabel}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/orders?tab=daily-sales&date=${prevDate}`}
-            className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/5"
-          >
-            ← Prev
-          </Link>
-          <input
-            type="date"
-            value={dateInputValue}
-            onChange={(e) => {
-              if (!e.target.value) return;
-              router.push(`/orders?tab=daily-sales&date=${e.target.value}`);
-            }}
-            className="app-select rounded-md border border-white/10 px-2 py-1 text-[11px]"
-          />
-          <Link
-            href={`/orders?tab=daily-sales&date=${nextDate}`}
-            className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/5"
-          >
-            Next →
-          </Link>
+          {showDateNav ? (
+            <>
+              <Link
+                href={`/orders?tab=daily-sales&date=${prevDate}`}
+                className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/5"
+              >
+                ← Prev
+              </Link>
+              <input
+                type="date"
+                value={dateInputValue}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  router.push(`/orders?tab=daily-sales&date=${e.target.value}`);
+                }}
+                className="app-select rounded-md border border-white/10 px-2 py-1 text-[11px]"
+              />
+              <Link
+                href={`/orders?tab=daily-sales&date=${nextDate}`}
+                className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/5"
+              >
+                Next →
+              </Link>
+            </>
+          ) : null}
           {props.adminMode ? (
             <a
               href={`/api/export/daily-sales.csv?date=${dateInputValue}`}

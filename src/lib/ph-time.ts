@@ -128,6 +128,11 @@ export function resolvePhDateParams(
   return { year, month, day };
 }
 
+export function phTodayDateKey() {
+  const { year, month, day } = phNow();
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
 /** Start of today in Philippines time. */
 export function phStartOfToday() {
   const { year, month, day } = phNow();

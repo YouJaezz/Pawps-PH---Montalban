@@ -26,6 +26,7 @@ export function isCashierPathAllowed(pathname: string) {
   if (pathname === "/customers") return true;
   if (pathname === "/attendance") return true;
   if (pathname === "/team-chat") return true;
+  if (pathname === "/preorders") return true;
   if (pathname.startsWith("/api/chat")) return true;
   return false;
 }
@@ -38,7 +39,6 @@ export function isAdminOnlyPath(pathname: string) {
   if (pathname.startsWith("/payroll")) return true;
   if (pathname.startsWith("/suppliers")) return true;
   if (pathname.startsWith("/delivery")) return true;
-  if (pathname.startsWith("/preorders")) return true;
   if (pathname.startsWith("/transport")) return true;
   if (pathname.startsWith("/api/export")) return true;
   return false;

@@ -35,6 +35,7 @@ export function MobileNav(props: { admin: boolean }) {
 
   const cashierItems = [
     { href: "/orders", label: "Sales" },
+    { href: "/preorders", label: "Pre-order" },
     { href: "/products", label: "Stock" },
     { href: "/customers", label: "Customers" },
     { href: "/attendance", label: "Time" },

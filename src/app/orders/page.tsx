@@ -7,7 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { getDailySalesReport } from "@/db/queries/daily-sales";
 import { getOrdersPageData } from "@/db/queries/orders-board";
-import { resolvePhDateParams } from "@/lib/ph-time";
+import { phNow, phTodayDateKey, resolvePhDateParams } from "@/lib/ph-time";
 
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/roles";
@@ -20,18 +20,22 @@ export default async function OrdersPage(props: {
   const admin = isAdmin(session?.role);
   const sp = await props.searchParams;
   const wantsDailySales = sp.tab === "daily-sales";
+  const todayKey = phTodayDateKey();
 
-  if (wantsDailySales && !admin) {
-    redirect("/orders?tab=orders");
+  if (!admin && wantsDailySales && sp.date && sp.date !== todayKey) {
+    redirect("/orders?tab=daily-sales");
   }
 
   const activeTab = wantsDailySales ? "daily-sales" : "orders";
-  const { year, month, day } = resolvePhDateParams(sp.date);
+  const { year, month, day } =
+    wantsDailySales && !admin ? phNow() : resolvePhDateParams(sp.date);
 
   const [{ customerRows, quickSellProducts, boardRows, editableByOrderId }, dailyReport] =
     await Promise.all([
       getOrdersPageData(),
-      admin ? getDailySalesReport(year, month, day) : Promise.resolve(null),
+      wantsDailySales
+        ? getDailySalesReport(year, month, day)
+        : Promise.resolve(null),
     ]);
 
   return (
@@ -42,7 +46,9 @@ export default async function OrdersPage(props: {
           title={activeTab === "daily-sales" ? "Daily sales" : "Orders"}
           description={
             activeTab === "daily-sales"
-              ? "Collections, unpaid balances, and payments for the selected date."
+              ? admin
+                ? "Collections, unpaid balances, and payments for the selected date."
+                : "Today's collections, unpaid balances, and payments only."
               : "New sales start as Pending · confirm before checkout · print receipt after"
           }
           actions={
@@ -58,19 +64,22 @@ export default async function OrdersPage(props: {
           }
         />
 
-        {admin ? (
-          <div className="mt-3 shrink-0">
-            <OrdersPageTabs
-              activeTab={activeTab}
-              dateKey={dailyReport?.dateKey}
-              showDailySales
-            />
-          </div>
-        ) : null}
+        <div className="mt-3 shrink-0">
+          <OrdersPageTabs
+            activeTab={activeTab}
+            dateKey={admin ? dailyReport?.dateKey : todayKey}
+            showDailySales
+            staffTodayOnly={!admin}
+          />
+        </div>
 
         <div className="mt-3 min-h-0 flex-1">
           {activeTab === "daily-sales" && dailyReport ? (
-            <DailySalesPanel report={dailyReport} adminMode={admin} />
+            <DailySalesPanel
+              report={dailyReport}
+              adminMode={admin}
+              todayOnly={!admin}
+            />
           ) : (
             <OrdersBoard
               rows={boardRows}
