@@ -10,6 +10,7 @@ import {
   grossPayFromMinutes,
 } from "@/db/queries/payroll";
 import { requireAdmin } from "@/lib/auth-guard";
+import { parseMoneyToCents } from "@/lib/money";
 import { phIsCurrentMonth, phMonthLabel } from "@/lib/ph-time";
 
 export type PayrollActionResult = {
@@ -21,13 +22,6 @@ export type PayrollActionResult = {
 function revalidatePayroll() {
   revalidatePath("/payroll");
   revalidatePath("/attendance");
-}
-
-function parseMoneyToCents(value: FormDataEntryValue | null) {
-  const str = typeof value === "string" ? value.trim() : "";
-  const n = Number(str);
-  if (!Number.isFinite(n)) return 0;
-  return Math.round(n * 100);
 }
 
 export async function updateEmployeeHourlyRate(

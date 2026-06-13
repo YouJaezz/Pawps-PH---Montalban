@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
+import { BRAND_DESCRIPTION, BRAND_LOGO_PATH, BRAND_NAME } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   },
   description: BRAND_DESCRIPTION,
   applicationName: BRAND_NAME,
+  icons: {
+    icon: BRAND_LOGO_PATH,
+    apple: BRAND_LOGO_PATH,
+  },
 };
 
 /** Always render on the server — pages query Turso/SQLite at request time. */

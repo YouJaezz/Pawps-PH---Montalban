@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import {
@@ -190,6 +191,16 @@ export function PayrollPanel(props: {
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{row.status}</td>
                   <td className="px-3 py-2">
+                    <div className="flex flex-col gap-1">
+                      {row.minutesWorked > 0 ? (
+                        <Link
+                          href={`/payroll/slip/${row.userId}?year=${row.year}&month=${row.month}`}
+                          target="_blank"
+                          className="text-[10px] text-[#e8a44a] underline"
+                        >
+                          Print slip
+                        </Link>
+                      ) : null}
                     {row.canGenerate ? (
                       <form action={genAction} className="inline">
                         <input type="hidden" name="userId" value={row.userId} />
@@ -240,6 +251,7 @@ export function PayrollPanel(props: {
                         </button>
                       </form>
                     ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}

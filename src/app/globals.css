@@ -89,3 +89,10 @@ body {
   background-color: #18181b;
   color: #fafafa;
 }
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+}

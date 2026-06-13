@@ -5,17 +5,45 @@ export function StatCard(props: {
   value: string;
   subtitle?: ReactNode;
   icon?: ReactNode;
+  accent?: boolean;
+  compact?: boolean;
 }) {
+  const shell = props.accent
+    ? "border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/15 to-[#e8a44a]/5"
+    : "border-white/10 bg-white/5";
+  const pad = props.compact ? "p-4" : "p-5";
+  const valueSize = props.compact ? "text-xl" : "text-2xl";
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-sm backdrop-blur">
+    <div
+      className={`rounded-2xl border shadow-sm backdrop-blur ${shell} ${pad}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-sm text-zinc-300">{props.title}</div>
-          <div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-50">
+          <div
+            className={
+              props.compact
+                ? "text-[11px] text-zinc-500"
+                : "text-sm text-zinc-300"
+            }
+          >
+            {props.title}
+          </div>
+          <div
+            className={`mt-1 font-semibold tracking-tight text-zinc-50 ${valueSize}`}
+          >
             {props.value}
           </div>
           {props.subtitle ? (
-            <div className="mt-1 text-sm text-zinc-400">{props.subtitle}</div>
+            <div
+              className={
+                props.compact
+                  ? "mt-0.5 text-[10px] text-zinc-500"
+                  : "mt-1 text-sm text-zinc-400"
+              }
+            >
+              {props.subtitle}
+            </div>
           ) : null}
         </div>
         {props.icon ? (
@@ -27,4 +55,3 @@ export function StatCard(props: {
     </div>
   );
 }
-

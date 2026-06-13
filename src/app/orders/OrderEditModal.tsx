@@ -12,7 +12,8 @@ import {
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { saleUnitLabel } from "@/lib/price-units";
-import { formatPhpFromCents } from "@/lib/money";
+import { centsToInput, formatPhpFromCents } from "@/lib/money";
+import { isOrderOpen, normalizeOrderStatus } from "@/lib/order-status";
 
 export type OrderLineEdit = {
   id: number;
@@ -44,10 +45,6 @@ export type OrderEditPayload = {
 const inputClass =
   "w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-50 outline-none";
 
-function centsToInput(cents: number) {
-  return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
-}
-
 function qtyInputValue(line: OrderLineEdit) {
   if (line.saleUnit === "Kilogram" && line.quantityTenths != null) {
     return String(line.quantityTenths / 100);
@@ -64,8 +61,7 @@ export function OrderEditModal(props: {
   if (!props.order) return null;
 
   const o = props.order;
-  const canEditLines =
-    o.orderStatus !== "Cancelled" && o.orderStatus !== "Completed";
+  const canEditLines = isOrderOpen(normalizeOrderStatus(o.orderStatus));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3">

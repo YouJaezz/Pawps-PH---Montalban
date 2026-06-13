@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { DailySalesReport } from "@/db/queries/daily-sales";
 import { ScrollableTable } from "@/components/ScrollableTable";
+import { StatCard } from "@/components/StatCard";
 import {
   normalizeOrderStatus,
   ORDER_STATUS_LABELS,
@@ -15,29 +16,6 @@ import { formatOrderWhen } from "@/lib/order-timestamp";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
-}
-
-function SummaryCard(props: {
-  label: string;
-  value: string;
-  subtitle: string;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className={
-        props.accent
-          ? "rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/15 to-[#e8a44a]/5 p-4"
-          : "rounded-xl border border-white/10 bg-white/5 p-4"
-      }
-    >
-      <div className="text-[11px] text-zinc-500">{props.label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50">
-        {props.value}
-      </div>
-      <div className="mt-1 text-[10px] text-zinc-500">{props.subtitle}</div>
-    </div>
-  );
 }
 
 export function DailySalesPanel(props: {
@@ -104,14 +82,16 @@ export function DailySalesPanel(props: {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <SummaryCard
+        <StatCard
           accent
-          label="Total existing balance"
+          compact
+          title="Total existing balance"
           value={formatPhpFromCents(report.summary.totalExistingBalanceCents)}
           subtitle={`${report.summary.unpaidOrderCount} order(s) with balance`}
         />
-        <SummaryCard
-          label="Collected today"
+        <StatCard
+          compact
+          title="Collected today"
           value={formatPhpFromCents(report.summary.collectedTodayCents)}
           subtitle={`${report.summary.paymentCount} payment(s) on this date`}
         />
@@ -241,16 +221,18 @@ export function DailySalesPanel(props: {
         <h3 className="text-sm font-medium text-zinc-100">Daily collections</h3>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <SummaryCard
+          <StatCard
             accent
-            label="Total collected"
+            compact
+            title="Total collected"
             value={formatPhpFromCents(report.collections.totalCollectedCents)}
             subtitle={`${report.collections.paymentsReceived.length} payment(s)`}
           />
           {report.collections.methodBreakdown.map((m) => (
-            <SummaryCard
+            <StatCard
               key={m.method}
-              label={m.method}
+              compact
+              title={m.method}
               value={formatPhpFromCents(m.amountCents)}
               subtitle={`${m.count} payment(s)`}
             />
@@ -258,18 +240,21 @@ export function DailySalesPanel(props: {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <SummaryCard
-            label="Order charges (this date)"
+          <StatCard
+            compact
+            title="Order charges (this date)"
             value={formatPhpFromCents(report.collections.totalChargesCents)}
             subtitle={`${report.collections.visitCount} order(s)`}
           />
-          <SummaryCard
-            label="Paid (on these orders)"
+          <StatCard
+            compact
+            title="Paid (on these orders)"
             value={formatPhpFromCents(report.collections.totalPaidCents)}
             subtitle="Amount collected on these orders"
           />
-          <SummaryCard
-            label="Outstanding balance"
+          <StatCard
+            compact
+            title="Outstanding balance"
             value={formatPhpFromCents(report.collections.outstandingCents)}
             subtitle="Charges minus payments on these orders"
           />

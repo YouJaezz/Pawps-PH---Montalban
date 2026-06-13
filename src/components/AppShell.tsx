@@ -4,9 +4,11 @@ import { ReactNode } from "react";
 import { getPendingDeliveryCount } from "@/db/queries/delivery-nav";
 import { getUserOpenShift } from "@/db/queries/time-attendance";
 import { logoutAction } from "@/app/login/actions";
+import { BrandLogo } from "@/components/BrandLogo";
+import { MobileNav } from "@/components/MobileNav";
 import { SidebarShiftStatus } from "@/components/SidebarShiftStatus";
 import { TeamChatWidget } from "@/components/TeamChatWidget";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { BRAND_TAGLINE } from "@/lib/brand";
 import { isAdmin, roleLabel } from "@/lib/roles";
 import { getSession, type SessionUser } from "@/lib/session";
 
@@ -37,13 +39,11 @@ export async function AppShell(props: {
 
   return (
     <div className="h-dvh overflow-hidden bg-[#07070a] text-zinc-50">
-      <div className="mx-auto flex h-full w-full max-w-none gap-4 px-4 py-4 lg:px-6 lg:py-6">
-        <aside className="hidden w-64 shrink-0 md:block">
+      <div className="mx-auto flex h-full w-full max-w-none gap-4 px-4 py-4 pb-20 md:pb-4 lg:px-6 lg:py-6">
+        <aside className="hidden w-64 shrink-0 print:hidden md:block">
           <div className="sticky top-0 flex max-h-[calc(100dvh-3rem)] flex-col rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="text-sm font-semibold tracking-tight">
-              {BRAND_NAME}
-            </div>
-            <div className="mt-1 text-xs text-zinc-400">{BRAND_TAGLINE}</div>
+            <BrandLogo size="md" />
+            <div className="mt-2 text-xs text-zinc-500">{BRAND_TAGLINE}</div>
             <div className="mt-4 flex-1 space-y-1 overflow-y-auto">
               {admin ? (
                 <>
@@ -54,7 +54,7 @@ export async function AppShell(props: {
                 </>
               ) : null}
               <NavItem href="/products" label="Inventory" hint={admin ? "CRUD" : "add stock"} />
-              <NavItem href="/orders" label="Sales & Orders" hint="POS" />
+              <NavItem href="/orders" label="Sales & Orders" hint="quick sell" />
               <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
               <NavItem href="/team-chat" label="Team chat" hint="staff" />
               {admin ? (
@@ -71,13 +71,7 @@ export async function AppShell(props: {
                     }
                   />
                   <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
-                  <NavItem
-                    href="/suppliers/normalize"
-                    label="Pricelist AI"
-                    hint="normalize"
-                  />
                   <NavItem href="/transport" label="Pet Transport" hint="driver" />
-                  <NavItem href="/pos" label="Future POS" hint="placeholder" />
                   <NavItem href="/settings" label="Settings" hint="admin" />
                 </>
               ) : (
@@ -108,14 +102,21 @@ export async function AppShell(props: {
           </div>
         </aside>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{props.children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto print:overflow-visible">
+          {props.children}
+        </main>
       </div>
+
+      <MobileNav admin={admin} />
+
       {session ? (
-        <TeamChatWidget
-          userId={session.userId}
-          userName={session.name ?? session.email}
-          isAdmin={admin}
-        />
+        <div className="print:hidden">
+          <TeamChatWidget
+            userId={session.userId}
+            userName={session.name ?? session.email}
+            isAdmin={admin}
+          />
+        </div>
       ) : null}
     </div>
   );

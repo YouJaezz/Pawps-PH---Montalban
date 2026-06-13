@@ -1,6 +1,7 @@
 import { PayrollAttendanceReport } from "@/app/payroll/PayrollAttendanceReport";
 import { PayrollPanel } from "@/app/payroll/PayrollPanel";
 import { AppShell } from "@/components/AppShell";
+import { PageHeader } from "@/components/PageHeader";
 import {
   getPayrollAttendanceReport,
   resolvePayrollReportPeriod,
@@ -25,11 +26,11 @@ export default async function PayrollPage(props: {
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Payroll</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Staff Time In/Out hours, attendance reports, hourly rates, and monthly pay
-          disbursement.
-        </p>
+        <PageHeader
+          eyebrow="Admin"
+          title="Payroll"
+          description="Staff hours from Time In/Out, hourly rates, printable slips, and monthly disbursement."
+        />
 
         <div className="mt-6 space-y-6">
           <PayrollAttendanceReport report={attendanceReport} />

@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { PrintReceiptButton } from "@/components/PrintReceiptButton";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { BrandLogo } from "@/components/BrandLogo";
+import { BRAND_TAGLINE } from "@/lib/brand";
 import { formatPhpFromCents } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import type { OrderReceiptData } from "@/lib/order-receipt";
@@ -42,8 +43,10 @@ export function OrderReceiptView(props: {
         className="rounded-2xl border border-white/10 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
       >
         <div className="text-center">
-          <div className="text-lg font-bold">{BRAND_NAME}</div>
-          <div className="text-xs text-zinc-600">{BRAND_TAGLINE}</div>
+          <div className="flex justify-center">
+            <BrandLogo size="sm" className="max-w-[110px]" />
+          </div>
+          <div className="mt-1 text-xs text-zinc-600">{BRAND_TAGLINE}</div>
           <div className="mt-2 text-sm font-medium">Sales Receipt</div>
           <div className="text-xs text-zinc-500">Order #{receipt.orderId}</div>
         </div>

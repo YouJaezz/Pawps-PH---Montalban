@@ -17,7 +17,7 @@ import {
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { formatStockLabel } from "@/lib/product-stock";
-import { formatPhpFromCents } from "@/lib/money";
+import { formatPhpFromCents, parseMoneyToCents } from "@/lib/money";
 import {
   normalizeOrderCreatedAt,
 } from "@/lib/order-timestamp";
@@ -71,13 +71,6 @@ function actionSuccess(
 function formatActionError(err: unknown) {
   if (err instanceof Error && err.message) return err.message;
   return "Something went wrong. Please try again.";
-}
-
-function parseMoneyToCents(value: FormDataEntryValue | null) {
-  const str = typeof value === "string" ? value.trim() : "";
-  const n = Number(str);
-  if (!Number.isFinite(n)) return 0;
-  return Math.round(n * 100);
 }
 
 function parseIntOr(value: FormDataEntryValue | null, fallback: number) {

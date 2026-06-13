@@ -5,6 +5,7 @@ import Link from "next/link";
 export function OrdersPageTabs(props: {
   activeTab: "orders" | "daily-sales";
   dateKey?: string;
+  showDailySales?: boolean;
 }) {
   const ordersHref = "/orders?tab=orders";
   const dailyHref = props.dateKey
@@ -24,12 +25,14 @@ export function OrdersPageTabs(props: {
       >
         Orders
       </Link>
-      <Link
-        href={dailyHref}
-        className={`rounded-t-lg border px-4 py-2 text-xs font-medium ${tabClass(props.activeTab === "daily-sales")}`}
-      >
-        Daily sales
-      </Link>
+      {props.showDailySales !== false ? (
+        <Link
+          href={dailyHref}
+          className={`rounded-t-lg border px-4 py-2 text-xs font-medium ${tabClass(props.activeTab === "daily-sales")}`}
+        >
+          Daily sales
+        </Link>
+      ) : null}
     </div>
   );
 }
