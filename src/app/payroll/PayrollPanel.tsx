@@ -26,7 +26,7 @@ function Banner(props: { state: PayrollActionResult | null }) {
   }
   if (props.state.ok && props.state.message) {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+      <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/80">
         {props.state.message}
       </div>
     );
@@ -112,7 +112,7 @@ export function PayrollPanel(props: {
                     <button
                       type="button"
                       onClick={() => setRateEditId(e.id)}
-                      className="text-[10px] text-[#e8a44a] underline"
+                      className="text-[10px] text-brand-blue underline"
                     >
                       Edit rate
                     </button>
@@ -167,7 +167,7 @@ export function PayrollPanel(props: {
             ? ` for ${props.reportYear}-${String(props.reportMonth).padStart(2, "0")}`
             : ""}
           . Lock month after it ends, then mark paid when disbursed. Use{" "}
-          <span className="text-[#e8a44a]">Print slip</span> in the last column for
+          <span className="text-brand-blue">Print slip</span> in the last column for
           a printable employee payroll.
         </p>
         <ScrollableTable maxHeight="max-h-[min(60vh,480px)]" className="mt-3">
@@ -189,7 +189,7 @@ export function PayrollPanel(props: {
                   <td className="px-3 py-2 text-zinc-200">{row.employeeName}</td>
                   <td className="px-3 py-2">{row.label}</td>
                   <td className="px-3 py-2">{formatDuration(row.minutesWorked)}</td>
-                  <td className="px-3 py-2 font-medium text-emerald-300">
+                  <td className="px-3 py-2 font-medium text-brand-cyan/80">
                     {formatPhpFromCents(row.grossPayCents)}
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{row.status}</td>
@@ -224,7 +224,7 @@ export function PayrollPanel(props: {
                           <button
                             type="submit"
                             disabled={pending}
-                            className="text-[10px] text-emerald-300 underline"
+                            className="text-[10px] text-brand-cyan/80 underline"
                           >
                             Mark paid
                           </button>

@@ -1,7 +1,7 @@
 export function FreeParseTips() {
   return (
     <div className="space-y-2 text-xs leading-relaxed text-zinc-400">
-      <p className="font-medium text-emerald-100">Free parsing (no API key needed)</p>
+      <p className="font-medium text-brand-cyan/90">Free parsing (no API key needed)</p>
       <ul className="list-disc space-y-1 pl-4">
         <li>
           <strong className="text-zinc-200">Paste text</strong> — copy product lines from

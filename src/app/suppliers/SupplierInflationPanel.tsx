@@ -22,7 +22,7 @@ function formatPercent(value: number | null) {
 function changeColor(value: number | null) {
   if (value == null) return "text-zinc-400";
   if (value > 0) return "text-red-300";
-  if (value < 0) return "text-emerald-300";
+  if (value < 0) return "text-brand-cyan/80";
   return "text-zinc-300";
 }
 
@@ -85,7 +85,7 @@ export function SupplierInflationPanel(props: {
             </div>
             <ScrollableTable maxHeight="max-h-36" className="mt-1">
               <table className="w-full text-[11px]">
-                <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+                <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
                   <tr>
                     <th className="px-2 py-1">Date</th>
                     <th className="px-2 py-1">Supplier</th>
@@ -111,7 +111,7 @@ export function SupplierInflationPanel(props: {
                       <td className="hidden px-2 py-1 text-red-300/80 sm:table-cell">
                         {u.itemsIncreased}
                       </td>
-                      <td className="hidden px-2 py-1 text-emerald-300/80 sm:table-cell">
+                      <td className="hidden px-2 py-1 text-brand-cyan/80/80 sm:table-cell">
                         {u.itemsDecreased}
                       </td>
                     </tr>
@@ -129,7 +129,7 @@ export function SupplierInflationPanel(props: {
             </div>
             <ScrollableTable maxHeight="max-h-32" className="mt-1">
               <table className="w-full text-[11px]">
-                <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+                <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
                   <tr>
                     <th className="px-2 py-1">Item</th>
                     <th className="px-2 py-1">Change</th>

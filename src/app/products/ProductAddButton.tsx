@@ -45,7 +45,7 @@ export function ProductAddButton(props: {
           aria-labelledby="add-product-title"
         >
           <div
-            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#13131f] p-5 shadow-xl"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-surface-elevated p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2">

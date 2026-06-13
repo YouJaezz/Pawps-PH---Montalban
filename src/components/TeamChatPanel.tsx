@@ -147,7 +147,7 @@ export function TeamChatPanel(props: {
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0c0c12] ${
+      className={`flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0a1018] ${
         props.compact ? "h-full min-h-0" : "h-[min(70vh,560px)]"
       }`}
     >
@@ -174,9 +174,9 @@ export function TeamChatPanel(props: {
               <div
                 className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${
                   m.isAnnouncement
-                    ? "border border-[#e8a44a]/40 bg-[#e8a44a]/15 text-[#ffe8c4]"
+                    ? "border border-brand-blue/40 bg-brand-blue/15 text-brand-cyan/90"
                     : m.isOwn
-                      ? "bg-[#e8a44a]/20 text-zinc-100"
+                      ? "bg-brand-blue/20 text-zinc-100"
                       : "bg-white/10 text-zinc-200"
                 }`}
               >
@@ -185,7 +185,7 @@ export function TeamChatPanel(props: {
                     {m.isOwn ? "You" : m.senderName}
                   </span>
                   {m.isAnnouncement ? (
-                    <span className="text-[9px] uppercase tracking-wide text-[#e8a44a]">
+                    <span className="text-[9px] uppercase tracking-wide text-brand-blue">
                       Announcement
                     </span>
                   ) : null}

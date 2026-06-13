@@ -19,9 +19,9 @@ export function SidebarShiftStatus(props: { clockInAt: string | null }) {
   return (
     <Link
       href="/attendance"
-      className="mt-2 block rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 hover:bg-emerald-500/15"
+      className="mt-2 block rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-2 py-2 hover:bg-brand-blue/15"
     >
-      <div className="text-[9px] uppercase tracking-wide text-emerald-400/80">
+      <div className="text-[9px] uppercase tracking-wide text-brand-cyan/80">
         On duty · live
       </div>
       <LiveShiftTimer

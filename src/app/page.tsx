@@ -111,7 +111,7 @@ export default async function Home() {
               title="Investor share"
               value="Setup needed"
               subtitle={
-                <Link href="/investors" className="text-[#e8a44a] underline">
+                <Link href="/investors" className="text-brand-blue underline">
                   Complete agreement →
                 </Link>
               }
@@ -130,10 +130,10 @@ export default async function Home() {
         </div>
 
         {investor?.hasSetup ? (
-          <div className="mt-4 rounded-xl border border-[#e8a44a]/20 bg-[#e8a44a]/5 px-4 py-3 text-sm">
+          <div className="mt-4 rounded-xl border border-brand-blue/20 bg-brand-blue/5 px-4 py-3 text-sm">
             <span className="text-zinc-300">{investor.investorName}</span>
             <span className="text-zinc-500"> · </span>
-            <span className="text-[#e8a44a]">
+            <span className="text-brand-blue">
               {formatPhpFromCents(investor.currentShareCents)} this month
             </span>
             <span className="text-zinc-500"> · </span>

@@ -90,7 +90,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
           className="mt-2"
         >
           <table className="w-full min-w-[640px] text-[11px]">
-            <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+            <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
               <tr>
                 <th className="px-2 py-1.5 font-medium">Item</th>
                 <th className="hidden w-28 px-2 py-1.5 font-medium sm:table-cell">
@@ -133,7 +133,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
                     <td className="hidden max-w-[100px] truncate px-2 py-1 text-zinc-500 sm:table-cell">
                       {row.flavor === "—" ? "" : row.flavor}
                     </td>
-                    <td className="px-2 py-1 font-semibold text-emerald-300">
+                    <td className="px-2 py-1 font-semibold text-brand-cyan/80">
                       {formatPrice(best)}
                     </td>
                     <td className="max-w-[100px] truncate px-2 py-1 text-zinc-400">
@@ -158,7 +158,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
                               key={o.supplierId}
                               className={
                                 isBest
-                                  ? "text-emerald-300"
+                                  ? "text-brand-cyan/80"
                                   : "text-zinc-500"
                               }
                               title={o.supplierName}
@@ -185,7 +185,7 @@ export function SupplierPriceComparison(props: { rows: PriceComparisonRow[] }) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-[#e8a44a] hover:underline"
+            className="text-brand-blue hover:underline"
           >
             {expanded ? "Show less" : `Show all ${filtered.length}`}
           </button>

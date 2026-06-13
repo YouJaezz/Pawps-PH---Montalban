@@ -65,7 +65,7 @@ export function OrderEditModal(props: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#13131f] p-4 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-surface-elevated p-4 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="text-xs text-zinc-500">Edit order</div>
@@ -181,7 +181,7 @@ export function OrderEditModal(props: {
                       </p>
                       <button
                         type="submit"
-                        className="rounded border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-200"
+                        className="rounded border border-brand-cyan/30 px-2 py-0.5 text-[10px] text-brand-cyan/70"
                       >
                         Save line
                       </button>

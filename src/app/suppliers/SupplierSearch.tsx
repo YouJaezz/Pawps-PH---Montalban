@@ -133,7 +133,7 @@ export function SupplierSearch(props: {
 
       <ScrollableTable maxHeight="max-h-[min(52vh,520px)]" className="mt-2 min-h-0 flex-1">
         <table className="w-full table-auto text-[11px]">
-          <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+          <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
             <tr>
               <th className="px-2 py-1.5 font-medium">Supplier</th>
               <th className="px-2 py-1.5 font-medium">Item</th>

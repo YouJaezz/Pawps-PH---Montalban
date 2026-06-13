@@ -222,7 +222,7 @@ export function BulkOrderModal(props: {
             className="absolute inset-0 bg-black/60"
             onClick={closeModal}
           />
-          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[96vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0b0b10] shadow-2xl">
+          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[96vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
             <div className="shrink-0 border-b border-white/10 p-6 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -248,7 +248,7 @@ export function BulkOrderModal(props: {
             <div className="min-h-0 flex-1 overflow-y-auto">
             {step === "receipt" && state?.receipt ? (
               <div className="space-y-4 p-6">
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                <div className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-cyan/80">
                   {state.message ?? "Bulk order created."}
                 </div>
                 <OrderReceiptView receipt={state.receipt} compact />

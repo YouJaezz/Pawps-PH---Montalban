@@ -48,7 +48,7 @@ export function AddCatalogItemButton(props: {
         type="button"
         onClick={() => setOpen(true)}
         disabled={props.suppliers.length === 0}
-        className="rounded-md border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-2.5 py-1 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/15 disabled:opacity-50"
+        className="rounded-md border border-brand-blue/30 bg-brand-blue/10 px-2.5 py-1 text-[10px] text-brand-blue hover:bg-brand-blue/15 disabled:opacity-50"
       >
         Add item
       </button>

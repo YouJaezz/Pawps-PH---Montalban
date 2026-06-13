@@ -30,11 +30,11 @@ export function LiveShiftTimer(props: {
     <span className={`inline-flex items-center gap-2 ${props.className ?? ""}`}>
       {props.showPulse !== false ? (
         <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-cyan opacity-60" />
+          <span className="relative inline-flex size-2 rounded-full bg-brand-cyan" />
         </span>
       ) : null}
-      <span className={`tabular-nums text-emerald-300 ${sizeClass}`}>
+      <span className={`tabular-nums text-brand-cyan/80 ${sizeClass}`}>
         {formatLiveDuration(elapsedMs)}
       </span>
     </span>

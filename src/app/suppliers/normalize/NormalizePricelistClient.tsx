@@ -15,8 +15,8 @@ import type {
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf";
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
-const surface = { background: "#13131f", borderColor: "#1e1e30" };
-const accent = "#e8a44a";
+const surface = { background: "#101820", borderColor: "#1e1e30" };
+const accent = "#0E6DE3";
 const wsColor = "#4dcc88";
 const retailColor = "#5599dd";
 
@@ -240,7 +240,7 @@ export function NormalizePricelistClient(props: {
   };
 
   const inputClass =
-    "w-full rounded-lg border px-3 py-2 text-sm text-zinc-50 outline-none focus:border-[#e8a44a]/50";
+    "w-full rounded-lg border px-3 py-2 text-sm text-zinc-50 outline-none focus:border-brand-blue/50";
   const inputStyle = {
     ...surface,
     borderWidth: 1,
@@ -270,10 +270,10 @@ export function NormalizePricelistClient(props: {
         </div>
       ) : (
         <div
-          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4"
+          className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 p-4"
           style={{ borderWidth: 1, borderStyle: "solid" }}
         >
-          <div className="text-sm font-medium text-emerald-100">
+          <div className="text-sm font-medium text-brand-cyan/90">
             Free mode — catalog matching enabled
           </div>
           <div className="mt-2">
@@ -431,7 +431,7 @@ export function NormalizePricelistClient(props: {
                   <button
                     key={s.id}
                     type="button"
-                    className="rounded-lg border px-2.5 py-1 text-xs text-zinc-200 hover:border-[#e8a44a]/40"
+                    className="rounded-lg border px-2.5 py-1 text-xs text-zinc-200 hover:border-brand-blue/40"
                     style={{ borderColor: "#1e1e30", background: "#0f0f14" }}
                     onClick={() => setSupplierName(s.name)}
                   >
@@ -581,7 +581,7 @@ export function NormalizePricelistClient(props: {
                 <div className="scrollable-table-body max-h-[min(60vh,520px)] overflow-auto">
                   <table className="w-full min-w-[720px] text-left text-xs">
                     <thead className="sticky top-0 z-10">
-                      <tr style={{ background: "#13131f" }}>
+                      <tr style={{ background: "#101820" }}>
                         {[
                           "#",
                           "Type",

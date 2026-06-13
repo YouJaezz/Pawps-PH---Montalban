@@ -40,14 +40,14 @@ export function exportPricelistPdf(
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 24px; color: #111; }
-    .header { border-bottom: 3px solid #e8a44a; padding-bottom: 12px; margin-bottom: 20px; }
+    .header { border-bottom: 3px solid #0E6DE3; padding-bottom: 12px; margin-bottom: 20px; }
     .brand { font-size: 22px; font-weight: 700; color: #0f0f14; }
     .tagline { font-size: 12px; color: #666; margin-top: 2px; }
     .meta { font-size: 13px; margin-top: 8px; color: #333; }
     h2 { font-size: 16px; margin: 0 0 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
     th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-    th { background: #13131f; color: #fff; }
+    th { background: #101820; color: #fff; }
     tr:nth-child(even) { background: #f8f8fa; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .ws { color: #1a7a4a; font-weight: 600; }

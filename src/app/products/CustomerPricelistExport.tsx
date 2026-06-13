@@ -29,7 +29,7 @@ export function CustomerPricelistExport() {
       <button
         type="button"
         onClick={exportPricelist}
-        className="rounded-lg border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-3 py-1.5 text-xs text-[#e8a44a] hover:bg-[#e8a44a]/15"
+        className="rounded-lg border border-brand-blue/30 bg-brand-blue/10 px-3 py-1.5 text-xs text-brand-blue hover:bg-brand-blue/15"
       >
         Customer pricelist
       </button>

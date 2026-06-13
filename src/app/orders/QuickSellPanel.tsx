@@ -352,7 +352,7 @@ export function QuickSellPanel(props: {
             className="absolute inset-0 bg-black/60"
             onClick={closeModal}
           />
-          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[94vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0b0b10] shadow-2xl">
+          <div className="absolute left-1/2 top-1/2 flex max-h-[92vh] w-[94vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
             <div className="shrink-0 border-b border-white/10 p-6 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -377,7 +377,7 @@ export function QuickSellPanel(props: {
 
             {step === "receipt" && state?.receipt ? (
               <div className="space-y-4 overflow-y-auto p-6">
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                <div className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-cyan/80">
                   {state.message ?? "Order created."}
                 </div>
                 <OrderReceiptView receipt={state.receipt} compact />
@@ -597,7 +597,7 @@ export function QuickSellPanel(props: {
                     <button
                       type="button"
                       onClick={addToCart}
-                      className="mt-3 w-full rounded-xl border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-3 py-2 text-sm text-[#e8a44a] hover:bg-[#e8a44a]/15"
+                      className="mt-3 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue/15"
                     >
                       Add to cart
                     </button>
@@ -637,20 +637,20 @@ export function QuickSellPanel(props: {
                                 className={`flex items-start justify-between gap-2 rounded-lg border px-2.5 py-2 ${
                                   isCustom
                                     ? "border-white/10 bg-black/20"
-                                    : "border-emerald-500/20 bg-emerald-500/5"
+                                    : "border-brand-blue/20 bg-brand-blue/5"
                                 }`}
                               >
                                 <div className="min-w-0 text-[11px]">
                                   <div
                                     className={`truncate font-medium ${
-                                      isCustom ? "text-zinc-100" : "text-emerald-100"
+                                      isCustom ? "text-zinc-100" : "text-brand-cyan/90"
                                     }`}
                                   >
                                     {productLineLabel(p)} · {isCustom ? "custom qty" : "excess"}
                                   </div>
                                   <div
                                     className={
-                                      isCustom ? "text-zinc-500" : "text-emerald-200/70"
+                                      isCustom ? "text-zinc-500" : "text-brand-cyan/70/70"
                                     }
                                   >
                                     {qty} · {formatPhpFromCents(amountCents)}
@@ -712,11 +712,11 @@ export function QuickSellPanel(props: {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                    <div className="text-xs font-medium text-emerald-100">
+                  <div className="rounded-xl border border-brand-blue/20 bg-brand-blue/5 p-3">
+                    <div className="text-xs font-medium text-brand-cyan/90">
                       Excess / bonus stock (optional)
                     </div>
-                    <p className="mt-1 text-[10px] text-emerald-100/70">
+                    <p className="mt-1 text-[10px] text-brand-cyan/90/70">
                       Preset surplus (¼ sack, etc.) = 100% profit, no stock change.
                       Choose Custom to sell a specific amount that deducts inventory.
                     </p>
@@ -775,7 +775,7 @@ export function QuickSellPanel(props: {
                     <button
                       type="button"
                       onClick={addExcessToCart}
-                      className="mt-3 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 hover:bg-emerald-500/15"
+                      className="mt-3 w-full rounded-xl border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-cyan/90 hover:bg-brand-blue/15"
                     >
                       Add excess line to cart
                     </button>

@@ -14,7 +14,7 @@ export function OrdersPageTabs(props: {
 
   const tabClass = (active: boolean) =>
     active
-      ? "border-[#e8a44a] bg-[#e8a44a]/10 text-[#e8a44a]"
+      ? "border-brand-blue bg-brand-blue/10 text-brand-blue"
       : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200";
 
   return (

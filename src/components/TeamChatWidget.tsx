@@ -24,7 +24,7 @@ export function TeamChatWidget(props: {
             className="absolute inset-0 bg-black/50"
             onClick={() => props.setChatOpen(false)}
           />
-          <div className="relative z-10 flex h-[min(85vh,520px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b0b10] shadow-2xl">
+          <div className="relative z-10 flex h-[min(85vh,520px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
             <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2">
               <div className="text-xs text-zinc-400">
                 Signed in as{" "}
@@ -65,7 +65,7 @@ export function TeamChatWidget(props: {
       <button
         type="button"
         onClick={() => props.setChatOpen(true)}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-[#e8a44a]/40 bg-[#13131f] px-4 py-2.5 text-sm font-medium text-zinc-100 shadow-lg hover:bg-[#1a1a28] print:hidden"
+        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-brand-blue/40 bg-surface-elevated px-4 py-2.5 text-sm font-medium text-zinc-100 shadow-lg hover:bg-surface print:hidden"
       >
         <span>Team chat</span>
         <UnreadBadge count={props.unreadCount} />

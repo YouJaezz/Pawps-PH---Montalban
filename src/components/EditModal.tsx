@@ -39,7 +39,7 @@ export function EditModal(props: {
       onClick={props.onClose}
     >
       <div
-        className={`my-4 w-full ${maxW} rounded-2xl border border-white/10 bg-[#13131f] shadow-xl`}
+        className={`my-4 w-full ${maxW} rounded-2xl border border-brand-blue/20 bg-surface-elevated shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3">

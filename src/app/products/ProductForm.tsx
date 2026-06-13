@@ -82,7 +82,7 @@ function ProfitLine(props: {
     <div className="flex items-start justify-between gap-2 text-[11px]">
       <span className="text-zinc-400">{props.label}</span>
       <div className="text-right">
-        <div className="font-medium text-emerald-400">
+        <div className="font-medium text-brand-cyan">
           {formatPhpFromCents(props.perUnit)} / {props.unitLabel}
         </div>
         {props.stock > 0 && props.total != null ? (
@@ -590,7 +590,7 @@ export function ProductForm(props: {
         </label>
 
         {costPerUnitCents > 0 && parseMoneyInput(retailInput) > 0 ? (
-          <div className="col-span-2 space-y-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2">
+          <div className="col-span-2 space-y-1 rounded-md border border-brand-blue/20 bg-brand-blue/5 px-2.5 py-2">
             <ProfitLine
               label="Retail profit"
               perUnit={retailProfitPerUnit}
@@ -626,11 +626,11 @@ export function ProductForm(props: {
       ) : null}
 
       {state?.ok ? (
-        <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2.5">
-          <div className="text-[11px] font-medium text-emerald-200">
+        <div className="space-y-2 rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-2.5 py-2.5">
+          <div className="text-[11px] font-medium text-brand-cyan/70">
             Added {state.itemLabel} to inventory
           </div>
-          <div className="space-y-1.5 border-t border-emerald-500/20 pt-2">
+          <div className="space-y-1.5 border-t border-brand-blue/20 pt-2">
             <div className="flex justify-between text-[10px] text-zinc-400">
               <span>Total purchase</span>
               <span className="text-zinc-200">

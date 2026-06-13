@@ -254,7 +254,7 @@ export default async function ProductsPage() {
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
             <div className="text-[10px] text-zinc-500">Profit potential</div>
-            <div className="text-sm font-semibold text-emerald-300">
+            <div className="text-sm font-semibold text-brand-cyan/80">
               {formatPhpFromCents(valuation.profitPotentialCents)}
             </div>
           </div>

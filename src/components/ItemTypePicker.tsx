@@ -39,13 +39,13 @@ export function ItemTypePicker(props: {
                     onClick={() => props.onChange(t.value)}
                     className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition ${
                       selected
-                        ? "border-[#e8a44a]/50 bg-[#e8a44a]/10 ring-1 ring-[#e8a44a]/30"
+                        ? "border-brand-blue/50 bg-brand-blue/10 ring-1 ring-brand-blue/30"
                         : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/[0.03]"
                     }`}
                   >
                     <span className="min-w-0 text-[11px] text-zinc-200">{t.label}</span>
                     {selected ? (
-                      <span className="shrink-0 text-[9px] font-medium text-[#e8a44a]">
+                      <span className="shrink-0 text-[9px] font-medium text-brand-blue">
                         Selected
                       </span>
                     ) : (

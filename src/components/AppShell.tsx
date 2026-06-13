@@ -38,7 +38,7 @@ function ShellBody(props: {
     <>
       <div className="mx-auto flex h-full w-full max-w-none gap-4 px-4 py-4 pb-20 md:pb-4 lg:px-6 lg:py-6">
         <aside className="hidden w-64 shrink-0 print:hidden md:block">
-          <div className="sticky top-0 flex max-h-[calc(100dvh-3rem)] flex-col rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="sticky top-0 flex max-h-[calc(100dvh-3rem)] flex-col rounded-2xl border border-brand-blue/20 bg-brand-gradient p-4 shadow-[0_0_40px_rgba(14,109,227,0.06)]">
             <BrandLogo size="md" />
             <div className="mt-2 text-xs text-zinc-500">{BRAND_TAGLINE}</div>
             <div className="mt-4 flex-1 space-y-1 overflow-y-auto">
@@ -130,7 +130,7 @@ export async function AppShell(props: {
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-[#07070a] text-zinc-50">
+    <div className="h-dvh overflow-hidden bg-brand-black text-zinc-50">
       {session ? (
         <TeamChatNotifier
           userId={session.userId}

@@ -24,7 +24,7 @@ function ResultBanner(props: { state: SettingsActionResult | null }) {
   }
   if (props.state.ok && props.state.message) {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
+      <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-2.5 py-2 text-[11px] text-brand-cyan/80">
         {props.state.message}
       </div>
     );
@@ -180,7 +180,7 @@ export function AccountsTable(props: {
               <td className="px-2 py-2 capitalize text-zinc-400">{u.role}</td>
               <td className="px-2 py-2">
                 {u.active ? (
-                  <span className="text-emerald-400">Active</span>
+                  <span className="text-brand-cyan">Active</span>
                 ) : (
                   <span className="text-zinc-500">Inactive</span>
                 )}

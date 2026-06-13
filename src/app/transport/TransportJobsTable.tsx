@@ -112,7 +112,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
                 <button
                   type="button"
                   onClick={() => setEditId(j.id)}
-                  className="text-[10px] text-[#e8a44a] underline"
+                  className="text-[10px] text-brand-blue underline"
                 >
                   Edit
                 </button>

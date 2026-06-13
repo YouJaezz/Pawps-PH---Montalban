@@ -37,9 +37,9 @@ export function ChatToastStack(props: {
             props.onDismiss(t.id);
             props.onOpen(t.id);
           }}
-          className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-[#e8a44a]/40 bg-[#13131f]/95 p-3 text-left shadow-xl backdrop-blur transition hover:bg-[#1a1a28]"
+          className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-brand-blue/40 bg-surface-elevated/95 p-3 text-left shadow-xl backdrop-blur transition hover:bg-surface"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#e8a44a]/20 text-sm font-bold text-[#e8a44a]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-blue/20 text-sm font-bold text-brand-blue">
             {t.senderName.charAt(0).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1">
@@ -48,7 +48,7 @@ export function ChatToastStack(props: {
                 {t.senderName}
               </span>
               {t.isAnnouncement ? (
-                <span className="shrink-0 rounded bg-[#e8a44a]/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[#e8a44a]">
+                <span className="shrink-0 rounded bg-brand-blue/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-brand-blue">
                   Alert
                 </span>
               ) : null}

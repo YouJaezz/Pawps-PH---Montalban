@@ -14,7 +14,7 @@ export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   Confirmed: "border-sky-500/30 bg-sky-500/10 text-sky-200",
   Preparing: "border-amber-500/30 bg-amber-500/10 text-amber-200",
   "Out for Delivery": "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  Completed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  Completed: "border-brand-cyan/30 bg-brand-blue/10 text-brand-cyan/70",
   Cancelled: "border-red-500/30 bg-red-500/10 text-red-300",
 };
 
@@ -24,7 +24,7 @@ export const ORDER_STATUS_SELECT_BORDER: Record<OrderStatus, string> = {
   Confirmed: "border-sky-500/50",
   Preparing: "border-amber-500/50",
   "Out for Delivery": "border-violet-500/50",
-  Completed: "border-emerald-500/50",
+  Completed: "border-brand-cyan/50",
   Cancelled: "border-red-500/50",
 };
 

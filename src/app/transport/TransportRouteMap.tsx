@@ -362,7 +362,7 @@ export function TransportRouteMap(props: {
           onClick={() => setActiveField("pickup")}
           className={`rounded-lg px-3 py-1.5 text-xs ${
             activeField === "pickup"
-              ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40"
+              ? "bg-brand-blue/20 text-brand-cyan/70 ring-1 ring-brand-blue/40"
               : "border border-white/10 text-zinc-400"
           }`}
         >
@@ -429,7 +429,7 @@ export function TransportRouteMap(props: {
 
       <div className="grid gap-1 text-[11px]">
         <div className="flex gap-2">
-          <span className="shrink-0 text-emerald-400">Pickup:</span>
+          <span className="shrink-0 text-brand-cyan">Pickup:</span>
           <span className="text-zinc-400">
             {pickup?.label ?? "Search or tap map"}
           </span>

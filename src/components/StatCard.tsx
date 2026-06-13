@@ -9,7 +9,7 @@ export function StatCard(props: {
   compact?: boolean;
 }) {
   const shell = props.accent
-    ? "border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/15 to-[#e8a44a]/5"
+    ? "border-brand-blue/30 bg-gradient-to-br from-brand-blue/15 to-brand-cyan/10"
     : "border-white/10 bg-white/5";
   const pad = props.compact ? "p-4" : "p-5";
   const valueSize = props.compact ? "text-xl" : "text-2xl";

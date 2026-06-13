@@ -105,7 +105,7 @@ export function OrderReceiptView(props: {
                   <div className="font-medium">
                     {line.label}
                     {line.isExcessSale ? (
-                      <span className="ml-1 text-[10px] font-normal text-emerald-700">
+                      <span className="ml-1 text-[10px] font-normal text-brand-blue">
                         excess
                       </span>
                     ) : null}

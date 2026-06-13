@@ -95,7 +95,7 @@ export function OrderSaleConfirm(props: {
         {props.paidLabel && props.paidCents != null ? (
           <div className="flex justify-between gap-3">
             <dt className="text-zinc-400">{props.paidLabel}</dt>
-            <dd className="font-semibold text-emerald-200">
+            <dd className="font-semibold text-brand-cyan/70">
               {formatPhpFromCents(props.paidCents)}
             </dd>
           </div>

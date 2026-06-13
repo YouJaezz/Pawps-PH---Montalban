@@ -188,13 +188,13 @@ export function InventoryTable(props: {
                     ) : null}
                   </td>
                   {!limited ? (
-                    <td className="hidden px-2 py-2 text-emerald-400/90 xl:table-cell">
+                    <td className="hidden px-2 py-2 text-brand-cyan/90 xl:table-cell">
                       <div>
                         R: +{p.profitRetail}
                         {p.unitSuffix}
                       </div>
                       {p.profitBulk ? (
-                        <div className="text-[10px] text-emerald-500/80">
+                        <div className="text-[10px] text-brand-cyan/80">
                           W: +{p.profitBulk}
                           {p.unitSuffix}
                         </div>

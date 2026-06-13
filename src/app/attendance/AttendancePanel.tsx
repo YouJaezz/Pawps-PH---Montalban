@@ -22,7 +22,7 @@ function Banner(props: { state: AttendanceActionResult | null }) {
   }
   if (props.state.ok && props.state.message) {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+      <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/80">
         {props.state.message}
       </div>
     );
@@ -85,8 +85,8 @@ export function AttendancePanel(props: {
       <Banner state={feedback} />
 
       {clockedIn && liveClockIn ? (
-        <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 to-transparent p-5">
-          <div className="text-xs uppercase tracking-wide text-emerald-400">
+        <div className="rounded-xl border border-brand-cyan/40 bg-gradient-to-br from-brand-blue/15 to-transparent p-5">
+          <div className="text-xs uppercase tracking-wide text-brand-cyan">
             Live shift · counting now
           </div>
           <div className="mt-2">
@@ -98,8 +98,8 @@ export function AttendancePanel(props: {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/10 to-transparent p-5">
-        <div className="text-xs uppercase tracking-wide text-[#e8a44a]">
+      <div className="rounded-xl border border-brand-blue/30 bg-gradient-to-br from-brand-blue/10 to-transparent p-5">
+        <div className="text-xs uppercase tracking-wide text-brand-blue">
           {props.monthLabel} · your total
         </div>
         <div className="mt-1 text-3xl font-bold text-zinc-50">
@@ -108,7 +108,7 @@ export function AttendancePanel(props: {
         <div className="mt-1 text-xs text-zinc-400">
           {props.monthEntries.filter((e) => e.clockOutAt).length} completed shift(s)
           {clockedIn && liveClockIn ? (
-            <span className="text-emerald-400">
+            <span className="text-brand-cyan">
               {" "}
               · current shift not included until you clock out
             </span>
@@ -120,7 +120,7 @@ export function AttendancePanel(props: {
         <div className="text-sm font-medium text-zinc-100">Time clock</div>
         {clockedIn ? (
           <>
-            <p className="mt-2 text-xs text-emerald-300">
+            <p className="mt-2 text-xs text-brand-cyan/80">
               Clocked in since {fmtWhen(props.openEntry!.clockInAt)}
             </p>
             {liveClockIn ? (
@@ -143,7 +143,7 @@ export function AttendancePanel(props: {
             <button
               type="submit"
               disabled={inPending}
-              className="rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 disabled:opacity-50"
+              className="rounded-lg bg-brand-blue/20 px-4 py-2 text-sm font-medium text-brand-cyan/70 ring-1 ring-brand-blue/40 hover:bg-brand-blue/30 disabled:opacity-50"
             >
               {inPending ? "Clocking in…" : "Time in"}
             </button>
@@ -152,9 +152,9 @@ export function AttendancePanel(props: {
       </div>
 
       {props.adminView && props.activeShifts.length > 0 ? (
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <div className="text-sm font-medium text-emerald-100">On duty now</div>
-          <p className="mt-1 text-[10px] text-emerald-200/70">
+        <div className="rounded-xl border border-brand-blue/20 bg-brand-blue/5 p-4">
+          <div className="text-sm font-medium text-brand-cyan/90">On duty now</div>
+          <p className="mt-1 text-[10px] text-brand-cyan/70/70">
             Live hours for everyone currently clocked in.
           </p>
           <ul className="mt-3 space-y-2">
@@ -232,7 +232,7 @@ export function AttendancePanel(props: {
                       {e.clockOutAt ? (
                         fmtWhen(e.clockOutAt)
                       ) : (
-                        <span className="inline-flex items-center gap-2 text-emerald-400">
+                        <span className="inline-flex items-center gap-2 text-brand-cyan">
                           On duty
                           <LiveShiftTimer
                             clockInAt={e.clockInAt.toISOString()}

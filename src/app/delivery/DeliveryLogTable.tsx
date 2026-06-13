@@ -116,7 +116,7 @@ export function DeliveryLogTable(props: { rows: DeliveryLogRow[] }) {
                 <button
                   type="button"
                   onClick={() => setEditId(d.id)}
-                  className="text-[10px] text-[#e8a44a] underline hover:text-[#e8a44a]"
+                  className="text-[10px] text-brand-blue underline hover:text-brand-blue"
                 >
                   Edit
                 </button>

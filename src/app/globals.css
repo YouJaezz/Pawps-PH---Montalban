@@ -1,35 +1,66 @@
 @import "tailwindcss";
 
+/* PAWPS PH brand tokens (Brand Guidelines Final) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-blue: #0e6de3;
+  --brand-cyan: #18b5f0;
+  --brand-white: #ffffff;
+  --brand-black: #000000;
+  --background: #000000;
+  --foreground: #f4f4f5;
+  --surface: #0a1018;
+  --surface-elevated: #101820;
+  --surface-card: rgba(255, 255, 255, 0.05);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --accent: var(--brand-blue);
+  --accent-bright: var(--brand-cyan);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-blue: #0e6de3;
+  --color-brand-cyan: #18b5f0;
+  --color-brand-white: #ffffff;
+  --color-brand-black: #000000;
+  --color-surface: #0a1018;
+  --color-surface-elevated: #101820;
+  --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-brand), "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Brand accent helpers */
+.text-brand-accent {
+  color: var(--brand-blue);
+}
+
+.bg-brand-accent {
+  background-color: var(--brand-blue);
+}
+
+.border-brand-accent {
+  border-color: color-mix(in srgb, var(--brand-blue) 40%, transparent);
+}
+
+.bg-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-blue) 18%, transparent),
+    color-mix(in srgb, var(--brand-cyan) 10%, transparent)
+  );
 }
 
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 0;
-  background: #1a1a22;
+  background: var(--surface);
 }
 
 .leaflet-tile-pane img,
@@ -73,21 +104,20 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: #121218;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  background-color: var(--surface-elevated);
+  box-shadow: 0 1px 0 rgba(14, 109, 227, 0.12);
 }
 
-/* Native selects: keep dropdown options readable on dark UI */
 .app-select {
   appearance: auto;
   color-scheme: dark;
-  background-color: #18181b;
-  color: #fafafa;
+  background-color: var(--surface);
+  color: var(--brand-white);
 }
 
 .app-select option {
-  background-color: #18181b;
-  color: #fafafa;
+  background-color: var(--surface);
+  color: var(--brand-white);
 }
 
 @media print {

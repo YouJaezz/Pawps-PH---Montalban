@@ -45,7 +45,7 @@ export function CatalogItemEditButton(props: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[10px] text-[#e8a44a]/80 hover:text-[#e8a44a]"
+        className="text-[10px] text-brand-blue/80 hover:text-brand-blue"
       >
         Edit
       </button>

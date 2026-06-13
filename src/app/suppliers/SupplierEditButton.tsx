@@ -18,7 +18,7 @@ export function SupplierEditButton(props: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="shrink-0 text-[10px] text-[#e8a44a]/90 hover:text-[#e8a44a]"
+        className="shrink-0 text-[10px] text-brand-blue/90 hover:text-brand-blue"
       >
         Edit
       </button>

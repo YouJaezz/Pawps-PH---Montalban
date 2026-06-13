@@ -56,7 +56,7 @@ function TerminalClock() {
   }, []);
 
   return (
-    <div className="font-mono text-[11px] tracking-wide text-emerald-300/90">
+    <div className="font-mono text-[11px] tracking-wide text-brand-cyan/80/90">
       {now || "—"}
     </div>
   );
@@ -79,7 +79,7 @@ function shiftMonth(year: number, month: number, delta: number) {
 function StatusBadge(props: { status: "Complete" | "On duty" }) {
   if (props.status === "Complete") {
     return (
-      <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
+      <span className="rounded border border-brand-cyan/40 bg-brand-blue/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-brand-cyan/80">
         OK
       </span>
     );
@@ -127,13 +127,13 @@ export function PayrollAttendanceReport(props: {
   }, [year, month]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-emerald-500/25 bg-gradient-to-b from-[#0a1410] to-[#0c1014] shadow-[inset_0_1px_0_rgba(52,211,153,0.08)]">
+    <div className="overflow-hidden rounded-xl border border-brand-blue/25 bg-gradient-to-b from-[#0a1018] to-[#000000] shadow-[inset_0_1px_0_rgba(14,109,227,0.12)]">
       {/* Terminal header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-emerald-950/40 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-blue/20 bg-brand-blue/10 px-4 py-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-400">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-cyan" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-cyan">
               Time &amp; Attendance Terminal
             </span>
           </div>
@@ -166,7 +166,7 @@ export function PayrollAttendanceReport(props: {
             const [y, m] = e.target.value.split("-").map(Number);
             router.push(`/payroll?year=${y}&month=${m}`);
           }}
-          className="rounded border border-emerald-500/30 bg-black/40 px-2 py-1 font-mono text-[11px] text-emerald-100"
+          className="rounded border border-brand-blue/30 bg-black/40 px-2 py-1 font-mono text-[11px] text-brand-cyan/90"
         >
           {monthOptions.map((o, i) => (
             <option key={`${o.year}-${o.month}-${i}`} value={`${o.year}-${o.month}`}>
@@ -185,7 +185,7 @@ export function PayrollAttendanceReport(props: {
         </Link>
         <a
           href={exportUrl}
-          className="ml-auto rounded border border-[#e8a44a]/40 bg-[#e8a44a]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-[#e8a44a] hover:bg-[#e8a44a]/20"
+          className="ml-auto rounded border border-brand-blue/40 bg-brand-blue/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-brand-blue hover:bg-brand-blue/20"
         >
           Export CSV
         </a>
@@ -219,7 +219,7 @@ export function PayrollAttendanceReport(props: {
             <div className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">
               {kpi.label}
             </div>
-            <div className="mt-1 font-mono text-xl font-bold text-emerald-300">
+            <div className="mt-1 font-mono text-xl font-bold text-brand-cyan/80">
               {kpi.value}
             </div>
             <div className="mt-0.5 text-[10px] text-zinc-500">{kpi.sub}</div>
@@ -263,7 +263,7 @@ export function PayrollAttendanceReport(props: {
           </div>
           <ScrollableTable maxHeight="max-h-64" className="mt-2">
             <table className="w-full text-xs">
-              <thead className="bg-emerald-950/50 text-left font-mono text-[9px] uppercase tracking-wider text-emerald-500/80">
+              <thead className="bg-brand-blue/10 text-left font-mono text-[9px] uppercase tracking-wider text-brand-cyan/80">
                 <tr>
                   <th className="px-3 py-2">ID</th>
                   <th className="px-3 py-2">Employee</th>
@@ -279,11 +279,11 @@ export function PayrollAttendanceReport(props: {
               <tbody className="divide-y divide-white/5 font-mono">
                 {report.staffSummaries.map((s) => (
                   <tr key={s.userId} className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-2 text-emerald-400/70">{s.employeeCode}</td>
+                    <td className="px-3 py-2 text-brand-cyan/70">{s.employeeCode}</td>
                     <td className="px-3 py-2 font-sans text-zinc-200">
                       {s.employeeName}
                     </td>
-                    <td className="px-3 py-2 text-emerald-300">
+                    <td className="px-3 py-2 text-brand-cyan/80">
                       {formatDuration(s.minutesWorked)}
                     </td>
                     <td className="px-3 py-2 text-zinc-400">{s.shiftCount}</td>
@@ -293,7 +293,7 @@ export function PayrollAttendanceReport(props: {
                         ? `${formatPhpFromCents(s.hourlyRateCents)}/hr`
                         : "—"}
                     </td>
-                    <td className="px-3 py-2 text-[#e8a44a]">
+                    <td className="px-3 py-2 text-brand-blue">
                       {s.grossPayCents > 0
                         ? formatPhpFromCents(s.grossPayCents)
                         : "—"}
@@ -302,7 +302,7 @@ export function PayrollAttendanceReport(props: {
                       {s.onDuty && report.isCurrentMonth ? (
                         <span className="text-amber-300">ON DUTY</span>
                       ) : s.minutesWorked > 0 ? (
-                        <span className="text-emerald-400/80">LOGGED</span>
+                        <span className="text-brand-cyan/80">LOGGED</span>
                       ) : (
                         <span className="text-zinc-600">—</span>
                       )}
@@ -363,7 +363,7 @@ export function PayrollAttendanceReport(props: {
                           : "·"}
                       </td>
                     ))}
-                    <td className="px-2 py-1.5 text-right text-emerald-400/80">
+                    <td className="px-2 py-1.5 text-right text-brand-cyan/80">
                       {row.dayTotal > 0 ? formatDuration(row.dayTotal) : "—"}
                     </td>
                   </tr>
@@ -383,7 +383,7 @@ export function PayrollAttendanceReport(props: {
           </h3>
           <ScrollableTable maxHeight="max-h-[min(50vh,420px)]" className="mt-2">
             <table className="w-full text-xs">
-              <thead className="bg-emerald-950/50 text-left font-mono text-[9px] uppercase tracking-wider text-emerald-500/80">
+              <thead className="bg-brand-blue/10 text-left font-mono text-[9px] uppercase tracking-wider text-brand-cyan/80">
                 <tr>
                   <th className="px-3 py-2">#</th>
                   <th className="px-3 py-2">ID</th>
@@ -408,7 +408,7 @@ export function PayrollAttendanceReport(props: {
                       <td className="px-3 py-2 text-zinc-600">
                         {String(report.punches.length - idx).padStart(3, "0")}
                       </td>
-                      <td className="px-3 py-2 text-emerald-400/70">
+                      <td className="px-3 py-2 text-brand-cyan/70">
                         {p.employeeCode}
                       </td>
                       <td className="px-3 py-2 font-sans text-zinc-200">
@@ -434,7 +434,7 @@ export function PayrollAttendanceReport(props: {
                           <span className="text-red-400/80">Missing</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-emerald-300">
+                      <td className="px-3 py-2 text-brand-cyan/80">
                         {p.clockOutAt ? (
                           formatDuration(p.minutes)
                         ) : report.isCurrentMonth ? (

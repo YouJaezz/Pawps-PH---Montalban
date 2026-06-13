@@ -35,7 +35,7 @@ function ResultBanner(props: { state: InvestorActionResult | null }) {
   }
   if (props.state.ok && props.state.message) {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
+      <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-2.5 py-2 text-[11px] text-brand-cyan/80">
         {props.state.message}
       </div>
     );
@@ -56,7 +56,7 @@ function SetupSteps(props: { step: number }) {
           key={s.n}
           className={`rounded-full border px-3 py-1 ${
             props.step >= s.n
-              ? "border-[#e8a44a]/40 bg-[#e8a44a]/10 text-[#e8a44a]"
+              ? "border-brand-blue/40 bg-brand-blue/10 text-brand-blue"
               : "border-white/10 text-zinc-500"
           }`}
         >
@@ -213,7 +213,7 @@ export function InvestorDashboard(props: {
             {props.highlightAgreement ? " You're on this step now." : ""}
           </p>
         ) : (
-          <p className="mt-2 text-[11px] text-emerald-300/80">
+          <p className="mt-2 text-[11px] text-brand-cyan/80/80">
             Setup complete — her share updates automatically from Sales &amp; Orders.
           </p>
         )}
@@ -226,8 +226,8 @@ export function InvestorDashboard(props: {
       ) : null}
 
       {salesConnected ? (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-          <div className="text-xs font-medium text-emerald-300">
+        <div className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 p-4">
+          <div className="text-xs font-medium text-brand-cyan/80">
             Sales connected · {props.currentMonthLabel}
           </div>
           <div className="mt-1 text-lg font-semibold text-zinc-50">
@@ -254,10 +254,10 @@ export function InvestorDashboard(props: {
       ) : null}
 
       {setupComplete && inv && agr ? (
-        <div className="rounded-xl border border-[#e8a44a]/30 bg-gradient-to-br from-[#e8a44a]/10 to-transparent p-5">
+        <div className="rounded-xl border border-brand-blue/30 bg-gradient-to-br from-brand-blue/10 to-transparent p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-wide text-[#e8a44a]">
+              <div className="text-xs uppercase tracking-wide text-brand-blue">
                 {inv.fullName} · {agr.sharePercent}% profit share
               </div>
               <div className="mt-1 text-2xl font-bold text-zinc-50">
@@ -271,7 +271,7 @@ export function InvestorDashboard(props: {
             <div className="text-right text-xs text-zinc-400">
               <div>
                 Paid out YTD:{" "}
-                <span className="font-medium text-emerald-300">
+                <span className="font-medium text-brand-cyan/80">
                   {formatPhpFromCents(props.paidYtdCents)}
                 </span>
               </div>
@@ -287,8 +287,8 @@ export function InvestorDashboard(props: {
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#e8a44a]/20 bg-[#e8a44a]/5 p-4 lg:col-span-2">
-          <div className="text-xs font-medium uppercase tracking-wide text-[#e8a44a]">
+        <div className="rounded-xl border border-brand-blue/20 bg-brand-blue/5 p-4 lg:col-span-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-brand-blue">
             {props.currentMonthLabel} — live from sales
           </div>
           {props.currentMetrics && agr ? (
@@ -308,7 +308,7 @@ export function InvestorDashboard(props: {
                 </div>
                 <div>
                   <div className="text-[10px] text-zinc-500">Net income</div>
-                  <div className="text-sm font-semibold text-emerald-300">
+                  <div className="text-sm font-semibold text-brand-cyan/80">
                     {formatPhpFromCents(props.currentMetrics.netIncomeCents)}
                   </div>
                 </div>
@@ -316,7 +316,7 @@ export function InvestorDashboard(props: {
                   <div className="text-[10px] text-zinc-500">
                     Her {agr.sharePercent}% share
                   </div>
-                  <div className="text-lg font-bold text-[#e8a44a]">
+                  <div className="text-lg font-bold text-brand-blue">
                     {formatPhpFromCents(props.currentShareCents)}
                   </div>
                 </div>
@@ -438,7 +438,7 @@ export function InvestorDashboard(props: {
         <div
           className={`rounded-xl border bg-white/5 p-4 ${
             props.highlightAgreement
-              ? "border-[#e8a44a]/40 ring-1 ring-[#e8a44a]/20"
+              ? "border-brand-blue/40 ring-1 ring-brand-blue/20"
               : "border-white/10"
           }`}
         >
@@ -584,10 +584,10 @@ export function InvestorDashboard(props: {
                     <td className="px-3 py-2 text-zinc-400">
                       {formatPhpFromCents(row.cogsCents)}
                     </td>
-                    <td className="px-3 py-2 text-emerald-300/90">
+                    <td className="px-3 py-2 text-brand-cyan/80/90">
                       {formatPhpFromCents(row.netIncomeCents)}
                     </td>
-                    <td className="px-3 py-2 font-medium text-[#e8a44a]">
+                    <td className="px-3 py-2 font-medium text-brand-blue">
                       {formatPhpFromCents(row.payoutCents)}{" "}
                       <span className="text-[10px] font-normal text-zinc-500">
                         ({row.sharePercent}%)
@@ -623,7 +623,7 @@ function StatusBadge(props: { status: InvestorMonthlyRow["payoutStatus"] }) {
     Open: "text-zinc-400",
     Projected: "text-sky-300",
     Accrued: "text-amber-300",
-    Paid: "text-emerald-400",
+    Paid: "text-brand-cyan",
   };
   const labels = {
     Open: "Open",
@@ -683,7 +683,7 @@ function PayoutActions(props: {
   if (row.payoutStatus === "Paid") {
     return (
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] text-emerald-400">Complete</span>
+        <span className="text-[10px] text-brand-cyan">Complete</span>
         {resetForm}
       </div>
     );
@@ -697,7 +697,7 @@ function PayoutActions(props: {
           <button
             type="submit"
             disabled={props.pending}
-            className="text-[10px] text-emerald-300 underline hover:text-emerald-200 disabled:opacity-50"
+            className="text-[10px] text-brand-cyan/80 underline hover:text-brand-cyan/70 disabled:opacity-50"
           >
             Mark paid
           </button>
@@ -741,7 +741,7 @@ function PayoutActions(props: {
           <button
             type="submit"
             disabled={props.pending}
-            className="text-[10px] text-emerald-300 underline hover:text-emerald-200 disabled:opacity-50"
+            className="text-[10px] text-brand-cyan/80 underline hover:text-brand-cyan/70 disabled:opacity-50"
           >
             Lock &amp; mark paid
           </button>

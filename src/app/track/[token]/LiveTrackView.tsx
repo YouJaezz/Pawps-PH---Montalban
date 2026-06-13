@@ -66,7 +66,7 @@ export function LiveTrackView(props: { token: string }) {
         <div className="text-sm text-zinc-400">
           {data.pickupLocation} → {data.dropoffLocation}
         </div>
-        <div className="mt-2 inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+        <div className="mt-2 inline-block rounded-full border border-brand-cyan/30 bg-brand-blue/10 px-3 py-1 text-xs text-brand-cyan/70">
           {data.status}
         </div>
       </div>
@@ -102,7 +102,7 @@ export function LiveTrackView(props: { token: string }) {
 
       <div className="flex flex-wrap gap-3 text-[10px] text-zinc-500">
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-brand-cyan" />
           Pickup
         </span>
         <span className="inline-flex items-center gap-1">

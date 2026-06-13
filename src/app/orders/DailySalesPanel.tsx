@@ -73,7 +73,7 @@ export function DailySalesPanel(props: {
           {props.adminMode ? (
             <a
               href={`/api/export/daily-sales.csv?date=${dateInputValue}`}
-              className="rounded-md border border-[#e8a44a]/30 bg-[#e8a44a]/10 px-3 py-1 text-[10px] text-[#e8a44a]"
+              className="rounded-md border border-brand-blue/30 bg-brand-blue/10 px-3 py-1 text-[10px] text-brand-blue"
             >
               Export CSV
             </a>
@@ -342,7 +342,7 @@ export function DailySalesPanel(props: {
                       </td>
                       <td className="px-2 py-2">{p.customerName}</td>
                       <td className="px-2 py-2">{p.method}</td>
-                      <td className="px-2 py-2 font-medium text-emerald-300">
+                      <td className="px-2 py-2 font-medium text-brand-cyan/80">
                         {formatPhpFromCents(p.amountCents)}
                       </td>
                       <td className="px-2 py-2">

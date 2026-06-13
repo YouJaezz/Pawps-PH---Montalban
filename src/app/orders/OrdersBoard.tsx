@@ -121,7 +121,7 @@ export function OrdersBoard(props: {
         </div>
         <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
           <div className="text-[10px] text-zinc-500">Collected (shown)</div>
-          <div className="text-lg font-semibold text-emerald-200">
+          <div className="text-lg font-semibold text-brand-cyan/70">
             {formatPhpFromCents(stats.paidTotal)}
           </div>
         </div>
@@ -164,7 +164,7 @@ export function OrdersBoard(props: {
 
       <ScrollableTable maxHeight="max-h-[min(52vh,520px)]" className="mt-2">
         <table className="w-full min-w-[760px] text-[11px]">
-          <thead className="sticky top-0 z-10 bg-[#13131f] text-left text-[10px] text-zinc-500">
+          <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
             <tr>
               <th className="px-2 py-1.5">Order</th>
               <th className="px-2 py-1.5">Customer</th>
@@ -249,7 +249,7 @@ export function OrdersBoard(props: {
                             <input type="hidden" name="orderId" value={o.id} />
                             <button
                               type="submit"
-                              className="rounded border border-emerald-500/30 px-1.5 py-0.5 text-[9px] text-emerald-300"
+                              className="rounded border border-brand-cyan/30 px-1.5 py-0.5 text-[9px] text-brand-cyan/80"
                             >
                               Mark paid
                             </button>
@@ -300,7 +300,7 @@ export function OrdersBoard(props: {
                           <button
                             type="button"
                             onClick={() => setEditingOrderId(o.id)}
-                            className="rounded border border-[#e8a44a]/30 px-2 py-0.5 text-[9px] text-[#e8a44a]"
+                            className="rounded border border-brand-blue/30 px-2 py-0.5 text-[9px] text-brand-blue"
                           >
                             Edit
                           </button>

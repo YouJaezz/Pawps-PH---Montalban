@@ -86,7 +86,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
           setItemType(props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value);
           setOpen(true);
         }}
-        className="rounded border border-[#e8a44a]/30 px-2 py-0.5 text-[10px] text-[#e8a44a] hover:bg-[#e8a44a]/10"
+        className="rounded border border-brand-blue/30 px-2 py-0.5 text-[10px] text-brand-blue hover:bg-brand-blue/10"
       >
         Edit
       </button>
@@ -98,7 +98,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
           role="presentation"
         >
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-white/10 bg-[#13131f] p-4 shadow-xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-white/10 bg-surface-elevated p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="edit-product-title"

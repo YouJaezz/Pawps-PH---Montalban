@@ -9,8 +9,8 @@ export default async function LoginPage(props: {
   const nextPath = params.next?.startsWith("/") ? params.next : "/";
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#07070a] px-4 text-zinc-50">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6">
+    <div className="flex min-h-dvh items-center justify-center bg-brand-black px-4 text-zinc-50">
+      <div className="w-full max-w-sm rounded-2xl border border-brand-blue/25 bg-brand-gradient p-6 shadow-[0_0_60px_rgba(14,109,227,0.08)]">
         <div className="mb-6 flex flex-col items-center text-center">
           <BrandLogo size="lg" />
           <div className="mt-3 text-xs text-zinc-400">

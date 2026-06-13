@@ -57,7 +57,7 @@ export function UploadCatalogForm(props: {
       ) : null}
 
       {state?.ok && state.message ? (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
+        <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-2.5 py-2 text-[11px] text-brand-cyan/80">
           {state.message}
         </div>
       ) : null}

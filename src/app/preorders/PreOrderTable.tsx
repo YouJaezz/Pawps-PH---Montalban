@@ -58,14 +58,14 @@ function FeedbackBanner(props: { state: PreOrderActionResult | null }) {
   }
   if (props.state.ok && props.state.message) {
     return (
-      <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+      <div className="mb-3 rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/80">
         {props.state.message}
         {props.state.orderId ? (
           <>
             {" "}
             <Link
               href="/orders"
-              className="font-medium underline hover:text-emerald-200"
+              className="font-medium underline hover:text-brand-cyan/70"
             >
               Open Sales &amp; Orders →
             </Link>
@@ -168,11 +168,11 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                       : ""}
                   </div>
                   {row.fulfillmentOrderId ? (
-                    <div className="mt-1 text-[10px] text-emerald-300">
+                    <div className="mt-1 text-[10px] text-brand-cyan/80">
                       Linked to{" "}
                       <Link
                         href="/orders"
-                        className="underline hover:text-emerald-200"
+                        className="underline hover:text-brand-cyan/70"
                       >
                         sales order #{row.fulfillmentOrderId}
                       </Link>
@@ -195,7 +195,7 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                   type="button"
                   disabled={!!row.fulfillmentOrderId}
                   onClick={() => setEditId(row.id)}
-                  className="text-[10px] text-[#e8a44a] underline hover:text-[#e8a44a] disabled:opacity-50"
+                  className="text-[10px] text-brand-blue underline hover:text-brand-blue disabled:opacity-50"
                 >
                   Edit
                 </button>
@@ -244,7 +244,7 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                           <div
                             className={
                               item.stockOnHand >= item.quantity
-                                ? "text-emerald-400/90"
+                                ? "text-brand-cyan/90"
                                 : "text-amber-300/90"
                             }
                           >
