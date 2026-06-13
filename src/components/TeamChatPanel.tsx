@@ -17,6 +17,7 @@ export function TeamChatPanel(props: {
   userId: number;
   isAdmin: boolean;
   compact?: boolean;
+  markReadOnView?: boolean;
   onUnreadChange?: (count: number) => void;
 }) {
   const [messages, setMessages] = useState<TeamChatMessage[]>([]);
@@ -57,7 +58,9 @@ export function TeamChatPanel(props: {
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchMessages({ markRead: true });
+        const data = await fetchMessages({
+          markRead: props.markReadOnView ?? true,
+        });
         if (cancelled) return;
         setMessages(data.messages);
         props.onUnreadChange?.(data.unreadCount);
@@ -72,7 +75,7 @@ export function TeamChatPanel(props: {
     return () => {
       cancelled = true;
     };
-  }, [fetchMessages, props.onUnreadChange]);
+  }, [fetchMessages, props.markReadOnView, props.onUnreadChange]);
 
   useEffect(() => {
     const poll = setInterval(() => {
@@ -81,6 +84,7 @@ export function TeamChatPanel(props: {
           const afterId = lastIdRef.current;
           const data = await fetchMessages({
             afterId: afterId > 0 ? afterId : undefined,
+            markRead: props.markReadOnView,
           });
           if (data.messages.length > 0) {
             setMessages((prev) => {
@@ -99,7 +103,7 @@ export function TeamChatPanel(props: {
       })();
     }, 5000);
     return () => clearInterval(poll);
-  }, [fetchMessages, props.onUnreadChange]);
+  }, [fetchMessages, props.markReadOnView, props.onUnreadChange]);
 
   useEffect(() => {
     scrollToBottom();
