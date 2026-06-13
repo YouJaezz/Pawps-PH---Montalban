@@ -1,16 +1,16 @@
-import { createPreOrder } from "@/app/preorders/actions";
+import { PreOrderCreateForm } from "@/app/preorders/PreOrderCreateForm";
 import { PreOrderTable } from "@/app/preorders/PreOrderTable";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
-import { getPreOrderStockHints } from "@/lib/preorder-fulfillment";
-import { preOrderItems, preOrders, products, suppliers } from "@/db/schema";
+import {
+  getPreOrderStockHints,
+  resolvePreOrderItemStockHint,
+} from "@/lib/preorder-fulfillment";
+import { preOrderItems, preOrders, products, supplierCatalogItems, suppliers } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 
-const inputClass =
-  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
-
 export default async function PreOrdersPage() {
-  const [supplierRows, inventoryProducts, orderRows] = await Promise.all([
+  const [supplierRows, inventoryProducts, catalogRows, orderRows] = await Promise.all([
     db
       .select({ id: suppliers.id, name: suppliers.name })
       .from(suppliers)
@@ -27,6 +27,17 @@ export default async function PreOrdersPage() {
       .from(products)
       .where(eq(products.archived, false))
       .orderBy(products.name),
+    db
+      .select({
+        id: supplierCatalogItems.id,
+        itemName: supplierCatalogItems.itemName,
+        brand: supplierCatalogItems.brand,
+        variant: supplierCatalogItems.variant,
+        itemType: supplierCatalogItems.itemType,
+      })
+      .from(supplierCatalogItems)
+      .orderBy(supplierCatalogItems.itemName)
+      .limit(500),
     db
       .select({
         id: preOrders.id,
@@ -56,7 +67,9 @@ export default async function PreOrdersPage() {
             preOrderId: preOrderItems.preOrderId,
             id: preOrderItems.id,
             productId: preOrderItems.productId,
+            supplierCatalogItemId: preOrderItems.supplierCatalogItemId,
             itemName: preOrderItems.itemName,
+            brand: preOrderItems.brand,
             variant: preOrderItems.variant,
             quantity: preOrderItems.quantity,
             unitCostCents: preOrderItems.unitCostCents,
@@ -82,20 +95,29 @@ export default async function PreOrdersPage() {
     itemsByOrder.set(item.preOrderId, list);
   }
 
-  const rows = orderRows.map((o) => ({
-    ...o,
-    supplierName: supplierById.get(o.supplierId) ?? "—",
-    items: (itemsByOrder.get(o.id) ?? []).map(({ preOrderId, ...item }) => {
-      void preOrderId;
-      return {
-        ...item,
-        stockOnHand:
-          item.productId != null
-            ? (stockByProduct.get(item.productId) ?? 0)
-            : null,
-      };
-    }),
-  }));
+  const rows = await Promise.all(
+    orderRows.map(async (o) => ({
+      ...o,
+      supplierName: supplierById.get(o.supplierId) ?? "—",
+      items: await Promise.all(
+        (itemsByOrder.get(o.id) ?? []).map(async ({ preOrderId, ...item }) => {
+          void preOrderId;
+          const stockOnHand =
+            item.productId != null
+              ? (stockByProduct.get(item.productId) ?? 0)
+              : await resolvePreOrderItemStockHint({
+                  productId: item.productId,
+                  supplierCatalogItemId: item.supplierCatalogItemId,
+                });
+          return {
+            ...item,
+            stockOnHand,
+            awaitingInventory: item.productId == null && stockOnHand == null,
+          };
+        }),
+      ),
+    })),
+  );
 
   const pendingCount = rows.filter(
     (r) => !["Received", "Cancelled"].includes(r.status),
@@ -109,84 +131,21 @@ export default async function PreOrdersPage() {
           Customer pre-orders
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Reserve products for customers before stock arrives. Fulfillment follows{" "}
-          <strong className="font-medium text-zinc-300">inventory</strong> — restock
-          from any supplier in Inventory, then the pre-order moves to Sales &amp;
-          Orders automatically when stock is enough. {pendingCount} active.
+          Reserve products for customers before stock arrives. You can pre-order items
+          that are not in Inventory yet — add them in Inventory when stock comes in and
+          they link automatically. Customer pre-orders move to Sales &amp; Orders when
+          stock is enough. {pendingCount} active.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-5">
           <div className="xl:col-span-2">
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-medium text-zinc-100">New pre-order</div>
-              <form action={createPreOrder} className="mt-3 space-y-2.5">
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">
-                    Inventory product *
-                  </span>
-                  <select name="productId" required className={inputClass}>
-                    {inventoryProducts.length === 0 ? (
-                      <option value="">Add products in Inventory first</option>
-                    ) : (
-                      inventoryProducts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                          {p.variant ? ` · ${p.variant}` : ""} — stock {p.stockQuantity}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">
-                    Supplier (optional — your internal PO tracking)
-                  </span>
-                  <select name="supplierId" className={inputClass}>
-                    <option value="">Auto from product / any</option>
-                    {supplierRows.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Quantity *</span>
-                  <input
-                    name="quantity"
-                    type="number"
-                    min={1}
-                    defaultValue={1}
-                    required
-                    className={inputClass}
-                  />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">
-                    Customer (optional pre-order for)
-                  </span>
-                  <input name="customerName" className={inputClass} />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Expected date</span>
-                  <input name="expectedDate" type="date" className={inputClass} />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Deposit (₱)</span>
-                  <input name="deposit" inputMode="decimal" className={inputClass} />
-                </label>
-                <label className="block space-y-0.5">
-                  <span className="text-[11px] text-zinc-400">Notes</span>
-                  <input name="notes" className={inputClass} />
-                </label>
-                <button
-                  type="submit"
-                  disabled={inventoryProducts.length === 0}
-                  className="w-full rounded-lg bg-zinc-50 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
-                >
-                  Create pre-order
-                </button>
-              </form>
+              <PreOrderCreateForm
+                inventoryProducts={inventoryProducts}
+                suppliers={supplierRows}
+                catalogItems={catalogRows}
+              />
             </div>
           </div>
 
@@ -194,7 +153,7 @@ export default async function PreOrdersPage() {
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-medium text-zinc-100">Pre-order list</div>
               <div className="mt-3">
-                <PreOrderTable rows={rows} />
+                <PreOrderTable rows={rows} inventoryProducts={inventoryProducts} />
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ import {
 } from "@/lib/product-stock";
 import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
+import { linkPreOrderItemsToProduct } from "@/lib/preorder-inventory-link";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
 import { and, eq } from "drizzle-orm";
 
@@ -204,6 +205,15 @@ export async function createProduct(
     return { ok: false, error: "Failed to create product." };
   }
 
+  await linkPreOrderItemsToProduct({
+    id: productId,
+    name,
+    brand,
+    variant,
+    supplierCatalogItemId:
+      catalogItemId && Number.isFinite(catalogItemId) ? catalogItemId : null,
+  });
+
   if (stockQuantity > 0) {
     await db.insert(stockMovements).values({
       productId,
@@ -370,7 +380,12 @@ export async function updateProduct(formData: FormData) {
     });
   }
 
+  if (stockDelta > 0) {
+    await tryAutoFulfillPreOrdersForProduct(productId);
+  }
+
   revalidatePath("/products");
+  revalidatePath("/preorders");
   revalidatePath("/orders");
   revalidatePath("/");
 }

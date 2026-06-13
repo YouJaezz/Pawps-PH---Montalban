@@ -5,6 +5,7 @@ import { useActionState, useMemo, useState } from "react";
 
 import {
   deletePreOrder,
+  linkPreOrderItemToProduct,
   receivePreOrderItem,
   updatePreOrderStatus,
   type PreOrderActionResult,
@@ -35,7 +36,15 @@ export type PreOrderRow = {
     lineTotalCents: number;
     receivedQty: number;
     stockOnHand: number | null;
+    awaitingInventory: boolean;
   }[];
+};
+
+type InventoryOption = {
+  id: number;
+  name: string;
+  variant: string | null;
+  stockQuantity: number;
 };
 
 const statuses = [
@@ -77,7 +86,10 @@ function FeedbackBanner(props: { state: PreOrderActionResult | null }) {
   return null;
 }
 
-export function PreOrderTable(props: { rows: PreOrderRow[] }) {
+export function PreOrderTable(props: {
+  rows: PreOrderRow[];
+  inventoryProducts: InventoryOption[];
+}) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
@@ -90,8 +102,12 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
     PreOrderActionResult | null,
     FormData
   >(receivePreOrderItem, null);
+  const [linkState, linkAction, linkPending] = useActionState<
+    PreOrderActionResult | null,
+    FormData
+  >(linkPreOrderItemToProduct, null);
 
-  const feedback = statusState ?? receiveState;
+  const feedback = statusState ?? receiveState ?? linkState;
   const editRow = props.rows.find((r) => r.id === editId) ?? null;
 
   const filtered = useMemo(() => {
@@ -181,13 +197,15 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                     row.status !== "Received" &&
                     row.status !== "Cancelled" ? (
                     <div className="mt-1 text-[10px] text-zinc-500">
-                      {row.items.some(
-                        (item) =>
-                          item.stockOnHand != null &&
-                          item.stockOnHand >= item.quantity,
-                      )
-                        ? "Inventory ready — auto moves to Sales & Orders when restocked, or set status to Received."
-                        : "Waiting for inventory stock (restock from any supplier in Inventory)."}
+                      {row.items.some((item) => item.awaitingInventory)
+                        ? "Waiting for item in Inventory — add stock there to link and fulfill."
+                        : row.items.some(
+                              (item) =>
+                                item.stockOnHand != null &&
+                                item.stockOnHand >= item.quantity,
+                            )
+                          ? "Inventory ready — auto moves to Sales & Orders when restocked, or set status to Received."
+                          : "Waiting for inventory stock (restock from any supplier in Inventory)."}
                     </div>
                   ) : null}
                 </div>
@@ -250,6 +268,36 @@ export function PreOrderTable(props: { rows: PreOrderRow[] }) {
                           >
                             Inventory: {item.stockOnHand} / need {item.quantity}
                           </div>
+                        ) : item.awaitingInventory ? (
+                          <div className="text-amber-300/90">
+                            Not in Inventory yet — add in Inventory when stock arrives
+                          </div>
+                        ) : null}
+                        {item.awaitingInventory && !row.fulfillmentOrderId ? (
+                          <form action={linkAction} className="mt-2 flex flex-wrap items-center gap-1">
+                            <input type="hidden" name="itemId" value={item.id} />
+                            <select
+                              name="productId"
+                              required
+                              disabled={linkPending}
+                              className="max-w-[12rem] rounded border border-white/10 bg-black/30 px-1 py-0.5 text-[10px] text-zinc-50"
+                            >
+                              <option value="">Link to inventory…</option>
+                              {props.inventoryProducts.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                  {p.variant ? ` · ${p.variant}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              disabled={linkPending}
+                              className="rounded border border-brand-blue/30 px-1.5 py-0.5 text-[10px] text-brand-blue disabled:opacity-50"
+                            >
+                              Link
+                            </button>
+                          </form>
                         ) : null}
                       </div>
                       {!row.customerName ? (

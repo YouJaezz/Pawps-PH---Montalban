@@ -7,14 +7,16 @@ import {
   preOrderItems,
   preOrders,
   products,
+  supplierCatalogItems,
   suppliers,
 } from "@/db/schema";
 import { requireAuth } from "@/lib/auth-guard";
 import {
   fulfillPreOrder,
   syncPreOrderReceiveStatus,
+  tryAutoFulfillPreOrdersForProduct,
 } from "@/lib/preorder-fulfillment";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export type PreOrderActionResult = {
   ok?: boolean;
@@ -67,7 +69,12 @@ async function resolveSupplierId(
 export async function createPreOrder(formData: FormData) {
   await requireAuth();
 
+  const itemMode = String(formData.get("itemMode") ?? "inventory");
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+  const catalogItemId = Number.parseInt(
+    String(formData.get("supplierCatalogItemId") ?? ""),
+    10,
+  );
   const formSupplierId = Number.parseInt(
     String(formData.get("supplierId") ?? ""),
     10,
@@ -79,38 +86,114 @@ export async function createPreOrder(formData: FormData) {
   const expectedRaw = String(formData.get("expectedDate") ?? "").trim();
   const expectedDate = expectedRaw ? new Date(expectedRaw) : null;
 
-  if (!Number.isFinite(productId) || productId <= 0) {
-    throw new Error("Select an inventory product.");
-  }
   if (quantity <= 0) throw new Error("Quantity must be at least 1.");
 
-  const [product] = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brand: products.brand,
-      variant: products.variant,
-      costPrice: products.costPrice,
-      supplierId: products.supplierId,
-      supplierCatalogItemId: products.supplierCatalogItemId,
-    })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
+  let lineProductId: number | null = null;
+  let lineCatalogId: number | null = null;
+  let itemName = "";
+  let brand: string | null = null;
+  let variant: string | null = null;
+  let unitCostCents = 0;
+  let supplierId: number;
 
-  if (!product) throw new Error("Product not found in inventory.");
+  if (itemMode === "new") {
+    itemName = String(formData.get("itemName") ?? "").trim();
+    brand = String(formData.get("brand") ?? "").trim() || null;
+    variant = String(formData.get("variant") ?? "").trim() || null;
+    unitCostCents = parseMoneyToCents(formData.get("unitCost"));
 
-  const supplierId = await resolveSupplierId(
-    product.supplierId,
-    Number.isFinite(formSupplierId) && formSupplierId > 0
-      ? formSupplierId
-      : null,
-  );
+    if (!itemName) {
+      throw new Error("Enter the item name for this pre-order.");
+    }
 
-  const unitCostCents = product.costPrice;
+    if (Number.isFinite(catalogItemId) && catalogItemId > 0) {
+      const [catalog] = await db
+        .select({
+          id: supplierCatalogItems.id,
+          itemName: supplierCatalogItems.itemName,
+          brand: supplierCatalogItems.brand,
+          variant: supplierCatalogItems.variant,
+          unitCost: supplierCatalogItems.unitCost,
+          supplierId: supplierCatalogItems.supplierId,
+        })
+        .from(supplierCatalogItems)
+        .where(eq(supplierCatalogItems.id, catalogItemId))
+        .limit(1);
+
+      if (!catalog) throw new Error("Supplier catalog item not found.");
+
+      lineCatalogId = catalog.id;
+      itemName = itemName || catalog.itemName;
+      brand = brand || catalog.brand;
+      variant = variant || catalog.variant?.trim() || null;
+      if (unitCostCents <= 0) unitCostCents = catalog.unitCost ?? 0;
+
+      supplierId = await resolveSupplierId(
+        catalog.supplierId,
+        Number.isFinite(formSupplierId) && formSupplierId > 0
+          ? formSupplierId
+          : null,
+      );
+    } else {
+      if (unitCostCents <= 0) {
+        throw new Error("Enter an estimated unit cost (₱) for this new item.");
+      }
+      supplierId = await resolveSupplierId(
+        null,
+        Number.isFinite(formSupplierId) && formSupplierId > 0
+          ? formSupplierId
+          : null,
+      );
+    }
+
+    const [existingProduct] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(
+        and(eq(products.archived, false), eq(products.name, itemName)),
+      )
+      .limit(1);
+
+    if (existingProduct) {
+      lineProductId = existingProduct.id;
+    }
+  } else {
+    if (!Number.isFinite(productId) || productId <= 0) {
+      throw new Error("Select an inventory product.");
+    }
+
+    const [product] = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        variant: products.variant,
+        costPrice: products.costPrice,
+        supplierId: products.supplierId,
+        supplierCatalogItemId: products.supplierCatalogItemId,
+      })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
+
+    if (!product) throw new Error("Product not found in inventory.");
+
+    lineProductId = product.id;
+    lineCatalogId = product.supplierCatalogItemId;
+    itemName = product.name;
+    brand = product.brand;
+    variant = product.variant?.trim() || null;
+    unitCostCents = product.costPrice;
+
+    supplierId = await resolveSupplierId(
+      product.supplierId,
+      Number.isFinite(formSupplierId) && formSupplierId > 0
+        ? formSupplierId
+        : null,
+    );
+  }
+
   const lineTotalCents = unitCostCents * quantity;
-  const itemName = product.name;
-  const variant = product.variant?.trim() || null;
 
   const inserted = await db
     .insert(preOrders)
@@ -130,10 +213,10 @@ export async function createPreOrder(formData: FormData) {
 
   await db.insert(preOrderItems).values({
     preOrderId,
-    productId: product.id,
-    supplierCatalogItemId: product.supplierCatalogItemId,
+    productId: lineProductId,
+    supplierCatalogItemId: lineCatalogId,
     itemName,
-    brand: product.brand,
+    brand,
     variant,
     quantity,
     unitCostCents,
@@ -141,6 +224,69 @@ export async function createPreOrder(formData: FormData) {
   });
 
   revalidatePath("/preorders");
+}
+
+export async function linkPreOrderItemToProduct(
+  _prev: PreOrderActionResult | null,
+  formData: FormData,
+): Promise<PreOrderActionResult> {
+  try {
+    await requireAuth();
+
+    const itemId = Number.parseInt(String(formData.get("itemId") ?? ""), 10);
+    const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+
+    if (!Number.isFinite(itemId) || itemId <= 0) {
+      return { error: "Invalid pre-order line." };
+    }
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return { error: "Select an inventory product to link." };
+    }
+
+    const [item] = await db
+      .select({
+        id: preOrderItems.id,
+        productId: preOrderItems.productId,
+        preOrderId: preOrderItems.preOrderId,
+      })
+      .from(preOrderItems)
+      .where(eq(preOrderItems.id, itemId))
+      .limit(1);
+
+    if (!item) return { error: "Pre-order line not found." };
+    if (item.productId != null) {
+      return { error: "This line is already linked to inventory." };
+    }
+
+    const [product] = await db
+      .select({
+        id: products.id,
+        archived: products.archived,
+      })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
+
+    if (!product || product.archived) {
+      return { error: "Inventory product not found." };
+    }
+
+    await db
+      .update(preOrderItems)
+      .set({ productId: product.id })
+      .where(eq(preOrderItems.id, itemId));
+
+    await tryAutoFulfillPreOrdersForProduct(product.id);
+
+    revalidatePreOrderPaths();
+    return {
+      ok: true,
+      message: "Linked to inventory. Restock when stock arrives to auto-fulfill.",
+    };
+  } catch (err) {
+    console.error("linkPreOrderItemToProduct failed:", err);
+    return { error: formatError(err) };
+  }
 }
 
 export async function updatePreOrderStatus(

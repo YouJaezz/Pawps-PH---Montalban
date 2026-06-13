@@ -9,6 +9,10 @@ import {
   supplierCatalogItems,
 } from "@/db/schema";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
+import {
+  getOpenPreOrderIdsForProduct,
+  linkPreOrderItemsToProduct,
+} from "@/lib/preorder-inventory-link";
 import { stockDeductQuantity, type SaleUnit } from "@/lib/order-line-math";
 import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 
@@ -368,14 +372,23 @@ export async function syncPreOrderReceiveStatus(preOrderId: number) {
 
 /** When inventory restocks, auto-move waiting customer pre-orders to Sales & Orders. */
 export async function tryAutoFulfillPreOrdersForProduct(productId: number) {
-  const itemRows = await db
+  const [product] = await db
     .select({
-      preOrderId: preOrderItems.preOrderId,
+      id: products.id,
+      name: products.name,
+      brand: products.brand,
+      variant: products.variant,
+      supplierCatalogItemId: products.supplierCatalogItemId,
     })
-    .from(preOrderItems)
-    .where(eq(preOrderItems.productId, productId));
+    .from(products)
+    .where(and(eq(products.id, productId), eq(products.archived, false)))
+    .limit(1);
 
-  const preOrderIds = [...new Set(itemRows.map((row) => row.preOrderId))];
+  if (!product) return [];
+
+  await linkPreOrderItemsToProduct(product);
+
+  const preOrderIds = await getOpenPreOrderIdsForProduct(productId);
   if (preOrderIds.length === 0) return [];
 
   const openPreOrders = await db
@@ -430,3 +443,31 @@ export async function getPreOrderStockHints(productIds: number[]) {
 
   return new Map(rows.map((row) => [row.id, row.stockQuantity]));
 }
+
+export async function resolvePreOrderItemStockHint(item: {
+  productId: number | null;
+  supplierCatalogItemId: number | null;
+}) {
+  if (item.productId != null) {
+    const map = await getPreOrderStockHints([item.productId]);
+    return map.get(item.productId) ?? 0;
+  }
+
+  if (item.supplierCatalogItemId) {
+    const [product] = await db
+      .select({ stockQuantity: products.stockQuantity })
+      .from(products)
+      .where(
+        and(
+          eq(products.supplierCatalogItemId, item.supplierCatalogItemId),
+          eq(products.archived, false),
+        ),
+      )
+      .limit(1);
+    return product?.stockQuantity ?? null;
+  }
+
+  return null;
+}
+
+export { linkPreOrderItemsToProduct } from "@/lib/preorder-inventory-link";
