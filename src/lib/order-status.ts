@@ -10,22 +10,22 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
-  Pending: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
-  Confirmed: "border-sky-500/30 bg-sky-500/10 text-sky-200",
-  Preparing: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  "Out for Delivery": "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  Completed: "border-brand-cyan/30 bg-brand-blue/10 text-brand-cyan/70",
-  Cancelled: "border-red-500/30 bg-red-500/10 text-red-300",
+  Pending: "border-zinc-300 bg-zinc-100 text-zinc-700",
+  Confirmed: "border-sky-300 bg-sky-50 text-sky-800",
+  Preparing: "border-amber-300 bg-amber-50 text-amber-900",
+  "Out for Delivery": "border-violet-300 bg-violet-50 text-violet-800",
+  Completed: "border-brand-cyan/50 bg-brand-blue/10 text-brand-blue",
+  Cancelled: "border-red-300 bg-red-50 text-red-700",
 };
 
-/** Border accent for status selects — options use `.app-select` dark dropdown. */
+/** Border accent for status selects */
 export const ORDER_STATUS_SELECT_BORDER: Record<OrderStatus, string> = {
-  Pending: "border-zinc-500/50",
-  Confirmed: "border-sky-500/50",
-  Preparing: "border-amber-500/50",
-  "Out for Delivery": "border-violet-500/50",
-  Completed: "border-brand-cyan/50",
-  Cancelled: "border-red-500/50",
+  Pending: "border-zinc-400",
+  Confirmed: "border-sky-400",
+  Preparing: "border-amber-400",
+  "Out for Delivery": "border-violet-400",
+  Completed: "border-brand-blue",
+  Cancelled: "border-red-400",
 };
 
 export const STAFF_ORDER_STATUSES = ORDER_STATUSES.filter(

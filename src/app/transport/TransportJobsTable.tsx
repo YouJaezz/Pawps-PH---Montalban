@@ -89,22 +89,22 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
 
       <div className="space-y-2">
         {props.rows.length === 0 ? (
-          <p className="text-sm text-zinc-500">No transport jobs yet.</p>
+          <p className="text-sm text-zinc-600">No transport jobs yet.</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-zinc-500">No jobs match your search or filters.</p>
+          <p className="text-sm text-zinc-600">No jobs match your search or filters.</p>
         ) : (
           filtered.map((j) => (
             <div
               key={j.id}
-              className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+              className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <div className="font-medium text-zinc-50">{j.customerName}</div>
-                  <div className="text-xs text-zinc-400">
+                  <div className="font-medium text-zinc-900">{j.customerName}</div>
+                  <div className="text-xs text-zinc-600">
                     {j.pickupLocation} → {j.dropoffLocation}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="mt-1 text-xs text-zinc-600">
                     {j.serviceType} · {tenthsToKm(j.distanceKmTenths)} km ·{" "}
                     {formatPhpFromCents(j.fee)} · {j.status}
                   </div>
@@ -127,7 +127,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
                 {j.receiptNumber ? (
                   <Link
                     href={`/transport/receipt/${j.id}`}
-                    className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+                    className="rounded border border-zinc-200 px-2 py-0.5 text-zinc-700"
                   >
                     Receipt
                   </Link>
@@ -139,7 +139,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
                       href={`/track/${j.trackingToken}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded border border-white/10 px-2 py-0.5 text-zinc-300"
+                      className="rounded border border-zinc-200 px-2 py-0.5 text-zinc-700"
                     >
                       Preview
                     </Link>
@@ -147,7 +147,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
                 ) : null}
                 <form action={deleteTransportJob}>
                   <input type="hidden" name="id" value={j.id} />
-                  <button type="submit" className="text-red-400/80 hover:text-red-300">
+                  <button type="submit" className="text-red-400/80 hover:text-red-700">
                     Delete
                   </button>
                 </form>
@@ -167,7 +167,7 @@ export function TransportJobsTable(props: { rows: TransportJobRow[] }) {
           <form action={updateTransportStatus} className="space-y-3">
             <input type="hidden" name="id" value={editRow.id} />
             <label className="block space-y-1">
-              <span className="text-[11px] text-zinc-400">Status</span>
+              <span className="text-[11px] text-zinc-600">Status</span>
               <select
                 name="status"
                 defaultValue={editRow.status}

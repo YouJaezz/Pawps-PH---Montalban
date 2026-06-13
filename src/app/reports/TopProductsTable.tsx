@@ -36,7 +36,7 @@ export function TopProductsTable(props: { rows: TopProductRow[] }) {
 
       <ScrollableTable maxHeight="max-h-[min(55vh,480px)]">
         <table className="w-full table-fixed text-sm">
-          <thead className="bg-white/5 text-left text-zinc-300">
+          <thead className="bg-zinc-50 text-left text-zinc-700">
             <tr>
               <th className="px-4 py-3 font-medium">Product</th>
               <th className="w-20 px-4 py-3 font-medium">Qty</th>
@@ -49,30 +49,30 @@ export function TopProductsTable(props: { rows: TopProductRow[] }) {
           <tbody className="divide-y divide-white/10">
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={4}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={4}>
                   No paid sales yet — use Quick Sell to record sales.
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={4}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={4}>
                   No products match your search.
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
-                <tr key={p.productId} className="hover:bg-white/5">
-                  <td className="px-4 py-3 font-medium text-zinc-50">
+                <tr key={p.productId} className="hover:bg-zinc-50">
+                  <td className="px-4 py-3 font-medium text-zinc-900">
                     <div className="truncate">{p.label}</div>
-                    <div className="mt-1 text-xs text-zinc-400 sm:hidden">
+                    <div className="mt-1 text-xs text-zinc-600 sm:hidden">
                       Profit: {formatPhpFromCents(p.profitCents)}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-200">{p.quantity}</td>
-                  <td className="px-4 py-3 text-zinc-200">
+                  <td className="px-4 py-3 text-zinc-800">{p.quantity}</td>
+                  <td className="px-4 py-3 text-zinc-800">
                     {formatPhpFromCents(p.revenueCents)}
                   </td>
-                  <td className="hidden px-4 py-3 text-zinc-200 sm:table-cell">
+                  <td className="hidden px-4 py-3 text-zinc-800 sm:table-cell">
                     {formatPhpFromCents(p.profitCents)}
                   </td>
                 </tr>

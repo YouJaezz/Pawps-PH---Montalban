@@ -29,18 +29,18 @@ export default async function TransportReceiptPage(props: {
     <AppShell>
       <div className="mx-auto max-w-md px-0 py-4 print:py-0">
         <div className="mb-4 flex gap-2 print:hidden">
-          <Link href="/transport" className="text-xs text-zinc-400">
+          <Link href="/transport" className="text-xs text-zinc-600">
             ← Back
           </Link>
           <PrintReceiptButton />
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none">
           <div className="text-center">
             <div className="text-lg font-bold">{BRAND_NAME}</div>
             <div className="text-xs text-zinc-600">{BRAND_TAGLINE}</div>
             <div className="mt-2 text-sm font-medium">Transport Receipt</div>
-            <div className="text-xs text-zinc-500">{job.receiptNumber ?? `#${job.id}`}</div>
+            <div className="text-xs text-zinc-600">{job.receiptNumber ?? `#${job.id}`}</div>
           </div>
 
           <dl className="mt-6 space-y-2 text-sm">
@@ -103,7 +103,7 @@ export default async function TransportReceiptPage(props: {
             </div>
           </div>
 
-          <div className="mt-6 text-center text-[10px] text-zinc-500">
+          <div className="mt-6 text-center text-[10px] text-zinc-600">
             {new Date(job.createdAt).toLocaleString("en-PH")} · Status: {job.status}
           </div>
         </div>

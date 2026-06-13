@@ -16,7 +16,7 @@ export function ItemTypePicker(props: {
   return (
     <div className="space-y-2">
       {props.label ? (
-        <div className="text-[11px] text-zinc-400">{props.label}</div>
+        <div className="text-[11px] text-zinc-600">{props.label}</div>
       ) : null}
       {props.name ? (
         <input type="hidden" name={props.name} value={props.value} />
@@ -40,10 +40,10 @@ export function ItemTypePicker(props: {
                     className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition ${
                       selected
                         ? "border-brand-blue/50 bg-brand-blue/10 ring-1 ring-brand-blue/30"
-                        : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/[0.03]"
+                        : "border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-white/[0.03]"
                     }`}
                   >
-                    <span className="min-w-0 text-[11px] text-zinc-200">{t.label}</span>
+                    <span className="min-w-0 text-[11px] text-zinc-800">{t.label}</span>
                     {selected ? (
                       <span className="shrink-0 text-[9px] font-medium text-brand-blue">
                         Selected

@@ -8,7 +8,7 @@ import {
 } from "@/app/suppliers/actions";
 
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
 
 export function UploadCatalogForm(props: {
   suppliers: { id: number; name: string }[];
@@ -21,7 +21,7 @@ export function UploadCatalogForm(props: {
   return (
     <form action={formAction} className="mt-2 space-y-1.5">
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-400">Supplier *</span>
+        <span className="text-[11px] text-zinc-600">Supplier *</span>
         <select
           name="supplierId"
           required
@@ -40,18 +40,18 @@ export function UploadCatalogForm(props: {
         </select>
       </label>
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-400">File *</span>
+        <span className="text-[11px] text-zinc-600">File *</span>
         <input
           name="file"
           type="file"
           required
           accept=".xlsx,.xls,.csv,.txt,.pdf"
-          className="w-full text-[11px] text-zinc-400 file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-zinc-200"
+          className="w-full text-[11px] text-zinc-600 file:mr-2 file:rounded file:border-0 file:bg-zinc-100 file:px-2 file:py-1 file:text-zinc-800"
         />
       </label>
 
       {state?.error ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-700">
           {state.error}
         </div>
       ) : null}

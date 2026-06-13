@@ -36,7 +36,7 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
 
       <ScrollableTable maxHeight="max-h-[min(65vh,640px)]">
         <table className="w-full table-fixed text-sm">
-          <thead className="bg-white/5 text-left text-zinc-300">
+          <thead className="bg-zinc-50 text-left text-zinc-700">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="hidden px-4 py-3 font-medium md:table-cell">
@@ -52,33 +52,33 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
           <tbody className="divide-y divide-white/10">
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={5}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={5}>
                   No customers yet — add your first customer on the left.
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={5}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={5}>
                   No customers match your search.
                 </td>
               </tr>
             ) : (
               filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-white/5">
-                  <td className="px-4 py-3 font-medium text-zinc-50">
+                <tr key={c.id} className="hover:bg-zinc-50">
+                  <td className="px-4 py-3 font-medium text-zinc-900">
                     <div className="truncate">{c.name}</div>
-                    <div className="mt-1 text-xs text-zinc-400 md:hidden">
+                    <div className="mt-1 text-xs text-zinc-600 md:hidden">
                       {c.contact ?? "—"}
                       {c.location ? ` • ${c.location}` : ""}
                     </div>
                   </td>
-                  <td className="hidden px-4 py-3 text-zinc-200 md:table-cell">
+                  <td className="hidden px-4 py-3 text-zinc-800 md:table-cell">
                     {c.contact ?? "—"}
                   </td>
-                  <td className="hidden px-4 py-3 text-zinc-200 lg:table-cell">
+                  <td className="hidden px-4 py-3 text-zinc-800 lg:table-cell">
                     {c.location ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-zinc-200">
+                  <td className="px-4 py-3 text-zinc-800">
                     ₱{(c.totalSpend / 100).toFixed(2)}
                   </td>
                   <td className="px-4 py-3">
@@ -86,7 +86,7 @@ export function CustomersTable(props: { rows: CustomerTableRow[] }) {
                       <input type="hidden" name="customerId" value={c.id} />
                       <button
                         type="submit"
-                        className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/15"
+                        className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-800 hover:bg-red-500/15"
                       >
                         Delete
                       </button>

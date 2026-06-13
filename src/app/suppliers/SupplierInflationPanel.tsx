@@ -20,10 +20,10 @@ function formatPercent(value: number | null) {
 }
 
 function changeColor(value: number | null) {
-  if (value == null) return "text-zinc-400";
-  if (value > 0) return "text-red-300";
+  if (value == null) return "text-zinc-600";
+  if (value > 0) return "text-red-700";
   if (value < 0) return "text-brand-cyan/80";
-  return "text-zinc-300";
+  return "text-zinc-700";
 }
 
 export function SupplierInflationPanel(props: {
@@ -38,8 +38,8 @@ export function SupplierInflationPanel(props: {
 
   if (!hasData) {
     return (
-      <details className="rounded-xl border border-white/10 bg-white/5">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-300">
+      <details className="rounded-xl border border-zinc-200 bg-zinc-50">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-700">
           Price analytics
           <span className="ml-2 font-normal text-zinc-600">
             — upload twice per supplier to track changes
@@ -50,16 +50,16 @@ export function SupplierInflationPanel(props: {
   }
 
   return (
-    <details className="rounded-xl border border-white/10 bg-white/5">
-      <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-white/[0.02]">
+    <details className="rounded-xl border border-zinc-200 bg-zinc-50">
+      <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-white/[0.02]">
         Price analytics
-        <span className="ml-2 font-normal text-zinc-500">
+        <span className="ml-2 font-normal text-zinc-600">
           {props.uploadCount} uploads · {props.changeEventCount} changes · avg{" "}
           {formatPercent(props.overallAvgInflationPercent)}
         </span>
       </summary>
 
-      <div className="space-y-3 border-t border-white/10 p-3">
+      <div className="space-y-3 border-t border-zinc-200 p-3">
         <div className="grid grid-cols-3 gap-2">
           <StatCard
             title="Uploads"
@@ -80,12 +80,12 @@ export function SupplierInflationPanel(props: {
 
         {props.uploadSummaries.length > 0 ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">
               By upload
             </div>
             <ScrollableTable maxHeight="max-h-36" className="mt-1">
               <table className="w-full text-[11px]">
-                <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
+                <thead className="sticky top-0 z-10 bg-zinc-100 text-left text-[10px] text-zinc-600">
                   <tr>
                     <th className="px-2 py-1">Date</th>
                     <th className="px-2 py-1">Supplier</th>
@@ -97,10 +97,10 @@ export function SupplierInflationPanel(props: {
                 <tbody className="divide-y divide-white/5">
                   {props.uploadSummaries.slice(0, 12).map((u) => (
                     <tr key={u.documentId}>
-                      <td className="px-2 py-1 text-zinc-400">
+                      <td className="px-2 py-1 text-zinc-600">
                         {formatDateShort(u.uploadedAt)}
                       </td>
-                      <td className="max-w-[100px] truncate px-2 py-1 text-zinc-200">
+                      <td className="max-w-[100px] truncate px-2 py-1 text-zinc-800">
                         {u.supplierName}
                       </td>
                       <td
@@ -108,7 +108,7 @@ export function SupplierInflationPanel(props: {
                       >
                         {formatPercent(u.avgChangePercent)}
                       </td>
-                      <td className="hidden px-2 py-1 text-red-300/80 sm:table-cell">
+                      <td className="hidden px-2 py-1 text-red-700/80 sm:table-cell">
                         {u.itemsIncreased}
                       </td>
                       <td className="hidden px-2 py-1 text-brand-cyan/80/80 sm:table-cell">
@@ -124,12 +124,12 @@ export function SupplierInflationPanel(props: {
 
         {props.topIncreases.length > 0 ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">
               Biggest increases
             </div>
             <ScrollableTable maxHeight="max-h-32" className="mt-1">
               <table className="w-full text-[11px]">
-                <thead className="sticky top-0 z-10 bg-surface-elevated text-left text-[10px] text-zinc-500">
+                <thead className="sticky top-0 z-10 bg-zinc-100 text-left text-[10px] text-zinc-600">
                   <tr>
                     <th className="px-2 py-1">Item</th>
                     <th className="px-2 py-1">Change</th>
@@ -138,7 +138,7 @@ export function SupplierInflationPanel(props: {
                 <tbody className="divide-y divide-white/5">
                   {props.topIncreases.slice(0, 8).map((row) => (
                     <tr key={row.id}>
-                      <td className="max-w-[200px] truncate px-2 py-1 text-zinc-200">
+                      <td className="max-w-[200px] truncate px-2 py-1 text-zinc-800">
                         {displayCatalogItem(row.brand, row.itemName)}
                         <span className="text-zinc-600">
                           {" "}

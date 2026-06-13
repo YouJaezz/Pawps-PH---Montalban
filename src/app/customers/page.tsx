@@ -28,42 +28,42 @@ export default async function CustomersPage() {
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <div className="text-sm text-zinc-400">Customers</div>
+        <div className="text-sm text-zinc-600">Customers</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Customers</h1>
-        <p className="mt-2 text-sm text-zinc-400">
+        <p className="mt-2 text-sm text-zinc-600">
           Add customers and track contact/location.
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <div className="text-sm font-medium text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+              <div className="text-sm font-medium text-zinc-800">
                 Add customer
               </div>
               <form action={createCustomer} className="mt-5 space-y-4">
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Name *</div>
+                  <div className="text-xs text-zinc-700">Name *</div>
                   <input
                     name="name"
                     required
                     placeholder="e.g. Jane Doe"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-600 outline-none focus:border-zinc-300"
                   />
                 </label>
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Contact</div>
+                  <div className="text-xs text-zinc-700">Contact</div>
                   <input
                     name="contact"
                     placeholder="FB / phone"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-600 outline-none focus:border-zinc-300"
                   />
                 </label>
                 <label className="space-y-1">
-                  <div className="text-xs text-zinc-300">Location</div>
+                  <div className="text-xs text-zinc-700">Location</div>
                   <input
                     name="location"
                     placeholder="e.g. Montalban"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-white/20"
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-600 outline-none focus:border-zinc-300"
                   />
                 </label>
                 <button
@@ -77,17 +77,17 @@ export default async function CustomersPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium text-zinc-100">
+                  <div className="text-sm font-medium text-zinc-800">
                     Customer list
                   </div>
-                  <div className="mt-1 text-xs text-zinc-400">
+                  <div className="mt-1 text-xs text-zinc-600">
                     Spend rollup will update when orders are marked paid.
                   </div>
                 </div>
-                <div className="text-xs text-zinc-400">{rows.length} customers</div>
+                <div className="text-xs text-zinc-600">{rows.length} customers</div>
               </div>
 
               <CustomersTable rows={customerTableRows} />

@@ -13,7 +13,7 @@ export function SupplierDeleteButton(props: { supplierId: number; name: string }
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[10px] text-red-400/80 hover:text-red-300"
+        className="text-[10px] text-red-400/80 hover:text-red-700"
       >
         Remove
       </button>
@@ -22,8 +22,8 @@ export function SupplierDeleteButton(props: { supplierId: number; name: string }
 
   return (
     <div className="mt-1 space-y-1 rounded-lg border border-red-500/20 bg-red-500/5 p-2">
-      <div className="text-[10px] text-zinc-300">Remove {props.name}?</div>
-      <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+      <div className="text-[10px] text-zinc-700">Remove {props.name}?</div>
+      <label className="flex items-center gap-1.5 text-[10px] text-zinc-600">
         <input
           type="radio"
           name={`mode-${props.supplierId}`}
@@ -32,7 +32,7 @@ export function SupplierDeleteButton(props: { supplierId: number; name: string }
         />
         Disconnect — keep history, unlink inventory
       </label>
-      <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+      <label className="flex items-center gap-1.5 text-[10px] text-zinc-600">
         <input
           type="radio"
           name={`mode-${props.supplierId}`}
@@ -47,7 +47,7 @@ export function SupplierDeleteButton(props: { supplierId: number; name: string }
           <input type="hidden" name="mode" value={mode} />
           <button
             type="submit"
-            className="rounded border border-red-500/40 px-2 py-0.5 text-[10px] text-red-200"
+            className="rounded border border-red-500/40 px-2 py-0.5 text-[10px] text-red-800"
           >
             Confirm
           </button>
@@ -55,7 +55,7 @@ export function SupplierDeleteButton(props: { supplierId: number; name: string }
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400"
+          className="rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
         >
           Cancel
         </button>

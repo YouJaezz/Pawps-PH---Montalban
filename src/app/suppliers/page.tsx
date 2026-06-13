@@ -18,7 +18,7 @@ import { getSupplierCatalogRows } from "@/db/queries/suppliers";
 import { suppliers } from "@/db/schema";
 
 const inputClass =
-  "w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-50 outline-none focus:border-white/20";
+  "w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] text-zinc-900 outline-none focus:border-zinc-300";
 
 export default async function SuppliersPage() {
   await backfillSupplierPriceHistoryIfEmpty();
@@ -44,7 +44,7 @@ export default async function SuppliersPage() {
       <div className="flex h-full min-h-0 flex-col px-0 py-3">
         <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
           <div>
-            <div className="text-xs text-zinc-500">Suppliers</div>
+            <div className="text-xs text-zinc-600">Suppliers</div>
             <h1 className="text-xl font-semibold tracking-tight">Supplier catalog</h1>
           </div>
           <Link
@@ -61,8 +61,8 @@ export default async function SuppliersPage() {
 
         <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="flex shrink-0 flex-col gap-2 lg:max-h-[min(52vh,520px)] lg:overflow-y-auto">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="text-[11px] font-medium text-zinc-200">Add supplier</div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="text-[11px] font-medium text-zinc-800">Add supplier</div>
               <form action={createSupplier} className="mt-2 space-y-1.5">
                 <input
                   name="name"
@@ -83,13 +83,13 @@ export default async function SuppliersPage() {
               </form>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="text-[11px] font-medium text-zinc-200">Upload list</div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="text-[11px] font-medium text-zinc-800">Upload list</div>
               <UploadCatalogForm suppliers={supplierRows} />
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">
                 Suppliers ({supplierRows.length})
               </div>
               <ul className="mt-1.5 max-h-32 space-y-1 overflow-y-auto text-[10px]">
@@ -99,11 +99,11 @@ export default async function SuppliersPage() {
                   supplierRows.map((s) => (
                     <li
                       key={s.id}
-                      className="border-b border-white/5 py-1 last:border-0"
+                      className="border-b border-zinc-100 py-1 last:border-0"
                     >
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0 truncate">
-                          <span className="text-zinc-200">{s.name}</span>
+                          <span className="text-zinc-800">{s.name}</span>
                           {s.location ? (
                             <span className="text-zinc-600"> · {s.location}</span>
                           ) : null}

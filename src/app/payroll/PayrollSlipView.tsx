@@ -30,7 +30,7 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
 
       <div
         id="payroll-slip"
-        className="rounded-2xl border border-white/10 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
+        className="rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
       >
         <div className="flex flex-col items-center text-center">
           <BrandLogo size="sm" className="max-w-[120px]" />
@@ -38,7 +38,7 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
           <div className="mt-3 text-sm font-semibold uppercase tracking-wide">
             Employee payroll slip
           </div>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-zinc-600">
             {slip.employeeCode} · {slip.periodLabel}
           </div>
         </div>
@@ -85,12 +85,12 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
 
         {slip.punches.length > 0 ? (
           <div className="mt-6">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-600">
               Time in / out
             </div>
             <table className="mt-2 w-full text-xs">
               <thead>
-                <tr className="border-b border-zinc-200 text-left text-zinc-500">
+                <tr className="border-b border-zinc-200 text-left text-zinc-600">
                   <th className="py-1 pr-2">Date</th>
                   <th className="py-1 pr-2">In</th>
                   <th className="py-1 pr-2">Out</th>
@@ -115,7 +115,7 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
           </div>
         ) : null}
 
-        <div className="mt-8 border-t border-dashed border-zinc-300 pt-4 text-center text-[10px] text-zinc-500">
+        <div className="mt-8 border-t border-dashed border-zinc-300 pt-4 text-center text-[10px] text-zinc-600">
           Generated from Pawps PH Time In/Out · For internal payroll records
         </div>
         <div className="mt-6 grid grid-cols-2 gap-8 text-xs text-zinc-600">

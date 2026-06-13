@@ -105,7 +105,7 @@ export function InventoryTable(props: {
 
       <ScrollableTable maxHeight="max-h-[min(75vh,800px)]">
         <table className="w-full table-auto text-xs">
-          <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+          <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
             <tr>
               <th className="px-2 py-2">Item</th>
               <th className="hidden px-2 py-2 sm:table-cell">Brand</th>
@@ -133,56 +133,56 @@ export function InventoryTable(props: {
           <tbody className="divide-y divide-white/10">
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-5 text-zinc-400" colSpan={13}>
+                <td className="px-3 py-5 text-zinc-600" colSpan={13}>
                   No inventory — pick a supplier catalog item to add.
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-3 py-5 text-zinc-400" colSpan={13}>
+                <td className="px-3 py-5 text-zinc-600" colSpan={13}>
                   No items match your search or filters.
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-white/5">
-                  <td className="px-2 py-2 font-medium text-zinc-50">{p.item}</td>
-                  <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
+                <tr key={p.id} className="hover:bg-zinc-50">
+                  <td className="px-2 py-2 font-medium text-zinc-900">{p.item}</td>
+                  <td className="hidden px-2 py-2 text-zinc-700 sm:table-cell">
                     {p.brand}
                   </td>
-                  <td className="px-2 py-2 text-zinc-300">{p.flavor}</td>
+                  <td className="px-2 py-2 text-zinc-700">{p.flavor}</td>
                   {!limited ? (
                     <>
-                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                      <td className="hidden px-2 py-2 text-zinc-600 md:table-cell">
                         {p.itemTypeLabel}
                       </td>
-                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                      <td className="hidden px-2 py-2 text-zinc-600 md:table-cell">
                         {p.supplierName}
                       </td>
-                      <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                      <td className="hidden px-2 py-2 text-zinc-600 lg:table-cell">
                         {p.supplierRetail}
                       </td>
-                      <td className="hidden px-2 py-2 text-zinc-400 lg:table-cell">
+                      <td className="hidden px-2 py-2 text-zinc-600 lg:table-cell">
                         {p.supplierWs}
                       </td>
-                      <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
+                      <td className="hidden px-2 py-2 text-zinc-600 md:table-cell">
                         {p.purchaseTier}
                       </td>
                     </>
                   ) : null}
-                  <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
+                  <td className="hidden px-2 py-2 text-zinc-800 sm:table-cell">
                     {p.ourRetail}
                     <span className="text-[9px] text-zinc-600">{p.unitSuffix}</span>
                   </td>
                   {!limited ? (
-                    <td className="hidden px-2 py-2 text-zinc-200 sm:table-cell">
+                    <td className="hidden px-2 py-2 text-zinc-800 sm:table-cell">
                       {p.ourWs}
                     </td>
                   ) : null}
                   <td className="px-2 py-2 font-medium">
                     <div>{p.stockPrimary}</div>
                     {p.stockSecondary !== "—" ? (
-                      <div className="text-[9px] font-normal text-zinc-500">
+                      <div className="text-[9px] font-normal text-zinc-600">
                         {p.stockSecondary}
                       </div>
                     ) : null}
@@ -209,7 +209,7 @@ export function InventoryTable(props: {
                           <input type="hidden" name="productId" value={p.id} />
                           <button
                             type="submit"
-                            className="text-[10px] text-red-400/80 hover:text-red-300"
+                            className="text-[10px] text-red-400/80 hover:text-red-700"
                           >
                             Delete
                           </button>

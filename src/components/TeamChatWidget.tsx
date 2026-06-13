@@ -21,27 +21,27 @@ export function TeamChatWidget(props: {
           <button
             type="button"
             aria-label="Close chat"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/40"
             onClick={() => props.setChatOpen(false)}
           />
-          <div className="relative z-10 flex h-[min(85vh,520px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a1018] shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2">
-              <div className="text-xs text-zinc-400">
+          <div className="relative z-10 flex h-[min(85vh,520px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-4 py-2.5">
+              <div className="text-sm text-zinc-600">
                 Signed in as{" "}
-                <span className="text-zinc-200">{props.userName}</span>
+                <span className="font-medium text-zinc-900">{props.userName}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link
                   href="/team-chat"
                   onClick={() => props.setChatOpen(false)}
-                  className="text-[10px] text-zinc-500 underline hover:text-zinc-300"
+                  className="text-xs text-brand-blue underline hover:text-brand-blue/80"
                 >
                   Full page
                 </Link>
                 <button
                   type="button"
                   onClick={() => props.setChatOpen(false)}
-                  className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400"
+                  className="rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-600 hover:bg-zinc-100"
                 >
                   Close
                 </button>
@@ -65,7 +65,7 @@ export function TeamChatWidget(props: {
       <button
         type="button"
         onClick={() => props.setChatOpen(true)}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-brand-blue/40 bg-surface-elevated px-4 py-2.5 text-sm font-medium text-zinc-100 shadow-lg hover:bg-surface print:hidden"
+        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-brand-blue/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand-blue shadow-lg shadow-brand-blue/10 hover:bg-brand-blue/5 print:hidden"
       >
         <span>Team chat</span>
         <UnreadBadge count={props.unreadCount} />

@@ -77,51 +77,51 @@ export function ProductSelectField(props: {
   return (
     <div ref={rootRef} className="relative space-y-1">
       {props.label ? (
-        <div className="text-[11px] text-zinc-400">{props.label}</div>
+        <div className="text-[11px] text-zinc-600">{props.label}</div>
       ) : null}
 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-left outline-none hover:border-white/20 focus:border-white/25"
+        className="flex w-full items-start gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-left outline-none hover:border-zinc-300 focus:border-white/25"
       >
         {selected ? (
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <ItemTypeBadge itemType={selected.itemType} size="xs" />
-              <span className="truncate text-sm font-medium text-zinc-50">
+              <span className="truncate text-sm font-medium text-zinc-900">
                 {productTitle(selected)}
               </span>
             </div>
-            <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+            <div className="mt-0.5 truncate text-[11px] text-zinc-600">
               {productSubtitle(selected)}
               {selected.meta ? ` · ${selected.meta}` : null}
             </div>
           </div>
         ) : (
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-zinc-600">
             {props.placeholder ?? "Select a product…"}
           </span>
         )}
-        <span className="shrink-0 pt-0.5 text-[10px] text-zinc-500">
+        <span className="shrink-0 pt-0.5 text-[10px] text-zinc-600">
           {open ? "▲" : "▼"}
         </span>
       </button>
 
       {open ? (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-[#0f0f16] shadow-2xl">
-          <div className="border-b border-white/10 p-2">
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-zinc-200 bg-[#0f0f16] shadow-2xl">
+          <div className="border-b border-zinc-200 p-2">
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name, brand, type…"
-              className="w-full rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20"
+              className="w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300"
             />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-center text-[11px] text-zinc-500">
+              <li className="px-3 py-3 text-center text-[11px] text-zinc-600">
                 No products match your search.
               </li>
             ) : (
@@ -136,18 +136,18 @@ export function ProductSelectField(props: {
                         setOpen(false);
                         setQuery("");
                       }}
-                      className={`flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-white/5 ${
+                      className={`flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-zinc-50 ${
                         active ? "bg-brand-blue/10" : ""
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <ItemTypeBadge itemType={p.itemType} size="xs" />
-                          <span className="truncate text-xs font-medium text-zinc-100">
+                          <span className="truncate text-xs font-medium text-zinc-800">
                             {productTitle(p)}
                           </span>
                         </div>
-                        <div className="mt-0.5 truncate text-[10px] text-zinc-500">
+                        <div className="mt-0.5 truncate text-[10px] text-zinc-600">
                           {productSubtitle(p)}
                           {p.meta ? ` · ${p.meta}` : null}
                         </div>

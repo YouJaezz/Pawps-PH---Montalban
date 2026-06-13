@@ -31,7 +31,7 @@ export function OrderReceiptView(props: {
             href={`/orders/receipt/${receipt.orderId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded border border-white/10 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5"
+            className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50"
           >
             Open full receipt
           </Link>
@@ -40,7 +40,7 @@ export function OrderReceiptView(props: {
 
       <div
         id="order-receipt"
-        className="rounded-2xl border border-white/10 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
+        className="rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900 print:border-0 print:shadow-none"
       >
         <div className="text-center">
           <div className="flex justify-center">
@@ -48,7 +48,7 @@ export function OrderReceiptView(props: {
           </div>
           <div className="mt-1 text-xs text-zinc-600">{BRAND_TAGLINE}</div>
           <div className="mt-2 text-sm font-medium">Sales Receipt</div>
-          <div className="text-xs text-zinc-500">Order #{receipt.orderId}</div>
+          <div className="text-xs text-zinc-600">Order #{receipt.orderId}</div>
         </div>
 
         <dl className="mt-5 space-y-2 text-sm">
@@ -95,7 +95,7 @@ export function OrderReceiptView(props: {
         </dl>
 
         <div className="mt-4 border-t border-zinc-200 pt-4">
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-600">
             Items
           </div>
           <ul className="space-y-2 text-sm">
@@ -120,7 +120,7 @@ export function OrderReceiptView(props: {
                     )}
                   </div>
                   {line.lineNote ? (
-                    <div className="mt-1 text-[10px] text-zinc-500">{line.lineNote}</div>
+                    <div className="mt-1 text-[10px] text-zinc-600">{line.lineNote}</div>
                   ) : null}
                 </div>
                 <div className="shrink-0 font-medium">
@@ -142,7 +142,7 @@ export function OrderReceiptView(props: {
                 <span>
                   Discount
                   {receipt.discountNote ? (
-                    <span className="block text-[10px] font-normal text-zinc-500">
+                    <span className="block text-[10px] font-normal text-zinc-600">
                       {receipt.discountNote}
                     </span>
                   ) : null}
@@ -175,7 +175,7 @@ export function OrderReceiptView(props: {
           </div>
         </div>
 
-        <div className="mt-5 text-center text-[10px] text-zinc-500">
+        <div className="mt-5 text-center text-[10px] text-zinc-600">
           {formatWhen(receipt.createdAt)}
         </div>
       </div>

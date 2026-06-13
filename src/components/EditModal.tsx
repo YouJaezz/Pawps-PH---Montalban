@@ -35,24 +35,26 @@ export function EditModal(props: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-[max(1rem,env(safe-area-inset-top))]"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-[max(1rem,env(safe-area-inset-top))]"
       onClick={props.onClose}
     >
       <div
-        className={`my-4 w-full ${maxW} rounded-2xl border border-brand-blue/20 bg-surface-elevated shadow-xl`}
+        className={`my-4 w-full ${maxW} rounded-2xl border border-zinc-200 bg-white shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-4 py-3">
           <div>
-            <div className="text-sm font-semibold text-zinc-50">{props.title}</div>
+            <div className="font-brand text-base font-semibold text-zinc-900">
+              {props.title}
+            </div>
             {props.subtitle ? (
-              <div className="mt-0.5 text-[11px] text-zinc-500">{props.subtitle}</div>
+              <div className="mt-0.5 text-sm text-zinc-600">{props.subtitle}</div>
             ) : null}
           </div>
           <button
             type="button"
             onClick={props.onClose}
-            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400 hover:bg-white/5"
+            className="rounded-lg border border-zinc-300 px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-100"
           >
             Close
           </button>
@@ -64,4 +66,4 @@ export function EditModal(props: {
 }
 
 export const modalFieldClass =
-  "app-select w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+  "app-select w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20";

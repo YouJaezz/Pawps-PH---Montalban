@@ -15,7 +15,7 @@ function Banner(props: { state: AttendanceActionResult | null }) {
   if (!props.state) return null;
   if (props.state.error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
         {props.state.error}
       </div>
     );
@@ -92,7 +92,7 @@ export function AttendancePanel(props: {
           <div className="mt-2">
             <LiveShiftTimer clockInAt={liveClockIn} size="lg" />
           </div>
-          <p className="mt-2 text-xs text-zinc-400">
+          <p className="mt-2 text-xs text-zinc-600">
             Started {fmtWhen(props.openEntry!.clockInAt)} · updates every second
           </p>
         </div>
@@ -102,10 +102,10 @@ export function AttendancePanel(props: {
         <div className="text-xs uppercase tracking-wide text-brand-blue">
           {props.monthLabel} · your total
         </div>
-        <div className="mt-1 text-3xl font-bold text-zinc-50">
+        <div className="mt-1 text-3xl font-bold text-zinc-900">
           {formatDuration(props.monthMinutes)}
         </div>
-        <div className="mt-1 text-xs text-zinc-400">
+        <div className="mt-1 text-xs text-zinc-600">
           {props.monthEntries.filter((e) => e.clockOutAt).length} completed shift(s)
           {clockedIn && liveClockIn ? (
             <span className="text-brand-cyan">
@@ -116,8 +116,8 @@ export function AttendancePanel(props: {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <div className="text-sm font-medium text-zinc-100">Time clock</div>
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+        <div className="text-sm font-medium text-zinc-800">Time clock</div>
         {clockedIn ? (
           <>
             <p className="mt-2 text-xs text-brand-cyan/80">
@@ -132,7 +132,7 @@ export function AttendancePanel(props: {
               <button
                 type="submit"
                 disabled={outPending}
-                className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-200 ring-1 ring-red-500/40 hover:bg-red-500/30 disabled:opacity-50"
+                className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-800 ring-1 ring-red-500/40 hover:bg-red-500/30 disabled:opacity-50"
               >
                 {outPending ? "Clocking out…" : "Time out"}
               </button>
@@ -161,9 +161,9 @@ export function AttendancePanel(props: {
             {props.activeShifts.map((s) => (
               <li
                 key={s.entryId}
-                className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2"
               >
-                <span className="text-sm text-zinc-200">{s.name}</span>
+                <span className="text-sm text-zinc-800">{s.name}</span>
                 <LiveShiftTimer clockInAt={s.clockInAt} />
               </li>
             ))}
@@ -172,11 +172,11 @@ export function AttendancePanel(props: {
       ) : null}
 
       {props.adminView && props.teamTotals.length > 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="text-sm font-medium text-zinc-100">Team this month</div>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+          <div className="text-sm font-medium text-zinc-800">Team this month</div>
           <ScrollableTable maxHeight="max-h-64" className="mt-3">
             <table className="w-full text-xs">
-              <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+              <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
                 <tr>
                   <th className="px-3 py-2">Employee</th>
                   <th className="px-3 py-2">Hours</th>
@@ -186,9 +186,9 @@ export function AttendancePanel(props: {
               <tbody className="divide-y divide-white/10">
                 {props.teamTotals.map((t) => (
                   <tr key={t.userId}>
-                    <td className="px-3 py-2 text-zinc-200">{t.name}</td>
+                    <td className="px-3 py-2 text-zinc-800">{t.name}</td>
                     <td className="px-3 py-2">{formatDuration(t.minutes)}</td>
-                    <td className="px-3 py-2 text-zinc-400">{t.entryCount}</td>
+                    <td className="px-3 py-2 text-zinc-600">{t.entryCount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -197,13 +197,13 @@ export function AttendancePanel(props: {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <div className="text-sm font-medium text-zinc-100">
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+        <div className="text-sm font-medium text-zinc-800">
           {props.adminView ? "All time entries" : "Your shifts"} · {props.monthLabel}
         </div>
         <ScrollableTable maxHeight="max-h-[min(50vh,420px)]" className="mt-3">
           <table className="w-full text-xs">
-            <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+            <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
               <tr>
                 {props.adminView ? <th className="px-3 py-2">Employee</th> : null}
                 <th className="px-3 py-2">Time in</th>
@@ -216,7 +216,7 @@ export function AttendancePanel(props: {
                 <tr>
                   <td
                     colSpan={props.adminView ? 4 : 3}
-                    className="px-3 py-4 text-zinc-500"
+                    className="px-3 py-4 text-zinc-600"
                   >
                     No entries this month yet.
                   </td>
@@ -225,7 +225,7 @@ export function AttendancePanel(props: {
                 props.monthEntries.map((e) => (
                   <tr key={e.id}>
                     {props.adminView ? (
-                      <td className="px-3 py-2 text-zinc-300">{e.employeeName}</td>
+                      <td className="px-3 py-2 text-zinc-700">{e.employeeName}</td>
                     ) : null}
                     <td className="px-3 py-2">{fmtWhen(e.clockInAt)}</td>
                     <td className="px-3 py-2">

@@ -35,7 +35,7 @@ export function ExpiringSoonTable(props: { rows: ExpiringSoonRow[] }) {
 
       <ScrollableTable maxHeight="max-h-[min(50vh,400px)]">
         <table className="w-full text-sm">
-          <thead className="bg-white/5 text-left text-zinc-300">
+          <thead className="bg-zinc-50 text-left text-zinc-700">
             <tr>
               <th className="px-4 py-3 font-medium">Product</th>
               <th className="px-4 py-3 font-medium">Stock</th>
@@ -45,27 +45,27 @@ export function ExpiringSoonTable(props: { rows: ExpiringSoonRow[] }) {
           <tbody className="divide-y divide-white/10">
             {props.rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={3}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={3}>
                   No expiring items found (or no products yet).
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-400" colSpan={3}>
+                <td className="px-4 py-4 text-zinc-600" colSpan={3}>
                   No items match your search.
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-white/5">
+                <tr key={p.id} className="hover:bg-zinc-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-zinc-50">{p.name}</div>
+                    <div className="font-medium text-zinc-900">{p.name}</div>
                     {p.subtitle ? (
-                      <div className="text-xs text-zinc-400">{p.subtitle}</div>
+                      <div className="text-xs text-zinc-600">{p.subtitle}</div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-zinc-200">{p.stockQuantity}</td>
-                  <td className="px-4 py-3 text-zinc-200">{p.expiryLabel}</td>
+                  <td className="px-4 py-3 text-zinc-800">{p.stockQuantity}</td>
+                  <td className="px-4 py-3 text-zinc-800">{p.expiryLabel}</td>
                 </tr>
               ))
             )}

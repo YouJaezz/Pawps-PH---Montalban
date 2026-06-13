@@ -47,11 +47,11 @@ export default async function Home() {
     <AppShell>
       <div className="w-full px-0 py-4">
         <div className="flex flex-col gap-2">
-          <div className="text-sm text-zinc-400">Dashboard</div>
+          <div className="text-sm text-zinc-600">Dashboard</div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Inventory Dashboard
           </h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-600">
             At-a-glance stock health and expiry risk.
           </p>
         </div>
@@ -65,11 +65,11 @@ export default async function Home() {
           </Link>
           <Link
             href="/orders"
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
+            className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
           >
             Sales & Orders
           </Link>
-          <div className="text-xs text-zinc-400">
+          <div className="text-xs text-zinc-600">
             (Quick Sell modal will be on this dashboard next.)
           </div>
         </div>
@@ -121,7 +121,7 @@ export default async function Home() {
               title="Investor share"
               value="—"
               subtitle={
-                <Link href="/investors" className="text-zinc-400 underline">
+                <Link href="/investors" className="text-zinc-600 underline">
                   Add investor →
                 </Link>
               }
@@ -131,26 +131,26 @@ export default async function Home() {
 
         {investor?.hasSetup ? (
           <div className="mt-4 rounded-xl border border-brand-blue/20 bg-brand-blue/5 px-4 py-3 text-sm">
-            <span className="text-zinc-300">{investor.investorName}</span>
-            <span className="text-zinc-500"> · </span>
+            <span className="text-zinc-700">{investor.investorName}</span>
+            <span className="text-zinc-600"> · </span>
             <span className="text-brand-blue">
               {formatPhpFromCents(investor.currentShareCents)} this month
             </span>
-            <span className="text-zinc-500"> · </span>
-            <span className="text-zinc-400">
+            <span className="text-zinc-600"> · </span>
+            <span className="text-zinc-600">
               Paid YTD {formatPhpFromCents(investor.paidOutYtdCents)}
             </span>
             {investor.accruedUnpaidCents > 0 ? (
               <>
-                <span className="text-zinc-500"> · </span>
-                <span className="text-amber-300">
+                <span className="text-zinc-600"> · </span>
+                <span className="text-amber-800">
                   Accrued {formatPhpFromCents(investor.accruedUnpaidCents)}
                 </span>
               </>
             ) : null}
             <Link
               href="/investors"
-              className="ml-3 text-xs text-zinc-400 underline hover:text-zinc-200"
+              className="ml-3 text-xs text-zinc-600 underline hover:text-zinc-800"
             >
               Investor tab →
             </Link>
@@ -160,7 +160,7 @@ export default async function Home() {
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href="/reports"
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
+            className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-200"
           >
             View Business Insights
           </Link>
@@ -168,23 +168,23 @@ export default async function Home() {
 
         {stockAlerts.all.length > 0 ? (
           <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-            <div className="text-sm text-zinc-300">Stock alerts</div>
-            <div className="mt-1 text-xs text-zinc-400">
+            <div className="text-sm text-zinc-700">Stock alerts</div>
+            <div className="mt-1 text-xs text-zinc-600">
               Items that are out of stock or running low.
             </div>
             <StockAlertsTable rows={stockAlerts.all} showLink />
           </div>
         ) : null}
 
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm text-zinc-300">Expiring soon</div>
-              <div className="mt-1 text-xs text-zinc-400">
+              <div className="text-sm text-zinc-700">Expiring soon</div>
+              <div className="mt-1 text-xs text-zinc-600">
                 Showing up to 8 products with an expiry date in the next 30 days.
               </div>
             </div>
-            <div className="text-xs text-zinc-400">
+            <div className="text-xs text-zinc-600">
               (Quick Sell + Bulk Tools next)
             </div>
           </div>

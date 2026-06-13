@@ -14,7 +14,7 @@ export function ScrollableTable({
 }: ScrollableTableProps) {
   return (
     <div
-      className={`mt-4 overflow-hidden rounded-xl border border-white/10 ${className}`}
+      className={`mt-4 overflow-hidden rounded-xl border border-zinc-200 ${className}`}
     >
       <div className={`scrollable-table-body ${maxHeight} overflow-auto`}>
         {children}

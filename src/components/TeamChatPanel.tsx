@@ -147,22 +147,22 @@ export function TeamChatPanel(props: {
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0a1018] ${
+      className={`flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white ${
         props.compact ? "h-full min-h-0" : "h-[min(70vh,560px)]"
       }`}
     >
-      <div className="shrink-0 border-b border-white/10 px-4 py-3">
-        <div className="text-sm font-medium text-zinc-100">Team chat</div>
-        <div className="text-[10px] text-zinc-500">
+      <div className="shrink-0 border-b border-zinc-200 px-4 py-3">
+        <div className="text-sm font-medium text-zinc-800">Team chat</div>
+        <div className="text-[10px] text-zinc-600">
           Messages sync every few seconds · staff only
         </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {loading ? (
-          <p className="text-center text-xs text-zinc-500">Loading…</p>
+          <p className="text-center text-xs text-zinc-600">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="text-center text-xs text-zinc-500">
+          <p className="text-center text-xs text-zinc-600">
             No messages yet. Say hello to the team.
           </p>
         ) : (
@@ -176,8 +176,8 @@ export function TeamChatPanel(props: {
                   m.isAnnouncement
                     ? "border border-brand-blue/40 bg-brand-blue/15 text-brand-cyan/90"
                     : m.isOwn
-                      ? "bg-brand-blue/20 text-zinc-100"
-                      : "bg-white/10 text-zinc-200"
+                      ? "bg-brand-blue/20 text-zinc-800"
+                      : "bg-zinc-100 text-zinc-800"
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -189,7 +189,7 @@ export function TeamChatPanel(props: {
                       Announcement
                     </span>
                   ) : null}
-                  <span className="text-[9px] text-zinc-500">
+                  <span className="text-[9px] text-zinc-600">
                     {fmtTime(m.createdAt)}
                   </span>
                 </div>
@@ -202,20 +202,20 @@ export function TeamChatPanel(props: {
       </div>
 
       {error ? (
-        <div className="shrink-0 px-4 pb-2 text-[10px] text-red-300">{error}</div>
+        <div className="shrink-0 px-4 pb-2 text-[10px] text-red-700">{error}</div>
       ) : null}
 
       <form
         onSubmit={sendMessage}
-        className="shrink-0 border-t border-white/10 p-3"
+        className="shrink-0 border-t border-zinc-200 p-3"
       >
         {props.isAdmin ? (
-          <label className="mb-2 flex items-center gap-2 text-[10px] text-zinc-400">
+          <label className="mb-2 flex items-center gap-2 text-[10px] text-zinc-600">
             <input
               type="checkbox"
               checked={announce}
               onChange={(e) => setAnnounce(e.target.checked)}
-              className="rounded border-white/20"
+              className="rounded border-zinc-300"
             />
             Pin as announcement (highlighted for everyone)
           </label>
@@ -226,12 +226,12 @@ export function TeamChatPanel(props: {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Type a message…"
             maxLength={2000}
-            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-50 outline-none focus:border-white/25"
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
           />
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-lg bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 disabled:opacity-50"
           >
             {sending ? "…" : "Send"}
           </button>

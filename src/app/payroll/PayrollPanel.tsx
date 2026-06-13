@@ -19,7 +19,7 @@ function Banner(props: { state: PayrollActionResult | null }) {
   if (!props.state) return null;
   if (props.state.error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
         {props.state.error}
       </div>
     );
@@ -85,11 +85,11 @@ export function PayrollPanel(props: {
     <div className="space-y-6">
       <Banner state={feedback} />
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <div className="text-sm font-medium text-zinc-100">Employee hourly rates</div>
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+        <div className="text-sm font-medium text-zinc-800">Employee hourly rates</div>
         <ScrollableTable maxHeight="max-h-48" className="mt-3">
           <table className="w-full text-xs">
-            <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+            <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
               <tr>
                 <th className="px-3 py-2">Employee</th>
                 <th className="px-3 py-2">Role</th>
@@ -100,8 +100,8 @@ export function PayrollPanel(props: {
             <tbody className="divide-y divide-white/10">
               {props.employees.map((e) => (
                 <tr key={e.id}>
-                  <td className="px-3 py-2 text-zinc-200">{e.name ?? e.email}</td>
-                  <td className="px-3 py-2 capitalize text-zinc-500">{e.role}</td>
+                  <td className="px-3 py-2 text-zinc-800">{e.name ?? e.email}</td>
+                  <td className="px-3 py-2 capitalize text-zinc-600">{e.role}</td>
                   <td className="px-3 py-2">
                     {e.hourlyRateCents > 0
                       ? formatPhpFromCents(e.hourlyRateCents)
@@ -134,7 +134,7 @@ export function PayrollPanel(props: {
           <form action={rateAction} className="space-y-3">
             <input type="hidden" name="userId" value={rateEmployee.id} />
             <label className="block space-y-1">
-              <span className="text-[11px] text-zinc-400">Hourly rate (₱)</span>
+              <span className="text-[11px] text-zinc-600">Hourly rate (₱)</span>
               <input
                 name="hourlyRate"
                 inputMode="decimal"
@@ -158,9 +158,9 @@ export function PayrollPanel(props: {
         ) : null}
       </EditModal>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <div className="text-sm font-medium text-zinc-100">Monthly payroll</div>
-        <p className="mt-1 text-[11px] text-zinc-500">
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+        <div className="text-sm font-medium text-zinc-800">Monthly payroll</div>
+        <p className="mt-1 text-[11px] text-zinc-600">
           Based on Time In/Out hours × hourly rate. Hours above match the attendance
           report
           {props.reportYear && props.reportMonth
@@ -172,7 +172,7 @@ export function PayrollPanel(props: {
         </p>
         <ScrollableTable maxHeight="max-h-[min(60vh,480px)]" className="mt-3">
           <table className="w-full text-xs">
-            <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+            <thead className="bg-zinc-50 text-left text-[10px] text-zinc-600">
               <tr>
                 <th className="px-3 py-2">Employee</th>
                 <th className="px-3 py-2">Period</th>
@@ -186,13 +186,13 @@ export function PayrollPanel(props: {
             <tbody className="divide-y divide-white/10">
               {props.rows.map((row) => (
                 <tr key={`${row.userId}-${row.year}-${row.month}`}>
-                  <td className="px-3 py-2 text-zinc-200">{row.employeeName}</td>
+                  <td className="px-3 py-2 text-zinc-800">{row.employeeName}</td>
                   <td className="px-3 py-2">{row.label}</td>
                   <td className="px-3 py-2">{formatDuration(row.minutesWorked)}</td>
                   <td className="px-3 py-2 font-medium text-brand-cyan/80">
                     {formatPhpFromCents(row.grossPayCents)}
                   </td>
-                  <td className="px-3 py-2 text-zinc-400">{row.status}</td>
+                  <td className="px-3 py-2 text-zinc-600">{row.status}</td>
                   <td className="px-3 py-2">
                     <PayrollPrintSlipLink
                       userId={row.userId}
@@ -211,7 +211,7 @@ export function PayrollPanel(props: {
                         <button
                           type="submit"
                           disabled={pending}
-                          className="text-[10px] text-zinc-300 underline disabled:opacity-50"
+                          className="text-[10px] text-zinc-700 underline disabled:opacity-50"
                         >
                           Lock payroll
                         </button>
@@ -234,7 +234,7 @@ export function PayrollPanel(props: {
                           <button
                             type="submit"
                             disabled={pending}
-                            className="text-[10px] text-red-300/80 underline"
+                            className="text-[10px] text-red-700/80 underline"
                           >
                             Reset
                           </button>
@@ -247,7 +247,7 @@ export function PayrollPanel(props: {
                         <button
                           type="submit"
                           disabled={pending}
-                          className="text-[10px] text-red-300/80 underline"
+                          className="text-[10px] text-red-700/80 underline"
                         >
                           Reset
                         </button>

@@ -19,7 +19,7 @@ export type CatalogSelectOption = {
 };
 
 const fieldClass =
-  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
 
 export function CatalogItemSelect(props: {
   items: CatalogSelectOption[];
@@ -109,14 +109,14 @@ export function CatalogItemSelect(props: {
       </select>
 
       {selected ? (
-        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2.5">
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <ItemTypeBadge itemType={selected.itemType} />
-            <span className="text-sm font-medium text-zinc-100">
+            <span className="text-sm font-medium text-zinc-800">
               {displayCatalogProductName(selected)}
             </span>
           </div>
-          <div className="mt-1 text-[11px] text-zinc-500">
+          <div className="mt-1 text-[11px] text-zinc-600">
             {displayCatalogBrand(selected.brand)}
             {displayCatalogFlavor(selected.variant, selected.itemName) !== "—"
               ? ` · ${displayCatalogFlavor(selected.variant, selected.itemName)}`

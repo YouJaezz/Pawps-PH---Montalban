@@ -49,7 +49,7 @@ export type SupplierOption = {
 };
 
 const fieldClass =
-  "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
+  "w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:border-zinc-300";
 
 function centsToInput(cents: number | null | undefined) {
   if (cents == null) return "";
@@ -80,13 +80,13 @@ function ProfitLine(props: {
 }) {
   return (
     <div className="flex items-start justify-between gap-2 text-[11px]">
-      <span className="text-zinc-400">{props.label}</span>
+      <span className="text-zinc-600">{props.label}</span>
       <div className="text-right">
         <div className="font-medium text-brand-cyan">
           {formatPhpFromCents(props.perUnit)} / {props.unitLabel}
         </div>
         {props.stock > 0 && props.total != null ? (
-          <div className="text-zinc-500">
+          <div className="text-zinc-600">
             {formatPhpFromCents(props.total)} total ({props.stock} {props.unitLabel})
           </div>
         ) : null}
@@ -281,7 +281,7 @@ export function ProductForm(props: {
   return (
     <form action={formAction} className="space-y-3">
       <label className="block space-y-0.5">
-        <span className="text-[11px] text-zinc-400">Supplier *</span>
+        <span className="text-[11px] text-zinc-600">Supplier *</span>
         <select
           name="supplierId"
           required
@@ -311,7 +311,7 @@ export function ProductForm(props: {
       </label>
 
       <label className="block space-y-1">
-        <span className="text-[11px] text-zinc-400">
+        <span className="text-[11px] text-zinc-600">
           Catalog item ({catalogForSupplier.length} for this supplier)
         </span>
         <CatalogItemSelect
@@ -323,17 +323,17 @@ export function ProductForm(props: {
       </label>
 
       {selectedCatalog ? (
-        <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11px] text-zinc-400">
-          <span className="text-zinc-200">{previewItem}</span>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-[11px] text-zinc-600">
+          <span className="text-zinc-800">{previewItem}</span>
           {previewBrand !== "—" ? (
             <>
               {" "}
-              · <span className="text-zinc-300">{previewBrand}</span>
+              · <span className="text-zinc-700">{previewBrand}</span>
             </>
           ) : null}
           {previewFlavor !== "—" ? <> · {previewFlavor}</> : null}
           {selectedCatalog.perKiloPrice != null ? (
-            <div className="mt-1 text-[10px] text-zinc-500">
+            <div className="mt-1 text-[10px] text-zinc-600">
               Supplier per kg: {formatPhpFromCents(selectedCatalog.perKiloPrice)}
             </div>
           ) : null}
@@ -341,15 +341,15 @@ export function ProductForm(props: {
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <label className="col-span-2 space-y-0.5">
-            <span className="text-[11px] text-zinc-400">Item *</span>
+            <span className="text-[11px] text-zinc-600">Item *</span>
             <input name="name" required className={fieldClass} placeholder="Whiskas" />
           </label>
           <label className="space-y-0.5">
-            <span className="text-[11px] text-zinc-400">Brand *</span>
+            <span className="text-[11px] text-zinc-600">Brand *</span>
             <input name="brand" required className={fieldClass} />
           </label>
           <label className="space-y-0.5">
-            <span className="text-[11px] text-zinc-400">Flavor</span>
+            <span className="text-[11px] text-zinc-600">Flavor</span>
             <input name="variant" className={fieldClass} placeholder="Tuna" />
           </label>
           <ItemTypePicker
@@ -379,36 +379,36 @@ export function ProductForm(props: {
       ) : null}
 
       {selectedCatalog ? (
-        <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11px]">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">
             From supplier pricelist
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <ItemTypeBadge itemType={selectedCatalog.itemType} />
-            <span className="text-zinc-300">{previewItem}</span>
+            <span className="text-zinc-700">{previewItem}</span>
           </div>
           <input
             type="hidden"
             name="itemType"
             value={normalizeCatalogItemType(selectedCatalog.itemType)}
           />
-          <div className="mt-1.5 grid grid-cols-2 gap-2 text-zinc-300">
+          <div className="mt-1.5 grid grid-cols-2 gap-2 text-zinc-700">
             <div>
-              <span className="text-zinc-500">WS </span>
+              <span className="text-zinc-600">WS </span>
               {formatSupplierPrice(
                 selectedCatalog.unitCost,
                 selectedCatalog.priceUnit,
               )}
             </div>
             <div>
-              <span className="text-zinc-500">Retail </span>
+              <span className="text-zinc-600">Retail </span>
               {formatSupplierPrice(
                 selectedCatalog.retailPrice,
                 selectedCatalog.priceUnit,
               )}
             </div>
             {selectedCatalog.perKiloPrice != null ? (
-              <div className="col-span-2 text-[10px] text-zinc-500">
+              <div className="col-span-2 text-[10px] text-zinc-600">
                 Per kg WS: {formatPhpFromCents(selectedCatalog.perKiloPrice)}
               </div>
             ) : null}
@@ -416,14 +416,14 @@ export function ProductForm(props: {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
-        <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-white/[0.02] p-2.5">
+        <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
           Your shop prices &amp; stock
         </div>
 
         {selectedCatalog ? (
           <label className="col-span-2 space-y-0.5">
-            <span className="text-[10px] text-zinc-500">Bought as *</span>
+            <span className="text-[10px] text-zinc-600">Bought as *</span>
             <select
               name="purchaseTier"
               value={purchaseTier}
@@ -443,14 +443,14 @@ export function ProductForm(props: {
         ) : (
           <>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">Bought as *</span>
+              <span className="text-[10px] text-zinc-600">Bought as *</span>
               <select name="purchaseTier" defaultValue="Wholesale" className={fieldClass}>
                 <option value="Wholesale">Wholesale</option>
                 <option value="Retail">Retail</option>
               </select>
             </label>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">My cost (per unit) *</span>
+              <span className="text-[10px] text-zinc-600">My cost (per unit) *</span>
               <input
                 name="costPrice"
                 value={manualCostInput}
@@ -467,7 +467,7 @@ export function ProductForm(props: {
           <>
             <input type="hidden" name="trackInKg" value="on" />
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">Kg per sack *</span>
+              <span className="text-[10px] text-zinc-600">Kg per sack *</span>
               <input
                 name="kgPerSack"
                 value={kgPerSackInput}
@@ -480,7 +480,7 @@ export function ProductForm(props: {
               />
             </label>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">Add stock as</span>
+              <span className="text-[10px] text-zinc-600">Add stock as</span>
               <select
                 name="stockEntryMode"
                 value={stockEntryMode}
@@ -498,7 +498,7 @@ export function ProductForm(props: {
           <>
             <input type="hidden" name="trackInKg" value="off" />
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">Cans per case</span>
+              <span className="text-[10px] text-zinc-600">Cans per case</span>
               <input
                 name="unitsPerCase"
                 value={unitsPerCaseInput}
@@ -509,7 +509,7 @@ export function ProductForm(props: {
               />
             </label>
             <label className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500">Add stock as</span>
+              <span className="text-[10px] text-zinc-600">Add stock as</span>
               <select
                 name="stockEntryMode"
                 value={stockEntryMode}
@@ -524,20 +524,20 @@ export function ProductForm(props: {
             </label>
           </>
         ) : (
-          <label className="col-span-2 flex items-center gap-2 text-[11px] text-zinc-300">
+          <label className="col-span-2 flex items-center gap-2 text-[11px] text-zinc-700">
             <input
               type="checkbox"
               name="trackInKg"
               checked={trackInKg}
               onChange={(e) => setTrackInKg(e.target.checked)}
-              className="rounded border-white/20"
+              className="rounded border-zinc-300"
             />
             Track stock by kilogram (sacks convert to kg)
           </label>
         )}
 
         <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-600">
             {isWeight && trackInKg
               ? stockEntryMode === "sacks"
                 ? "Stock (sacks)"
@@ -565,7 +565,7 @@ export function ProductForm(props: {
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-600">
             {isWeight && trackInKg ? "Our retail (per kg)" : "Our retail (per pc)"}
           </span>
           <input
@@ -577,7 +577,7 @@ export function ProductForm(props: {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-600">
             {isWeight && trackInKg ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
           </span>
           <input
@@ -620,7 +620,7 @@ export function ProductForm(props: {
       </div>
 
       {state?.error ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-700">
           {state.error}
         </div>
       ) : null}
@@ -631,9 +631,9 @@ export function ProductForm(props: {
             Added {state.itemLabel} to inventory
           </div>
           <div className="space-y-1.5 border-t border-brand-blue/20 pt-2">
-            <div className="flex justify-between text-[10px] text-zinc-400">
+            <div className="flex justify-between text-[10px] text-zinc-600">
               <span>Total purchase</span>
-              <span className="text-zinc-200">
+              <span className="text-zinc-800">
                 {formatPhpFromCents(state.totalPurchaseCents ?? 0)}
               </span>
             </div>
@@ -657,7 +657,7 @@ export function ProductForm(props: {
                 }
               />
             ) : (
-              <div className="text-[10px] text-zinc-500">
+              <div className="text-[10px] text-zinc-600">
                 Set My bulk to see wholesale profit.
               </div>
             )}

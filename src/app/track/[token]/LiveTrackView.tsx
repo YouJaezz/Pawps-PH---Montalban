@@ -47,11 +47,11 @@ export function LiveTrackView(props: { token: string }) {
   }, [props.token]);
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-red-700">{error}</p>;
   }
 
   if (!data) {
-    return <p className="text-sm text-zinc-400">Loading live location…</p>;
+    return <p className="text-sm text-zinc-600">Loading live location…</p>;
   }
 
   const hasDriver = Boolean(data.driver ?? (data.driverLat && data.driverLng));
@@ -60,10 +60,10 @@ export function LiveTrackView(props: { token: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-lg font-semibold text-zinc-50">
+        <div className="text-lg font-semibold text-zinc-900">
           {data.customerName}&apos;s trip
         </div>
-        <div className="text-sm text-zinc-400">
+        <div className="text-sm text-zinc-600">
           {data.pickupLocation} → {data.dropoffLocation}
         </div>
         <div className="mt-2 inline-block rounded-full border border-brand-cyan/30 bg-brand-blue/10 px-3 py-1 text-xs text-brand-cyan/70">
@@ -78,7 +78,7 @@ export function LiveTrackView(props: { token: string }) {
           <p className="text-sm font-medium text-amber-100">
             Waiting for route details
           </p>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-zinc-600">
             Map will appear once pickup and dropoff locations are resolved.
           </p>
         </div>
@@ -89,18 +89,18 @@ export function LiveTrackView(props: { token: string }) {
           <p className="text-sm font-medium text-amber-100">
             Waiting for driver location
           </p>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-zinc-600">
             Your driver must open Driver mode and tap Start sharing location.
           </p>
-          <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-400">
+          <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-[11px] text-zinc-600">
             <li>Driver opens Pawps PH → Transport jobs on their phone.</li>
-            <li>Opens this trip → taps <span className="text-zinc-200">Driver mode</span>.</li>
-            <li>Taps <span className="text-zinc-200">Start sharing location</span> and allows GPS.</li>
+            <li>Opens this trip → taps <span className="text-zinc-800">Driver mode</span>.</li>
+            <li>Taps <span className="text-zinc-800">Start sharing location</span> and allows GPS.</li>
           </ol>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3 text-[10px] text-zinc-500">
+      <div className="flex flex-wrap gap-3 text-[10px] text-zinc-600">
         <span className="inline-flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-brand-cyan" />
           Pickup
@@ -120,7 +120,7 @@ export function LiveTrackView(props: { token: string }) {
       </div>
 
       {data.lastLocationAt ? (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-600">
           Last updated {new Date(data.lastLocationAt).toLocaleString("en-PH")}
         </p>
       ) : null}

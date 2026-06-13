@@ -240,7 +240,7 @@ export function NormalizePricelistClient(props: {
   };
 
   const inputClass =
-    "w-full rounded-lg border px-3 py-2 text-sm text-zinc-50 outline-none focus:border-brand-blue/50";
+    "w-full rounded-lg border px-3 py-2 text-sm text-zinc-900 outline-none focus:border-brand-blue/50";
   const inputStyle = {
     ...surface,
     borderWidth: 1,
@@ -250,7 +250,7 @@ export function NormalizePricelistClient(props: {
   const btnPrimary =
     "rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-40";
   const btnSecondary =
-    "rounded-lg border px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/5 disabled:opacity-40";
+    "rounded-lg border px-4 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 disabled:opacity-40";
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -304,8 +304,8 @@ export function NormalizePricelistClient(props: {
           className="rounded-xl border p-5"
           style={{ ...surface, borderWidth: 1, borderStyle: "solid" }}
         >
-          <h2 className="text-sm font-semibold text-zinc-100">Upload pricelist</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-sm font-semibold text-zinc-800">Upload pricelist</h2>
+          <p className="mt-1 text-xs text-zinc-600">
             PDF, PNG, or JPG — multiple files OK. Or paste raw text / Google Sheets
             data below.
           </p>
@@ -332,10 +332,10 @@ export function NormalizePricelistClient(props: {
             <span className="text-2xl" style={{ color: accent }}>
               ↓
             </span>
-            <span className="mt-2 text-sm text-zinc-300">
+            <span className="mt-2 text-sm text-zinc-700">
               Drag & drop files here, or click to browse
             </span>
-            <span className="mt-1 text-[11px] text-zinc-500">PDF · PNG · JPG</span>
+            <span className="mt-1 text-[11px] text-zinc-600">PDF · PNG · JPG</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -350,7 +350,7 @@ export function NormalizePricelistClient(props: {
           </div>
 
           {files.length > 0 ? (
-            <ul className="mt-3 space-y-1 text-xs text-zinc-400">
+            <ul className="mt-3 space-y-1 text-xs text-zinc-600">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`} className="flex justify-between gap-2">
                   <span className="truncate">{f.name}</span>
@@ -369,7 +369,7 @@ export function NormalizePricelistClient(props: {
           ) : null}
 
           <label className="mt-4 block">
-            <span className="text-[11px] text-zinc-500">Pasted text (optional)</span>
+            <span className="text-[11px] text-zinc-600">Pasted text (optional)</span>
             <textarea
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
@@ -407,13 +407,13 @@ export function NormalizePricelistClient(props: {
           className="rounded-xl border p-5"
           style={{ ...surface, borderWidth: 1, borderStyle: "solid" }}
         >
-          <h2 className="text-sm font-semibold text-zinc-100">Supplier setup</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-sm font-semibold text-zinc-800">Supplier setup</h2>
+          <p className="mt-1 text-xs text-zinc-600">
             Supplier name is written into every CSV row.
           </p>
 
           <label className="mt-4 block">
-            <span className="text-[11px] text-zinc-500">Supplier name *</span>
+            <span className="text-[11px] text-zinc-600">Supplier name *</span>
             <input
               value={supplierName}
               onChange={(e) => setSupplierName(e.target.value)}
@@ -425,13 +425,13 @@ export function NormalizePricelistClient(props: {
 
           {props.suppliers.length > 0 ? (
             <div className="mt-3">
-              <span className="text-[11px] text-zinc-500">Quick select</span>
+              <span className="text-[11px] text-zinc-600">Quick select</span>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {props.suppliers.map((s) => (
                   <button
                     key={s.id}
                     type="button"
-                    className="rounded-lg border px-2.5 py-1 text-xs text-zinc-200 hover:border-brand-blue/40"
+                    className="rounded-lg border px-2.5 py-1 text-xs text-zinc-800 hover:border-brand-blue/40"
                     style={{ borderColor: "#1e1e30", background: "#0f0f14" }}
                     onClick={() => setSupplierName(s.name)}
                   >
@@ -443,7 +443,7 @@ export function NormalizePricelistClient(props: {
           ) : null}
 
           <label className="mt-4 block">
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-zinc-600">
               Extra instructions for Smart scan (optional)
             </span>
             <textarea
@@ -508,7 +508,7 @@ export function NormalizePricelistClient(props: {
               className="rounded-xl border p-4"
               style={{ ...surface, borderWidth: 1, borderStyle: "solid" }}
             >
-              <div className="flex items-center justify-between gap-2 text-xs text-zinc-400">
+              <div className="flex items-center justify-between gap-2 text-xs text-zinc-600">
                 <span>{scanning ? "Scanning…" : "Scan complete"}</span>
                 <span>{progress}%</span>
               </div>
@@ -526,7 +526,7 @@ export function NormalizePricelistClient(props: {
               </div>
               {log.length > 0 ? (
                 <ul
-                  className="mt-3 max-h-28 overflow-y-auto font-mono text-[10px] leading-relaxed text-zinc-500"
+                  className="mt-3 max-h-28 overflow-y-auto font-mono text-[10px] leading-relaxed text-zinc-600"
                 >
                   {log.map((line, i) => (
                     <li key={i}>{line}</li>
@@ -537,9 +537,9 @@ export function NormalizePricelistClient(props: {
           )}
 
           {error && !scanning ? (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-300">
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-700">
               <p>{error}</p>
-              <div className="mt-3 border-t border-red-500/20 pt-3 text-zinc-300">
+              <div className="mt-3 border-t border-red-500/20 pt-3 text-zinc-700">
                 <FreeParseTips />
               </div>
             </div>
@@ -594,7 +594,7 @@ export function NormalizePricelistClient(props: {
                         ].map((h) => (
                           <th
                             key={h}
-                            className="border-b px-2 py-2 font-medium text-zinc-400"
+                            className="border-b px-2 py-2 font-medium text-zinc-600"
                             style={{ borderColor: "#1e1e30" }}
                           >
                             {h}
@@ -608,18 +608,18 @@ export function NormalizePricelistClient(props: {
                           key={i}
                           className="border-b border-[#1e1e30]/80 hover:bg-white/[0.02]"
                         >
-                          <td className="px-2 py-1.5 text-zinc-500">{i + 1}</td>
-                          <td className="px-2 py-1.5 text-zinc-300">{r.type}</td>
-                          <td className="px-2 py-1.5 font-medium text-zinc-100">
+                          <td className="px-2 py-1.5 text-zinc-600">{i + 1}</td>
+                          <td className="px-2 py-1.5 text-zinc-700">{r.type}</td>
+                          <td className="px-2 py-1.5 font-medium text-zinc-800">
                             {r.item}
                           </td>
-                          <td className="px-2 py-1.5 text-zinc-400">
+                          <td className="px-2 py-1.5 text-zinc-600">
                             {r.flavor ?? "—"}
                           </td>
-                          <td className="px-2 py-1.5 text-zinc-400">
+                          <td className="px-2 py-1.5 text-zinc-600">
                             {r.size ?? "—"}
                           </td>
-                          <td className="px-2 py-1.5 text-right text-zinc-400">
+                          <td className="px-2 py-1.5 text-right text-zinc-600">
                             {formatPhp(r.per_kg)}
                           </td>
                           <td
@@ -710,7 +710,7 @@ function Stat(props: {
 }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wide text-zinc-500">
+      <div className="text-[10px] uppercase tracking-wide text-zinc-600">
         {props.label}
       </div>
       <div

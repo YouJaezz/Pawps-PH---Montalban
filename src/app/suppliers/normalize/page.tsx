@@ -22,12 +22,12 @@ export default async function NormalizePricelistPage() {
           <span className="mx-1.5">/</span>
           Pricelist normalizer
         </div>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50">
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           Pricelist normalizer
         </h1>
         <p className="mt-1 max-w-2xl text-sm" style={{ color: "#8888aa" }}>
           Upload supplier pricelists (PDF, photo, or pasted text).{" "}
-          <strong className="font-medium text-zinc-300">Smart scan</strong> uses
+          <strong className="font-medium text-zinc-700">Smart scan</strong> uses
           Claude AI plus your inventory and supplier catalog so brands, flavors,
           and kg sizes land in the right columns — not just raw file text.
         </p>
