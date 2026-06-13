@@ -7,15 +7,10 @@ import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { formatPhpFromCents } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import type { OrderReceiptData } from "@/lib/order-receipt";
+import { formatOrderWhenLong } from "@/lib/order-timestamp";
 
 function formatWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatOrderWhenLong(iso);
 }
 
 export function OrderReceiptView(props: {

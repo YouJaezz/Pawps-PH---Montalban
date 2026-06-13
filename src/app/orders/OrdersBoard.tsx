@@ -21,6 +21,7 @@ import {
   ORDER_STATUS_STYLES,
 } from "@/lib/order-status";
 import { formatPhpFromCents } from "@/lib/money";
+import { formatOrderWhen } from "@/lib/order-timestamp";
 
 export type OrderBoardRow = {
   id: number;
@@ -39,15 +40,6 @@ export type OrderBoardRow = {
   itemsSearchText: string;
   itemCount: number;
 };
-
-function formatWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-PH", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export function OrdersBoard(props: {
   rows: OrderBoardRow[];
@@ -196,7 +188,7 @@ export function OrdersBoard(props: {
                     <td className="px-2 py-2 text-zinc-400">
                       <div>#{o.id}</div>
                       <div className="text-[9px] text-zinc-600">
-                        {formatWhen(o.createdAt)}
+                        {formatOrderWhen(o.createdAt)}
                       </div>
                       <div className="text-[9px] text-zinc-600">{o.storeType}</div>
                     </td>

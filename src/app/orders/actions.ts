@@ -18,6 +18,9 @@ import {
 import { formatStockLabel } from "@/lib/product-stock";
 import { formatPhpFromCents } from "@/lib/money";
 import {
+  normalizeOrderCreatedAt,
+} from "@/lib/order-timestamp";
+import {
   orderTotalsFromSubtotal,
   parseDiscountFromForm,
   paymentStatusFor,
@@ -567,7 +570,7 @@ export async function quickSell(
           discountNote,
           totalAmount,
           amountPaid: totalAmount,
-          createdAt: createdAt.toISOString(),
+          createdAt: normalizeOrderCreatedAt(createdAt).toISOString(),
           cashierName: session.name ?? session.email,
           lines: receiptLines,
         },
@@ -790,7 +793,7 @@ export async function createBulkOrder(
           discountNote,
           totalAmount,
           amountPaid: deposit,
-          createdAt: createdAt.toISOString(),
+          createdAt: normalizeOrderCreatedAt(createdAt).toISOString(),
           cashierName: session.name ?? session.email,
           lines: receiptLines,
         },

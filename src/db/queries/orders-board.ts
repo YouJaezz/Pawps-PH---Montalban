@@ -6,6 +6,10 @@ import { db } from "@/db";
 import { customers, orderItems, orders } from "@/db/schema";
 import { getActiveInventoryProducts } from "@/db/queries/inventory-products";
 import { formatQuantityLabel, type SaleUnit } from "@/lib/order-line-math";
+import {
+  normalizeOrderCreatedAt,
+  orderCreatedMsColumn,
+} from "@/lib/order-timestamp";
 
 function formatItemsSummary(items: string[]) {
   if (items.length === 0) return "—";
@@ -49,7 +53,7 @@ export const getOrdersPageData = cache(async () => {
         createdAt: orders.createdAt,
       })
       .from(orders)
-      .orderBy(desc(orders.createdAt))
+      .orderBy(desc(orderCreatedMsColumn()))
       .limit(50),
     getActiveInventoryProducts(),
   ]);
@@ -160,7 +164,7 @@ export const getOrdersPageData = cache(async () => {
       deliveryMethod: o.deliveryMethod,
       storeType: o.storeType,
       cashierName: o.cashierName,
-      createdAt: o.createdAt.toISOString(),
+      createdAt: normalizeOrderCreatedAt(o.createdAt).toISOString(),
       itemsSummary: formatItemsSummary(items),
       itemsSearchText: items.join(" "),
       itemCount: items.length,

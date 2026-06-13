@@ -153,9 +153,21 @@ async function seedDefaultInvestor(db: ReturnType<typeof drizzle>) {
 }
 
 async function fixLegacyTimestamps(client: Client) {
-  await client.execute(
-    `UPDATE orders SET created_at = created_at * 1000 WHERE created_at > 0 AND created_at < 1000000000000`,
-  );
+  const tables = [
+    "orders",
+    "delivery_logs",
+    "transport_jobs",
+    "pre_orders",
+    "stock_movements",
+    "supplier_catalog_items",
+    "team_messages",
+    "time_entries",
+  ];
+  for (const table of tables) {
+    await client.execute(
+      `UPDATE ${table} SET created_at = created_at * 1000 WHERE created_at > 0 AND created_at < 1000000000000`,
+    );
+  }
 }
 
 async function main() {

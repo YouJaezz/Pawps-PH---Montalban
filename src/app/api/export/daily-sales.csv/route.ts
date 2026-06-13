@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
+import { normalizeOrderCreatedAt, orderCreatedMsColumn } from "@/lib/order-timestamp";
 import { desc } from "drizzle-orm";
 
 function startOfDay(d: Date) {
@@ -31,7 +32,7 @@ export async function GET() {
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .orderBy(desc(orders.createdAt));
+    .orderBy(desc(orderCreatedMsColumn()));
 
   const header = [
     "order_id",
@@ -50,7 +51,9 @@ export async function GET() {
 
   const lines = [header.join(",")].concat(
     rows.map((r) => {
-      const createdAt = r.createdAt ? new Date(r.createdAt) : null;
+      const createdAt = r.createdAt
+        ? normalizeOrderCreatedAt(r.createdAt)
+        : null;
       const cols = [
         r.id,
         JSON.stringify(r.customerName),

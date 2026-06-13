@@ -7,13 +7,10 @@ import {
   getActiveInventoryProducts,
   inventoryValuationFromRows,
 } from "@/db/queries/inventory-products";
+import { orderCreatedMsColumn } from "@/lib/order-timestamp";
 import { phStartOfToday } from "@/lib/ph-time";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function orderCreatedMsColumn() {
-  return sql<number>`CASE WHEN ${orders.createdAt} < 1000000000000 THEN ${orders.createdAt} * 1000 ELSE ${orders.createdAt} END`;
-}
 
 export const getBusinessInsights = cache(async () => {
   const todayStart = phStartOfToday();

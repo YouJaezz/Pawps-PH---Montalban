@@ -12,27 +12,15 @@ import {
 import { ensureDefaultAgreement } from "@/db/queries/investor-setup";
 import { effectiveQuantity, type SaleUnit } from "@/lib/order-line-math";
 import {
+  normalizeOrderCreatedAt,
+  orderCreatedMsColumn,
+} from "@/lib/order-timestamp";
+import {
   phMonthBounds,
   phMonthKey,
   phMonthLabel,
   phNow,
 } from "@/lib/ph-time";
-
-function orderCreatedMsColumn() {
-  return sql<number>`CASE WHEN ${orders.createdAt} < 1000000000000 THEN ${orders.createdAt} * 1000 ELSE ${orders.createdAt} END`;
-}
-
-function normalizeOrderCreatedAt(raw: Date | number | string): Date {
-  if (raw instanceof Date) {
-    const ms = raw.getTime();
-    if (ms > 0 && ms < 1_000_000_000_000) return new Date(ms * 1000);
-    return raw;
-  }
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return new Date(raw);
-  if (n > 0 && n < 1_000_000_000_000) return new Date(n * 1000);
-  return new Date(n);
-}
 
 export type MonthlyNetIncome = {
   grossRevenueCents: number;
