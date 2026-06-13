@@ -54,6 +54,8 @@ export function PayrollPanel(props: {
     status: "Open" | "Projected" | "Accrued" | "Paid";
     canGenerate: boolean;
   }>;
+  reportYear?: number;
+  reportMonth?: number;
 }) {
   const [rateState, rateAction, ratePending] = useActionState<
     PayrollActionResult | null,
@@ -158,8 +160,12 @@ export function PayrollPanel(props: {
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">Monthly payroll</div>
         <p className="mt-1 text-[11px] text-zinc-500">
-          Based on Time In/Out hours × hourly rate. Lock month after it ends, then mark
-          paid when disbursed.
+          Based on Time In/Out hours × hourly rate. Hours above match the attendance
+          report
+          {props.reportYear && props.reportMonth
+            ? ` for ${props.reportYear}-${String(props.reportMonth).padStart(2, "0")}`
+            : ""}
+          . Lock month after it ends, then mark paid when disbursed.
         </p>
         <ScrollableTable maxHeight="max-h-[min(60vh,480px)]" className="mt-3">
           <table className="w-full text-xs">
