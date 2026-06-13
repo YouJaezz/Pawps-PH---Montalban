@@ -76,3 +76,16 @@ body {
   background-color: #121218;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* Native selects: keep dropdown options readable on dark UI */
+.app-select {
+  appearance: auto;
+  color-scheme: dark;
+  background-color: #18181b;
+  color: #fafafa;
+}
+
+.app-select option {
+  background-color: #18181b;
+  color: #fafafa;
+}

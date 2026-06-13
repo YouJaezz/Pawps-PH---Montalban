@@ -18,7 +18,9 @@ import { ORDER_STATUSES } from "@/db/schema";
 import {
   normalizeOrderStatus,
   ORDER_STATUS_LABELS,
+  ORDER_STATUS_SELECT_BORDER,
   ORDER_STATUS_STYLES,
+  STAFF_ORDER_STATUSES,
 } from "@/lib/order-status";
 import { formatPhpFromCents } from "@/lib/money";
 import { formatOrderWhen } from "@/lib/order-timestamp";
@@ -45,8 +47,11 @@ export function OrdersBoard(props: {
   rows: OrderBoardRow[];
   editableByOrderId: Record<number, OrderEditPayload>;
   adminMode?: boolean;
+  staffCanUpdateStatus?: boolean;
 }) {
   const adminMode = props.adminMode ?? true;
+  const staffCanUpdateStatus = props.staffCanUpdateStatus ?? false;
+  const canChangeStatus = adminMode || staffCanUpdateStatus;
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
@@ -132,7 +137,7 @@ export function OrdersBoard(props: {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-zinc-50 outline-none"
+          className="app-select rounded-md border border-white/10 px-2 py-1.5 text-[10px] outline-none"
         >
           <option value="open">Open only</option>
           <option value="all">All statuses</option>
@@ -145,7 +150,7 @@ export function OrdersBoard(props: {
         <select
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value)}
-          className="rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-zinc-50 outline-none"
+          className="app-select rounded-md border border-white/10 px-2 py-1.5 text-[10px] outline-none"
         >
           <option value="all">All payments</option>
           <option value="Pending">Pending</option>
@@ -253,7 +258,7 @@ export function OrdersBoard(props: {
                       ) : null}
                     </td>
                     <td className="px-2 py-2">
-                      {adminMode &&
+                      {canChangeStatus &&
                       status !== "Cancelled" &&
                       status !== "Completed" ? (
                         <form action={updateOrderStatus} className="space-y-1">
@@ -262,15 +267,15 @@ export function OrdersBoard(props: {
                             name="orderStatus"
                             defaultValue={status}
                             onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                            className={`w-full max-w-[9rem] rounded-md border px-1.5 py-1 text-[10px] outline-none ${ORDER_STATUS_STYLES[status]}`}
+                            className={`app-select w-full max-w-[9rem] rounded-md border px-1.5 py-1 text-[10px] outline-none ${ORDER_STATUS_SELECT_BORDER[status]}`}
                           >
-                            {ORDER_STATUSES.filter((s) => s !== "Cancelled").map(
-                              (s) => (
+                            {(adminMode ? ORDER_STATUSES : STAFF_ORDER_STATUSES)
+                              .filter((s) => s !== "Cancelled")
+                              .map((s) => (
                                 <option key={s} value={s}>
                                   {ORDER_STATUS_LABELS[s]}
                                 </option>
-                              ),
-                            )}
+                              ))}
                           </select>
                         </form>
                       ) : (

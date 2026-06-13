@@ -1,19 +1,31 @@
 import { BulkOrderModal } from "@/app/orders/BulkOrderModal";
+import { DailySalesPanel } from "@/app/orders/DailySalesPanel";
 import { ExcessSaleModal } from "@/app/orders/ExcessSaleModal";
 import { OrdersBoard } from "@/app/orders/OrdersBoard";
+import { OrdersPageTabs } from "@/app/orders/OrdersPageTabs";
 import { QuickSellPanel } from "@/app/orders/QuickSellPanel";
 import { AppShell } from "@/components/AppShell";
+import { getDailySalesReport } from "@/db/queries/daily-sales";
 import { getOrdersPageData } from "@/db/queries/orders-board";
+import { resolvePhDateParams } from "@/lib/ph-time";
 
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/roles";
 
-export default async function OrdersPage() {
+export default async function OrdersPage(props: {
+  searchParams: Promise<{ tab?: string; date?: string }>;
+}) {
   const session = await getSession();
   const admin = isAdmin(session?.role);
+  const sp = await props.searchParams;
+  const activeTab = sp.tab === "daily-sales" ? "daily-sales" : "orders";
+  const { year, month, day } = resolvePhDateParams(sp.date);
 
-  const { customerRows, quickSellProducts, boardRows, editableByOrderId } =
-    await getOrdersPageData();
+  const [{ customerRows, quickSellProducts, boardRows, editableByOrderId }, dailyReport] =
+    await Promise.all([
+      getOrdersPageData(),
+      getDailySalesReport(year, month, day),
+    ]);
 
   return (
     <AppShell>
@@ -41,23 +53,26 @@ export default async function OrdersPage() {
                   products={quickSellProducts}
                   customers={customerRows}
                 />
-                <a
-                  href="/api/export/daily-sales.csv"
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-zinc-200 hover:bg-white/10"
-                >
-                  Export CSV
-                </a>
               </>
             ) : null}
           </div>
         </div>
 
+        <div className="mt-3 shrink-0">
+          <OrdersPageTabs activeTab={activeTab} dateKey={dailyReport.dateKey} />
+        </div>
+
         <div className="mt-3 min-h-0 flex-1">
-          <OrdersBoard
-            rows={boardRows}
-            editableByOrderId={admin ? editableByOrderId : {}}
-            adminMode={admin}
-          />
+          {activeTab === "daily-sales" ? (
+            <DailySalesPanel report={dailyReport} adminMode={admin} />
+          ) : (
+            <OrdersBoard
+              rows={boardRows}
+              editableByOrderId={admin ? editableByOrderId : {}}
+              adminMode={admin}
+              staffCanUpdateStatus={!admin}
+            />
+          )}
         </div>
       </div>
     </AppShell>

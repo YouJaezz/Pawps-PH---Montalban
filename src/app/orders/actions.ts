@@ -2,6 +2,7 @@
 
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
 import { requireAuth, requireAdmin } from "@/lib/auth-guard";
+import { isAdmin } from "@/lib/roles";
 import { normalizeOrderStatus } from "@/lib/order-status";
 import { revalidateSalesPages } from "@/lib/revalidate-sales";
 import {
@@ -929,7 +930,8 @@ export async function cancelOrder(formData: FormData) {
 }
 
 export async function updateOrderStatus(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAuth();
+  const adminUser = isAdmin(session.role);
 
   const orderId = parseIntOr(formData.get("orderId"), 0);
   const nextStatus = String(formData.get("orderStatus") ?? "") as OrderStatus;
@@ -937,6 +939,9 @@ export async function updateOrderStatus(formData: FormData) {
   if (!orderId) throw new Error("Invalid order.");
   if (!(ORDER_STATUSES as readonly string[]).includes(nextStatus)) {
     throw new Error("Invalid order status.");
+  }
+  if (!adminUser && nextStatus === "Cancelled") {
+    throw new Error("Only admins can cancel orders.");
   }
 
   const [order] = await db

@@ -1,20 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { and, desc, gte, lt } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
-import { normalizeOrderCreatedAt, orderCreatedMsColumn } from "@/lib/order-timestamp";
-import { desc } from "drizzle-orm";
+import {
+  normalizeOrderCreatedAt,
+  orderCreatedMsColumn,
+} from "@/lib/order-timestamp";
+import { phDayBounds, resolvePhDateParams } from "@/lib/ph-time";
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await requireAdmin();
 
-  const now = new Date();
-  const start = startOfDay(now);
+  const dateParam = req.nextUrl.searchParams.get("date") ?? undefined;
+  const { year, month, day } = resolvePhDateParams(dateParam);
+  const { start, end } = phDayBounds(year, month, day);
+  const dateKey = `${year}-${pad2(month)}-${pad2(day)}`;
 
   const rows = await db
     .select({
@@ -32,6 +38,12 @@ export async function GET() {
       createdAt: orders.createdAt,
     })
     .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, start),
+        lt(orders.createdAt, end),
+      ),
+    )
     .orderBy(desc(orderCreatedMsColumn()));
 
   const header = [
@@ -76,8 +88,7 @@ export async function GET() {
   return new NextResponse(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="daily-sales-${start.toISOString().slice(0, 10)}.csv"`,
+      "content-disposition": `attachment; filename="daily-sales-${dateKey}.csv"`,
     },
   });
 }
-
