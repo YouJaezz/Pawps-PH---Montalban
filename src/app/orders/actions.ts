@@ -3,6 +3,11 @@
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
 import { requireAuth, requireAdmin } from "@/lib/auth-guard";
 import { isAdmin } from "@/lib/roles";
+import {
+  normalizeStoreType,
+  prepareOrderCustomer,
+  displayOrderCustomerName,
+} from "@/lib/order-customer";
 import { normalizeOrderStatus } from "@/lib/order-status";
 import { revalidateSalesPages } from "@/lib/revalidate-sales";
 import {
@@ -197,9 +202,7 @@ export async function quickSell(
     const customerIdRaw = parseIntOr(formData.get("customerId"), 0);
     const notesRaw = String(formData.get("notes") ?? "").trim();
     const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
-    const storeType = String(formData.get("storeType") ?? "Online") as
-      | "Online"
-      | "Walk-in";
+    const storeType = normalizeStoreType(String(formData.get("storeType") ?? "Walk-in"));
     const deductStock = formData.get("deductStock") === "on";
 
     const productIds = formData
@@ -229,12 +232,22 @@ export async function quickSell(
       }
     }
 
-    if (!customerName) {
-      return actionError("Customer name is required.");
-    }
     if (productIds.length === 0 && excessProductIds.length === 0) {
       return actionError("Add at least one regular or excess/bonus item.");
     }
+
+    const customerPrep = prepareOrderCustomer({
+      storeType,
+      customerName,
+      contact: contactRaw,
+      location: locationRaw,
+      customerIdRaw: customerIdRaw > 0 ? customerIdRaw : undefined,
+    });
+    if (!customerPrep.ok) return actionError(customerPrep.error);
+
+    const orderCustomerName = customerPrep.customerName;
+    const orderContact = customerPrep.contact;
+    const orderLocation = customerPrep.location;
 
     const allProductIds = [
       ...new Set([...productIds, ...excessProductIds]),
@@ -429,12 +442,14 @@ export async function quickSell(
       }
     }
 
-    const customerId = await resolveCustomerForOrder({
-      customerId: customerIdRaw > 0 ? customerIdRaw : undefined,
-      customerName,
-      contact: contactRaw,
-      location: locationRaw,
-    });
+    const customerId = customerPrep.linkCustomerRecord
+      ? await resolveCustomerForOrder({
+          customerId: customerPrep.customerIdHint,
+          customerName: orderCustomerName,
+          contact: orderContact ?? undefined,
+          location: orderLocation ?? undefined,
+        })
+      : null;
 
     const noteParts: string[] = [];
     if (notesRaw.length) noteParts.push(notesRaw);
@@ -447,13 +462,16 @@ export async function quickSell(
     const pricing = orderTotalsFromSubtotal(subtotalCents, discountInput);
     const totalAmount = pricing.totalAmount;
 
+    const deliveryMethod =
+      storeType === "Walk-in" ? null : deliveryMethodRaw.length ? deliveryMethodRaw : null;
+
     const insertedOrder = await db
       .insert(orders)
       .values({
         customerId,
-        customerName,
-        contact: contactRaw.length ? contactRaw : null,
-        location: locationRaw.length ? locationRaw : null,
+        customerName: orderCustomerName,
+        contact: orderContact,
+        location: orderLocation,
         notes,
         orderStatus: "Pending",
         subtotalCents,
@@ -464,7 +482,7 @@ export async function quickSell(
         totalAmount,
         amountPaid: totalAmount,
         paymentStatus: "Paid",
-        deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+        deliveryMethod,
         storeType,
         stockDeducted: false,
         createdByUserId: session.userId,
@@ -492,12 +510,12 @@ export async function quickSell(
       })),
     );
 
-    if (deliveryMethodRaw.length) {
+    if (deliveryMethod) {
       await db.insert(deliveryLogs).values({
         orderId,
-        customerName,
-        location: locationRaw.length ? locationRaw : null,
-        deliveryMethod: deliveryMethodRaw as
+        customerName: orderCustomerName,
+        location: orderLocation,
+        deliveryMethod: deliveryMethod as
           | "Montalban Free Delivery"
           | "Lalamove"
           | "Other",
@@ -552,11 +570,11 @@ export async function quickSell(
         orderId,
         receipt: {
           orderId,
-          customerName,
-          contact: contactRaw.length ? contactRaw : null,
-          location: locationRaw.length ? locationRaw : null,
+          customerName: displayOrderCustomerName(orderCustomerName, storeType),
+          contact: orderContact,
+          location: orderLocation,
           storeType,
-          deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+          deliveryMethod,
           orderStatus: "Pending",
           paymentStatus: "Paid",
           subtotalCents,
@@ -589,11 +607,9 @@ export async function createBulkOrder(
     const customerIdRaw = parseIntOr(formData.get("customerId"), 0);
     const notesRaw = String(formData.get("notes") ?? "").trim();
     const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
-    const storeType = String(formData.get("storeType") ?? "Online") as
-      | "Online"
-      | "Walk-in";
+  const storeType = normalizeStoreType(String(formData.get("storeType") ?? "Online"));
 
-    const productIds = formData
+  const productIds = formData
       .getAll("productId")
       .map((v) => Number.parseInt(String(v), 10))
       .filter((n) => Number.isFinite(n) && n > 0);
@@ -608,7 +624,9 @@ export async function createBulkOrder(
     const saleUnit: SaleUnit = isSaleUnit(saleUnitRaw) ? saleUnitRaw : "Piece";
     const quantitiesRaw = formData.getAll("quantity").map((v) => String(v));
 
-    if (!customerName) return actionError("Customer name is required.");
+    if (!customerName) {
+      return actionError("Customer name is required for bulk / online orders.");
+    }
     if (productIds.length === 0 || quantities.length === 0) {
       return actionError("Add at least 1 item.");
     }
@@ -1152,16 +1170,26 @@ export async function updateOrderDetails(formData: FormData) {
   const orderId = parseIntOr(formData.get("orderId"), 0);
   if (!orderId) throw new Error("Invalid order.");
 
-  const storeType = String(formData.get("storeType") ?? "Online") as
-    | "Online"
-    | "Walk-in";
-  const customerName = String(formData.get("customerName") ?? "").trim();
+  const storeType = normalizeStoreType(String(formData.get("storeType") ?? "Online"));
+  const customerNameRaw = String(formData.get("customerName") ?? "").trim();
   const contactRaw = String(formData.get("contact") ?? "").trim();
   const locationRaw = String(formData.get("location") ?? "").trim();
   const deliveryMethodRaw = String(formData.get("deliveryMethod") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
 
-  if (!customerName) throw new Error("Customer name is required.");
+  const customerPrep = prepareOrderCustomer({
+    storeType,
+    customerName: customerNameRaw,
+    contact: contactRaw,
+    location: locationRaw,
+  });
+  if (!customerPrep.ok) throw new Error(customerPrep.error);
+
+  const customerName = customerPrep.customerName;
+  const orderContact = customerPrep.contact;
+  const orderLocation = customerPrep.location;
+  const deliveryMethod =
+    storeType === "Walk-in" ? null : deliveryMethodRaw.length ? deliveryMethodRaw : null;
 
   const [order] = await db
     .select({ orderStatus: orders.orderStatus })
@@ -1179,9 +1207,9 @@ export async function updateOrderDetails(formData: FormData) {
     .set({
       storeType,
       customerName,
-      contact: contactRaw.length ? contactRaw : null,
-      location: locationRaw.length ? locationRaw : null,
-      deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
+      contact: orderContact,
+      location: orderLocation,
+      deliveryMethod,
       notes: notesRaw.length ? notesRaw : null,
     })
     .where(eq(orders.id, orderId));

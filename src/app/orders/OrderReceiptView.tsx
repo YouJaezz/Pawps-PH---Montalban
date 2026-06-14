@@ -6,6 +6,7 @@ import { PrintReceiptButton } from "@/components/PrintReceiptButton";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BRAND_TAGLINE } from "@/lib/brand";
 import { formatPhpFromCents } from "@/lib/money";
+import { displayOrderCustomerName } from "@/lib/order-customer";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import type { OrderReceiptData } from "@/lib/order-receipt";
 import { formatOrderWhenLong } from "@/lib/order-timestamp";
@@ -54,7 +55,9 @@ export function OrderReceiptView(props: {
         <dl className="mt-5 space-y-2 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-zinc-600">Customer</dt>
-            <dd className="text-right font-medium">{receipt.customerName}</dd>
+            <dd className="text-right font-medium">
+              {displayOrderCustomerName(receipt.customerName, receipt.storeType)}
+            </dd>
           </div>
           {receipt.contact ? (
             <div className="flex justify-between gap-4">

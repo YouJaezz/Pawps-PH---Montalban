@@ -35,6 +35,7 @@ import {
 import { EXCESS_QTY_PRESETS } from "@/lib/excess-sale";
 import { saleUnitLabel } from "@/lib/price-units";
 import { formatPhpFromCents } from "@/lib/money";
+import { displayOrderCustomerName } from "@/lib/order-customer";
 import { formatStockLabel } from "@/lib/product-stock";
 
 export type QuickSellProduct = {
@@ -118,8 +119,8 @@ export function QuickSellPanel(props: {
   const [contact, setContact] = useState("");
   const [location, setLocation] = useState("");
   const [customerId, setCustomerId] = useState("");
-  const [storeType, setStoreType] = useState("Online");
-  const [deliveryMethod, setDeliveryMethod] = useState("Montalban Free Delivery");
+  const [storeType, setStoreType] = useState("Walk-in");
+  const [deliveryMethod, setDeliveryMethod] = useState("");
   const [excessProductId, setExcessProductId] = useState(
     props.products[0]?.id ?? 0,
   );
@@ -136,6 +137,26 @@ export function QuickSellPanel(props: {
     for (const p of props.products) m.set(p.id, p);
     return m;
   }, [props.products]);
+
+  const isWalkIn = storeType === "Walk-in";
+  const canReview =
+    cart.length > 0 && (isWalkIn || customerName.trim().length > 0);
+  const confirmCustomerLabel = isWalkIn
+    ? displayOrderCustomerName("", storeType)
+    : customerName.trim() || "—";
+
+  function handleStoreTypeChange(next: string) {
+    setStoreType(next);
+    if (next === "Walk-in") {
+      setCustomerName("");
+      setContact("");
+      setLocation("");
+      setCustomerId("");
+      setDeliveryMethod("");
+    } else if (!deliveryMethod) {
+      setDeliveryMethod("Montalban Free Delivery");
+    }
+  }
 
   const productOptions = useMemo(
     () => toSelectOptions(props.products),
@@ -182,8 +203,8 @@ export function QuickSellPanel(props: {
     setContact("");
     setLocation("");
     setCustomerId("");
-    setStoreType("Online");
-    setDeliveryMethod("Montalban Free Delivery");
+    setStoreType("Walk-in");
+    setDeliveryMethod("");
     setDiscountType("None");
     setDiscountValue("");
     setDiscountNote("");
@@ -363,7 +384,7 @@ export function QuickSellPanel(props: {
                   <div className="mt-1 text-xs text-zinc-500">
                     {step === "receipt"
                       ? "Print or save this receipt, then complete the order when ready."
-                      : "Add multiple items to the cart, then check out as one pending order."}
+                      : "Ring up walk-ins with cart only — record after checkout. Online orders need customer details."}
                   </div>
                 </div>
                 <button
@@ -471,9 +492,9 @@ export function QuickSellPanel(props: {
                     </div>
                     <OrderSaleConfirm
                     title="Confirm Quick Sell"
-                    customerName={customerName}
-                    contact={contact}
-                    location={location}
+                    customerName={confirmCustomerLabel}
+                    contact={isWalkIn ? undefined : contact}
+                    location={isWalkIn ? undefined : location}
                     subtotalCents={cartTotal}
                     discountCents={orderPricing.discountCents}
                     discountNote={discountNote}
@@ -792,45 +813,55 @@ export function QuickSellPanel(props: {
                     </div>
                   ))}
 
-                  <CustomerPicker
-                    customers={props.customers}
-                    customerName={customerName}
-                    contact={contact}
-                    location={location}
-                    customerId={customerId}
-                    onCustomerNameChange={setCustomerName}
-                    onContactChange={setContact}
-                    onLocationChange={setLocation}
-                    onCustomerIdChange={setCustomerId}
-                  />
-
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="space-y-1">
                       <div className="text-xs text-zinc-300">Store type</div>
                       <select
-                        name="storeType"
                         value={storeType}
-                        onChange={(e) => setStoreType(e.target.value)}
+                        onChange={(e) => handleStoreTypeChange(e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
                       >
-                        <option>Online</option>
-                        <option>Walk-in</option>
+                        <option value="Walk-in">Walk-in (shop)</option>
+                        <option value="Online">Online / delivery</option>
                       </select>
                     </label>
-                    <label className="space-y-1">
-                      <div className="text-xs text-zinc-300">Delivery method</div>
-                      <select
-                        name="deliveryMethod"
-                        value={deliveryMethod}
-                        onChange={(e) => setDeliveryMethod(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                      >
-                        <option>Montalban Free Delivery</option>
-                        <option>Lalamove</option>
-                        <option>Other</option>
-                      </select>
-                    </label>
+                    {!isWalkIn ? (
+                      <label className="space-y-1">
+                        <div className="text-xs text-zinc-300">Delivery method</div>
+                        <select
+                          name="deliveryMethod"
+                          value={deliveryMethod}
+                          onChange={(e) => setDeliveryMethod(e.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                        >
+                          <option>Montalban Free Delivery</option>
+                          <option>Lalamove</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                    ) : (
+                      <div className="rounded-xl border border-brand-cyan/20 bg-brand-blue/10 px-3 py-2 text-[11px] text-brand-cyan/90">
+                        Walk-in sale — no customer info needed. Cashier and totals
+                        are still recorded for daily sales.
+                      </div>
+                    )}
                   </div>
+
+                  {!isWalkIn ? (
+                    <CustomerPicker
+                      customers={props.customers}
+                      customerName={customerName}
+                      contact={contact}
+                      location={location}
+                      customerId={customerId}
+                      onCustomerNameChange={setCustomerName}
+                      onContactChange={setContact}
+                      onLocationChange={setLocation}
+                      onCustomerIdChange={setCustomerId}
+                      required
+                      helperText="Online and pre-order customers are saved to your customer list."
+                    />
+                  ) : null}
 
                   <label className="flex items-center gap-3 text-sm text-zinc-200">
                     <input
@@ -854,7 +885,7 @@ export function QuickSellPanel(props: {
                   <button
                     type="button"
                     onClick={() => setStep("confirm")}
-                    disabled={cart.length === 0 || !customerName.trim()}
+                    disabled={!canReview}
                     className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
                   >
                     Review order · {formatPhpFromCents(cartTotal)}

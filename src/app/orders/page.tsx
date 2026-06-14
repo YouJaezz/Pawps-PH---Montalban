@@ -49,7 +49,7 @@ export default async function OrdersPage(props: {
               ? admin
                 ? "Collections, unpaid balances, and payments for the selected date."
                 : "Today's collections, unpaid balances, and payments only."
-              : "New sales start as Pending · confirm before checkout · print receipt after"
+              : "Walk-in Quick Sell needs cart only · online orders need customer info · record after checkout"
           }
           actions={
             <>

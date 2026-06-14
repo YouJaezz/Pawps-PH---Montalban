@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { normalizeOrderCreatedAt, orderCreatedMsColumn } from "@/lib/order-timestamp";
 import { normalizeOrderStatus } from "@/lib/order-status";
+import { displayOrderCustomerName } from "@/lib/order-customer";
 import {
   phDayBounds,
   phDayLabel,
@@ -87,7 +88,7 @@ export const getDailySalesReport = cache(
 
     const unpaidRows = unpaid.map((r) => ({
       id: r.id,
-      customerName: r.customerName,
+      customerName: displayOrderCustomerName(r.customerName, r.storeType),
       orderDateLabel: phDayLabel(
         ...(() => {
           const p = phCalendarPartsFromDate(r.createdAt);
@@ -127,7 +128,8 @@ export const getDailySalesReport = cache(
 
     const visitsTable = visitsOnDate.map((r) => ({
       id: r.id,
-      customerName: r.customerName,
+      customerName: displayOrderCustomerName(r.customerName, r.storeType),
+      storeType: r.storeType,
       chargesCents: r.totalAmount,
       paidCents: r.amountPaid,
       balanceCents: r.balance,
@@ -139,7 +141,7 @@ export const getDailySalesReport = cache(
       .map((r) => ({
         orderId: r.id,
         time: r.createdAt.toISOString(),
-        customerName: r.customerName,
+        customerName: displayOrderCustomerName(r.customerName, r.storeType),
         method:
           r.storeType === "Walk-in"
             ? "Cash"
@@ -169,7 +171,7 @@ export const getDailySalesReport = cache(
       unpaidRows,
       cancelledOnDate: cancelledOnDate.map((r) => ({
         id: r.id,
-        customerName: r.customerName,
+        customerName: displayOrderCustomerName(r.customerName, r.storeType),
         chargesCents: r.totalAmount,
         paidCents: r.amountPaid,
       })),
@@ -181,6 +183,10 @@ export const getDailySalesReport = cache(
           count: v.count,
         })),
         visitCount: visitsOnDate.length,
+        walkInOrderCount: visitsOnDate.filter((r) => r.storeType === "Walk-in")
+          .length,
+        onlineOrderCount: visitsOnDate.filter((r) => r.storeType !== "Walk-in")
+          .length,
         totalChargesCents: totalChargesOnDate,
         totalPaidCents: totalPaidOnDate,
         outstandingCents: outstandingOnDate,

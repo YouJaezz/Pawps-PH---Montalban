@@ -253,7 +253,7 @@ export function DailySalesPanel(props: {
             compact
             title="Order charges (this date)"
             value={formatPhpFromCents(report.collections.totalChargesCents)}
-            subtitle={`${report.collections.visitCount} order(s)`}
+            subtitle={`${report.collections.visitCount} order(s) · ${report.collections.walkInOrderCount} walk-in · ${report.collections.onlineOrderCount} online`}
           />
           <StatCard
             compact
@@ -332,6 +332,7 @@ export function DailySalesPanel(props: {
                   <th className="px-2 py-2">Time</th>
                   <th className="px-2 py-2">Customer</th>
                   <th className="px-2 py-2">Method</th>
+                  <th className="px-2 py-2">Cashier</th>
                   <th className="px-2 py-2">Amount</th>
                   <th className="px-2 py-2">Reference</th>
                 </tr>
@@ -339,7 +340,7 @@ export function DailySalesPanel(props: {
               <tbody className="divide-y divide-white/5">
                 {report.collections.paymentsReceived.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-2 py-4 text-zinc-500">
+                    <td colSpan={6} className="px-2 py-4 text-zinc-500">
                       No payments recorded on this date.
                     </td>
                   </tr>
@@ -351,6 +352,9 @@ export function DailySalesPanel(props: {
                       </td>
                       <td className="px-2 py-2">{p.customerName}</td>
                       <td className="px-2 py-2">{p.method}</td>
+                      <td className="px-2 py-2 text-zinc-400">
+                        {p.cashierName ?? "—"}
+                      </td>
                       <td className="px-2 py-2 font-medium text-brand-cyan/80">
                         {formatPhpFromCents(p.amountCents)}
                       </td>

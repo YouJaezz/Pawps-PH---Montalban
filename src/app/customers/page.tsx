@@ -36,7 +36,8 @@ export default async function CustomersPage() {
         <div className="text-sm text-zinc-400">Customers</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Customers</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Add customers and track contact/location.
+          Online and pre-order customers only. Walk-in shop sales are tracked in
+          Sales & Orders without creating a customer record.
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -89,7 +90,8 @@ export default async function CustomersPage() {
                     Customer list
                   </div>
                   <div className="mt-1 text-xs text-zinc-400">
-                    Spend rollup will update when orders are marked paid.
+                    Spend rollup updates when online orders are marked paid.
+                    Walk-ins are not listed here.
                   </div>
                 </div>
                 <div className="text-xs text-zinc-400">{rows.length} customers</div>

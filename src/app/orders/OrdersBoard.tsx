@@ -23,6 +23,7 @@ import {
   STAFF_ORDER_STATUSES,
 } from "@/lib/order-status";
 import { formatPhpFromCents } from "@/lib/money";
+import { displayOrderCustomerName } from "@/lib/order-customer";
 import { formatOrderWhen } from "@/lib/order-timestamp";
 
 export type OrderBoardRow = {
@@ -91,7 +92,7 @@ export function OrdersBoard(props: {
 
     if (q) {
       list = list.filter((o) => {
-        const hay = `${o.customerName} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSearchText} ${o.itemsSummary} #${o.id}`.toLowerCase();
+        const hay = `${displayOrderCustomerName(o.customerName, o.storeType)} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSearchText} ${o.itemsSummary} #${o.id} ${o.storeType}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -187,6 +188,11 @@ export function OrdersBoard(props: {
                 const status = normalizeOrderStatus(o.orderStatus);
                 const canCancel =
                   status !== "Cancelled" && status !== "Completed";
+                const customerLabel = displayOrderCustomerName(
+                  o.customerName,
+                  o.storeType,
+                );
+                const isWalkIn = customerLabel.startsWith("Walk-in");
 
                 return (
                   <tr key={o.id} className="align-top hover:bg-white/[0.03]">
@@ -199,15 +205,21 @@ export function OrdersBoard(props: {
                     </td>
                     <td className="px-2 py-2">
                       <div className="font-medium text-zinc-100">
-                        {o.customerName}
+                        {customerLabel}
                       </div>
-                      <div className="text-[10px] text-zinc-500">
-                        {o.contact ?? "—"}
-                      </div>
-                      <div className="text-[10px] text-zinc-600">
-                        {o.location ?? "—"}
-                        {o.deliveryMethod ? ` · ${o.deliveryMethod}` : ""}
-                      </div>
+                      {!isWalkIn ? (
+                        <>
+                          <div className="text-[10px] text-zinc-500">
+                            {o.contact ?? "—"}
+                          </div>
+                          <div className="text-[10px] text-zinc-600">
+                            {o.location ?? "—"}
+                            {o.deliveryMethod ? ` · ${o.deliveryMethod}` : ""}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-[10px] text-zinc-500">Shop counter</div>
+                      )}
                     </td>
                     <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
                       {o.cashierName ?? "—"}

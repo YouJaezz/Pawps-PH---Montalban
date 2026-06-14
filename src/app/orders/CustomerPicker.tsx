@@ -22,8 +22,11 @@ export function CustomerPicker(props: {
   onContactChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onCustomerIdChange: (value: string) => void;
+  required?: boolean;
+  helperText?: string;
 }) {
   const [focused, setFocused] = useState(false);
+  const required = props.required !== false;
 
   const matches = useMemo(() => {
     const q = props.customerName.trim().toLowerCase();
@@ -46,12 +49,17 @@ export function CustomerPicker(props: {
 
   return (
     <div className="space-y-2">
+      {props.helperText ? (
+        <p className="text-[11px] text-zinc-500">{props.helperText}</p>
+      ) : null}
       <div className="relative">
         <label className="block space-y-1">
-          <span className="text-xs text-zinc-300">Customer *</span>
+          <span className="text-xs text-zinc-300">
+            Customer{required ? " *" : " (optional)"}
+          </span>
           <input
             name="customerName"
-            required
+            required={required}
             value={props.customerName}
             onChange={(e) => {
               props.onCustomerIdChange("");
