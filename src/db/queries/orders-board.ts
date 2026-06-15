@@ -5,6 +5,10 @@ import type { OrderEditPayload } from "@/app/orders/OrderEditModal";
 import { db } from "@/db";
 import { customers, orderItems, orders } from "@/db/schema";
 import { getActiveInventoryProducts } from "@/db/queries/inventory-products";
+import {
+  getActiveBranches,
+  getBranchStockForProducts,
+} from "@/lib/branch-stock";
 import { formatQuantityLabel, type SaleUnit } from "@/lib/order-line-math";
 import {
   normalizeOrderCreatedAt,
@@ -25,7 +29,8 @@ function excessQtyFromNote(lineNote: string | null) {
 }
 
 export const getOrdersPageData = cache(async () => {
-  const [customerRows, recentOrders, inventoryProducts] = await Promise.all([
+  const [customerRows, recentOrders, inventoryProducts, branchRows] =
+    await Promise.all([
     db
       .select({
         id: customers.id,
@@ -50,27 +55,41 @@ export const getOrdersPageData = cache(async () => {
         storeType: orders.storeType,
         notes: orders.notes,
         cashierName: orders.cashierName,
+        branchId: orders.branchId,
         createdAt: orders.createdAt,
       })
       .from(orders)
       .orderBy(desc(orderCreatedMsColumn()))
       .limit(50),
     getActiveInventoryProducts(),
+    getActiveBranches(),
   ]);
 
-  const quickSellProducts = inventoryProducts.map((p) => ({
-    id: p.id,
-    name: p.name,
-    brand: p.brand,
-    variant: p.variant,
-    itemType: p.itemType,
-    retailPrice: p.retailPrice,
-    bulkPrice: p.bulkPrice,
-    stockQuantity: p.stockQuantity,
-    stockUnit: p.stockUnit,
-    kgPerSack: p.kgPerSack,
-    unitsPerCase: p.unitsPerCase,
-  }));
+  const branchNameById = new Map(branchRows.map((b) => [b.id, b.name]));
+  const productIds = inventoryProducts.map((p) => p.id);
+  const branchStockByProduct = await getBranchStockForProducts(productIds);
+
+  const quickSellProducts = inventoryProducts.map((p) => {
+    const branchLines = branchStockByProduct.get(p.id) ?? [];
+    const stockByBranch: Record<number, number> = {};
+    for (const line of branchLines) {
+      stockByBranch[line.branchId] = line.stockQuantity;
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      variant: p.variant,
+      itemType: p.itemType,
+      retailPrice: p.retailPrice,
+      bulkPrice: p.bulkPrice,
+      stockQuantity: p.stockQuantity,
+      stockUnit: p.stockUnit,
+      kgPerSack: p.kgPerSack,
+      unitsPerCase: p.unitsPerCase,
+      stockByBranch,
+    };
+  });
 
   const productById = new Map(inventoryProducts.map((p) => [p.id, p]));
   const recentOrderIds = recentOrders.map((o) => o.id);
@@ -164,6 +183,8 @@ export const getOrdersPageData = cache(async () => {
       deliveryMethod: o.deliveryMethod,
       storeType: o.storeType,
       cashierName: o.cashierName,
+      branchId: o.branchId,
+      branchName: o.branchId ? (branchNameById.get(o.branchId) ?? "—") : "PAWPS Shop",
       createdAt: normalizeOrderCreatedAt(o.createdAt).toISOString(),
       itemsSummary: formatItemsSummary(items),
       itemsSearchText: items.join(" "),
@@ -173,6 +194,11 @@ export const getOrdersPageData = cache(async () => {
 
   return {
     customerRows,
+    branches: branchRows.map((b) => ({
+      id: b.id,
+      name: b.name,
+      isDefault: b.isDefault,
+    })),
     quickSellProducts,
     boardRows,
     editableByOrderId,

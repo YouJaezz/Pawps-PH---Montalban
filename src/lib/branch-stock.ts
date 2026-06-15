@@ -76,6 +76,31 @@ export async function getDefaultBranchId(): Promise<number> {
   return fallback.id;
 }
 
+export async function resolveSaleBranchId(
+  raw: FormDataEntryValue | null | undefined,
+): Promise<number> {
+  const parsed = Number.parseInt(String(raw ?? ""), 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    const [row] = await db
+      .select({ id: branches.id })
+      .from(branches)
+      .where(and(eq(branches.id, parsed), eq(branches.active, true)))
+      .limit(1);
+    if (row) return row.id;
+  }
+  return getDefaultBranchId();
+}
+
+export async function getBranchName(branchId: number | null | undefined) {
+  if (!branchId) return "PAWPS Shop";
+  const [row] = await db
+    .select({ name: branches.name })
+    .from(branches)
+    .where(eq(branches.id, branchId))
+    .limit(1);
+  return row?.name ?? "Branch";
+}
+
 export async function getBranchStockQuantity(
   branchId: number,
   productId: number,

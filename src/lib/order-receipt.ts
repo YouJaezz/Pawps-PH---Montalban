@@ -24,5 +24,6 @@ export type OrderReceiptData = {
   amountPaid: number;
   createdAt: string;
   cashierName?: string | null;
+  branchName?: string | null;
   lines: OrderReceiptLine[];
 };

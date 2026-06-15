@@ -38,6 +38,7 @@ export type OrderBoardRow = {
   deliveryMethod: string | null;
   storeType: string;
   cashierName: string | null;
+  branchName: string;
   createdAt: string;
   itemsSummary: string;
   itemsSearchText: string;
@@ -92,7 +93,7 @@ export function OrdersBoard(props: {
 
     if (q) {
       list = list.filter((o) => {
-        const hay = `${displayOrderCustomerName(o.customerName, o.storeType)} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSearchText} ${o.itemsSummary} #${o.id} ${o.storeType}`.toLowerCase();
+        const hay = `${displayOrderCustomerName(o.customerName, o.storeType)} ${o.branchName} ${o.contact ?? ""} ${o.location ?? ""} ${o.itemsSearchText} ${o.itemsSummary} #${o.id} ${o.storeType}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -169,6 +170,7 @@ export function OrdersBoard(props: {
             <tr>
               <th className="px-2 py-1.5">Order</th>
               <th className="px-2 py-1.5">Customer</th>
+              <th className="hidden px-2 py-1.5 sm:table-cell">Branch</th>
               <th className="hidden px-2 py-1.5 md:table-cell">Cashier</th>
               <th className="hidden px-2 py-1.5 lg:table-cell">Items</th>
               <th className="px-2 py-1.5">Payment</th>
@@ -220,6 +222,9 @@ export function OrdersBoard(props: {
                       ) : (
                         <div className="text-[10px] text-zinc-500">Shop counter</div>
                       )}
+                    </td>
+                    <td className="hidden px-2 py-2 text-zinc-400 sm:table-cell">
+                      {o.branchName}
                     </td>
                     <td className="hidden px-2 py-2 text-zinc-400 md:table-cell">
                       {o.cashierName ?? "—"}

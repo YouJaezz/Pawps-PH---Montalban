@@ -8,6 +8,7 @@ import { orderItems, orders, products } from "@/db/schema";
 import { formatQuantityLabel, type SaleUnit } from "@/lib/order-line-math";
 import type { OrderReceiptData } from "@/lib/order-receipt";
 import { normalizeOrderCreatedAt } from "@/lib/order-timestamp";
+import { getBranchName } from "@/lib/branch-stock";
 import { eq, inArray } from "drizzle-orm";
 
 export default async function OrderReceiptPage(props: {
@@ -61,6 +62,7 @@ export default async function OrderReceiptPage(props: {
     amountPaid: order.amountPaid,
     createdAt: normalizeOrderCreatedAt(order.createdAt).toISOString(),
     cashierName: order.cashierName,
+    branchName: await getBranchName(order.branchId),
     lines: lines.map((line) => ({
       label: productById.get(line.productId) ?? "Item",
       qtyLabel: line.isExcessSale

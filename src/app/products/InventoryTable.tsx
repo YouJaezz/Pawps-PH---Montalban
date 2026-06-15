@@ -7,6 +7,8 @@ import { deleteProduct } from "@/app/products/delete-actions";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { TableToolbar } from "@/components/TableToolbar";
 import { matchesQuery } from "@/lib/table-filter";
+import { formatDualStock } from "@/lib/product-stock";
+import type { StockUnit } from "@/db/schema";
 
 export type InventoryTableRow = {
   id: number;
@@ -28,21 +30,26 @@ export type InventoryTableRow = {
   profitBulk: string | null;
   unitSuffix: string;
   stockQuantity: number;
+  branchQtyById: Record<number, number>;
   searchText: string;
   productEdit: ProductEditRow;
 };
 
 export type InventorySupplierOption = { id: number; name: string };
 
+export type InventoryBranchOption = { id: number; name: string };
+
 export function InventoryTable(props: {
   rows: InventoryTableRow[];
   suppliers: InventorySupplierOption[];
+  branches: InventoryBranchOption[];
   limitedView?: boolean;
 }) {
   const limited = props.limitedView ?? false;
   const [query, setQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
 
   const filtered = useMemo(() => {
     let list = props.rows;
@@ -50,6 +57,11 @@ export function InventoryTable(props: {
     if (supplierFilter !== "all") {
       const sid = Number.parseInt(supplierFilter, 10);
       list = list.filter((r) => r.supplierId === sid);
+    }
+
+    if (branchFilter !== "all") {
+      const branchId = Number.parseInt(branchFilter, 10);
+      list = list.filter((r) => (r.branchQtyById[branchId] ?? 0) > 0);
     }
 
     if (stockFilter === "in") {
@@ -65,7 +77,7 @@ export function InventoryTable(props: {
     }
 
     return list;
-  }, [props.rows, query, supplierFilter, stockFilter]);
+  }, [props.rows, query, supplierFilter, stockFilter, branchFilter]);
 
   return (
     <div>
@@ -76,6 +88,19 @@ export function InventoryTable(props: {
         shown={filtered.length}
         total={props.rows.length}
         filters={[
+          {
+            id: "branch",
+            value: branchFilter,
+            onChange: setBranchFilter,
+            "aria-label": "Filter by branch",
+            options: [
+              { value: "all", label: "All branches" },
+              ...props.branches.map((b) => ({
+                value: String(b.id),
+                label: b.name,
+              })),
+            ],
+          },
           {
             id: "supplier",
             value: supplierFilter,
@@ -125,7 +150,9 @@ export function InventoryTable(props: {
                 <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
               ) : null}
               <th className="px-2 py-2">Stock</th>
-              <th className="hidden px-2 py-2 lg:table-cell">Branches</th>
+              <th className="hidden px-2 py-2 lg:table-cell">
+                {branchFilter === "all" ? "Branches" : "Other branches"}
+              </th>
               {!limited ? (
                 <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
               ) : null}
@@ -146,7 +173,22 @@ export function InventoryTable(props: {
                 </td>
               </tr>
             ) : (
-              filtered.map((p) => (
+              filtered.map((p) => {
+                const stockUnit = p.productEdit.stockUnit as StockUnit;
+                const branchId =
+                  branchFilter !== "all"
+                    ? Number.parseInt(branchFilter, 10)
+                    : null;
+                const displayQty =
+                  branchId != null
+                    ? (p.branchQtyById[branchId] ?? 0)
+                    : p.stockQuantity;
+                const stockAt = formatDualStock(stockUnit, displayQty, {
+                  kgPerSack: p.productEdit.kgPerSack,
+                  unitsPerCase: p.productEdit.unitsPerCase,
+                });
+
+                return (
                 <tr key={p.id} className="hover:bg-white/5">
                   <td className="px-2 py-2 font-medium text-zinc-50">{p.item}</td>
                   <td className="hidden px-2 py-2 text-zinc-300 sm:table-cell">
@@ -182,15 +224,30 @@ export function InventoryTable(props: {
                     </td>
                   ) : null}
                   <td className="px-2 py-2 font-medium">
-                    <div>{p.stockPrimary}</div>
-                    {p.stockSecondary !== "—" ? (
+                    <div>{stockAt.primary}</div>
+                    {stockAt.secondary !== "—" ? (
                       <div className="text-[9px] font-normal text-zinc-500">
-                        {p.stockSecondary}
+                        {stockAt.secondary}
+                      </div>
+                    ) : null}
+                    {branchId != null ? (
+                      <div className="text-[9px] font-normal text-brand-cyan/70">
+                        at {props.branches.find((b) => b.id === branchId)?.name}
                       </div>
                     ) : null}
                   </td>
                   <td className="hidden px-2 py-2 text-[10px] text-zinc-400 lg:table-cell">
-                    {p.branchSummary}
+                    {branchFilter === "all"
+                      ? p.branchSummary
+                      : p.branchSummary
+                          .split(" · ")
+                          .filter(
+                            (part) =>
+                              !part.startsWith(
+                                `${props.branches.find((b) => b.id === branchId)?.name ?? ""}:`,
+                              ),
+                          )
+                          .join(" · ") || "—"}
                   </td>
                   {!limited ? (
                     <td className="hidden px-2 py-2 text-brand-cyan/90 xl:table-cell">
@@ -223,7 +280,8 @@ export function InventoryTable(props: {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

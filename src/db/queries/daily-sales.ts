@@ -5,6 +5,7 @@ import { orders } from "@/db/schema";
 import { normalizeOrderCreatedAt, orderCreatedMsColumn } from "@/lib/order-timestamp";
 import { normalizeOrderStatus } from "@/lib/order-status";
 import { displayOrderCustomerName } from "@/lib/order-customer";
+import { getActiveBranches } from "@/lib/branch-stock";
 import {
   phDayBounds,
   phDayLabel,
@@ -31,6 +32,8 @@ type OrderRow = {
   storeType: string;
   deliveryMethod: string | null;
   cashierName: string | null;
+  branchId: number | null;
+  branchName: string;
   createdAt: Date;
   createdAtMs: number;
   status: ReturnType<typeof normalizeOrderStatus>;
@@ -49,7 +52,8 @@ export const getDailySalesReport = cache(
     const isToday =
       year === today.year && month === today.month && day === today.day;
 
-    const rawRows = await db
+    const [rawRows, activeBranches] = await Promise.all([
+      db
       .select({
         id: orders.id,
         customerName: orders.customerName,
@@ -60,16 +64,26 @@ export const getDailySalesReport = cache(
         storeType: orders.storeType,
         deliveryMethod: orders.deliveryMethod,
         cashierName: orders.cashierName,
+        branchId: orders.branchId,
         createdAt: orders.createdAt,
       })
       .from(orders)
-      .orderBy(desc(orderCreatedMsColumn()));
+      .orderBy(desc(orderCreatedMsColumn())),
+      getActiveBranches(),
+    ]);
+
+    const branchNameById = new Map(activeBranches.map((b) => [b.id, b.name]));
+    const defaultBranchName =
+      activeBranches.find((b) => b.isDefault)?.name ?? "PAWPS Shop";
 
     const rows: OrderRow[] = rawRows.map((r) => {
       const createdAt = normalizeOrderCreatedAt(r.createdAt);
       const createdAtMs = createdAt.getTime();
       return {
         ...r,
+        branchName: r.branchId
+          ? (branchNameById.get(r.branchId) ?? defaultBranchName)
+          : defaultBranchName,
         createdAt,
         createdAtMs,
         status: normalizeOrderStatus(r.orderStatus),
@@ -130,11 +144,30 @@ export const getDailySalesReport = cache(
       id: r.id,
       customerName: displayOrderCustomerName(r.customerName, r.storeType),
       storeType: r.storeType,
+      branchId: r.branchId,
+      branchName: r.branchName,
       chargesCents: r.totalAmount,
       paidCents: r.amountPaid,
       balanceCents: r.balance,
       collectedTodayCents: r.amountPaid,
     }));
+
+    const branchTotals = new Map<
+      string,
+      { branchId: number | null; branchName: string; amountCents: number; count: number }
+    >();
+    for (const r of visitsOnDate.filter((v) => v.amountPaid > 0)) {
+      const key = r.branchName;
+      const cur = branchTotals.get(key) ?? {
+        branchId: r.branchId,
+        branchName: r.branchName,
+        amountCents: 0,
+        count: 0,
+      };
+      cur.amountCents += r.amountPaid;
+      cur.count += 1;
+      branchTotals.set(key, cur);
+    }
 
     const paymentsReceived = visitsOnDate
       .filter((r) => r.amountPaid > 0)
@@ -142,6 +175,8 @@ export const getDailySalesReport = cache(
         orderId: r.id,
         time: r.createdAt.toISOString(),
         customerName: displayOrderCustomerName(r.customerName, r.storeType),
+        branchId: r.branchId,
+        branchName: r.branchName,
         method:
           r.storeType === "Walk-in"
             ? "Cash"
@@ -161,6 +196,11 @@ export const getDailySalesReport = cache(
       dateKey: selectedKey,
       dateLabel,
       isToday,
+      branches: activeBranches.map((b) => ({
+        id: b.id,
+        name: b.name,
+        isDefault: b.isDefault,
+      })),
       summary: {
         totalExistingBalanceCents: totalExistingBalance,
         unpaidOrderCount: unpaid.length,
@@ -187,6 +227,9 @@ export const getDailySalesReport = cache(
           .length,
         onlineOrderCount: visitsOnDate.filter((r) => r.storeType !== "Walk-in")
           .length,
+        branchBreakdown: [...branchTotals.values()].sort((a, b) =>
+          a.branchName.localeCompare(b.branchName),
+        ),
         totalChargesCents: totalChargesOnDate,
         totalPaidCents: totalPaidOnDate,
         outstandingCents: outstandingOnDate,

@@ -50,6 +50,13 @@ export type QuickSellProduct = {
   stockUnit: StockUnit;
   kgPerSack: number | null;
   unitsPerCase: number | null;
+  stockByBranch: Record<number, number>;
+};
+
+export type QuickSellBranch = {
+  id: number;
+  name: string;
+  isDefault: boolean;
 };
 
 type ProductCartLine = {
@@ -75,14 +82,21 @@ const KG_QUICK_AMOUNTS = ["0.25", "0.5", "0.75", "1"] as const;
 
 type ModalStep = "form" | "confirm" | "receipt";
 
-function toSelectOptions(products: QuickSellProduct[]): ProductSelectOption[] {
+function branchStockQty(p: QuickSellProduct, branchId: number) {
+  return p.stockByBranch[branchId] ?? 0;
+}
+
+function toSelectOptions(
+  products: QuickSellProduct[],
+  branchId: number,
+): ProductSelectOption[] {
   return products.map((p) => ({
     id: p.id,
     name: p.name,
     brand: p.brand,
     variant: p.variant,
     itemType: p.itemType,
-    meta: `Stock ${formatStockLabel(p.stockUnit, p.stockQuantity, p.kgPerSack, p.unitsPerCase)}`,
+    meta: `Stock ${formatStockLabel(p.stockUnit, branchStockQty(p, branchId), p.kgPerSack, p.unitsPerCase)}`,
   }));
 }
 
@@ -92,8 +106,12 @@ function productLineLabel(p: QuickSellProduct) {
 
 export function QuickSellPanel(props: {
   products: QuickSellProduct[];
+  branches: QuickSellBranch[];
   customers: CustomerOption[];
 }) {
+  const defaultBranchId =
+    props.branches.find((b) => b.isDefault)?.id ?? props.branches[0]?.id ?? 0;
+
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ModalStep>("form");
   const [formKey, setFormKey] = useState(0);
@@ -112,9 +130,11 @@ export function QuickSellPanel(props: {
   const [draftPriceTier, setDraftPriceTier] = useState<"Retail" | "Bulk">(
     "Retail",
   );
-  const [deductStock, setDeductStock] = useState(
-    () => (props.products[0]?.stockQuantity ?? 0) > 0,
-  );
+  const [saleBranchId, setSaleBranchId] = useState(defaultBranchId);
+  const [deductStock, setDeductStock] = useState(() => {
+    const first = props.products[0];
+    return first ? branchStockQty(first, defaultBranchId) > 0 : false;
+  });
   const [customerName, setCustomerName] = useState("");
   const [contact, setContact] = useState("");
   const [location, setLocation] = useState("");
@@ -158,9 +178,12 @@ export function QuickSellPanel(props: {
     }
   }
 
+  const saleBranchName =
+    props.branches.find((b) => b.id === saleBranchId)?.name ?? "Branch";
+
   const productOptions = useMemo(
-    () => toSelectOptions(props.products),
-    [props.products],
+    () => toSelectOptions(props.products, saleBranchId),
+    [props.products, saleBranchId],
   );
 
   const draftProduct = productById.get(draftProductId);
@@ -190,7 +213,19 @@ export function QuickSellPanel(props: {
     setDraftSaleUnit("Piece");
     setDraftQuantity("1");
     setDraftPriceTier("Retail");
-    setDeductStock((props.products[0]?.stockQuantity ?? 0) > 0);
+    setDeductStock(
+      props.products[0]
+        ? branchStockQty(props.products[0], saleBranchId) > 0
+        : false,
+    );
+  }
+
+  function handleSaleBranchChange(nextId: number) {
+    setSaleBranchId(nextId);
+    const product = productById.get(draftProductId);
+    if (product) {
+      setDeductStock(branchStockQty(product, nextId) > 0);
+    }
   }
 
   function closeModal() {
@@ -205,6 +240,7 @@ export function QuickSellPanel(props: {
     setCustomerId("");
     setStoreType("Walk-in");
     setDeliveryMethod("");
+    setSaleBranchId(defaultBranchId);
     setDiscountType("None");
     setDiscountValue("");
     setDiscountNote("");
@@ -466,6 +502,7 @@ export function QuickSellPanel(props: {
                     <input type="hidden" name="contact" value={contact} />
                     <input type="hidden" name="location" value={location} />
                     <input type="hidden" name="storeType" value={storeType} />
+                    <input type="hidden" name="branchId" value={saleBranchId} />
                     <input type="hidden" name="deliveryMethod" value={deliveryMethod} />
                     {deductStock ? (
                       <input type="hidden" name="deductStock" value="on" />
@@ -504,6 +541,7 @@ export function QuickSellPanel(props: {
                     paidCents={orderPricing.totalAmount}
                     itemSummary={cartSummary}
                     extraNotes={[
+                      `Selling from ${saleBranchName} — stock deducts from this branch.`,
                       deductStock
                         ? "Regular and custom-quantity items deduct stock when the order is marked Completed."
                         : "Regular and custom-quantity items will not deduct stock automatically.",
@@ -539,7 +577,9 @@ export function QuickSellPanel(props: {
                         onChange={(nextId) => {
                           setDraftProductId(nextId);
                           const nextProduct = productById.get(nextId);
-                          setDeductStock((nextProduct?.stockQuantity ?? 0) > 0);
+                          setDeductStock(
+                            (nextProduct?.stockByBranch[saleBranchId] ?? 0) > 0,
+                          );
                           setDraftSaleUnit("Piece");
                         }}
                       />
@@ -814,6 +854,23 @@ export function QuickSellPanel(props: {
                   ))}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="space-y-1">
+                      <div className="text-xs text-zinc-300">Selling from (branch)</div>
+                      <select
+                        value={saleBranchId}
+                        onChange={(e) =>
+                          handleSaleBranchChange(Number.parseInt(e.target.value, 10))
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                      >
+                        {props.branches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                            {b.isDefault ? " (shop)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <label className="space-y-1">
                       <div className="text-xs text-zinc-300">Store type</div>
                       <select

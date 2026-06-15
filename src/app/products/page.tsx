@@ -20,6 +20,7 @@ import { formatPhpFromCents } from "@/lib/money";
 import { formatDualStock, displayStockQuantity } from "@/lib/product-stock";
 import {
   formatBranchStockSummary,
+  getActiveBranches,
   getBranchStockForProducts,
 } from "@/lib/branch-stock";
 import { displayCatalogItemType } from "@/lib/catalog-item-types";
@@ -33,12 +34,13 @@ export default async function ProductsPage() {
   const session = await getSession();
   const admin = isAdmin(session?.role);
 
-  const [supplierRows, catalogData] = await Promise.all([
+  const [supplierRows, catalogData, branchRows] = await Promise.all([
     db
       .select({ id: suppliers.id, name: suppliers.name })
       .from(suppliers)
       .orderBy(suppliers.name),
     getSupplierCatalogRows(),
+    getActiveBranches(),
   ]);
 
   const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
@@ -167,6 +169,11 @@ export default async function ProductsPage() {
     const isWeight = p.stockUnit === "Kilogram" || p.kgPerSack != null;
     const unitSuffix = isWeight ? "/kg" : "/pc";
 
+    const branchQtyById: Record<number, number> = {};
+    for (const line of branchRows) {
+      branchQtyById[line.branchId] = line.stockQuantity;
+    }
+
     return {
       id: p.id,
       item,
@@ -188,6 +195,7 @@ export default async function ProductsPage() {
       profitBulk: bulkProfit != null ? formatPhpFromCents(bulkProfit) : null,
       unitSuffix,
       stockQuantity: p.stockQuantity,
+      branchQtyById,
       searchText: rowSearchText([
         item,
         brand,
@@ -296,6 +304,7 @@ export default async function ProductsPage() {
             <InventoryTable
               rows={inventoryTableRows}
               suppliers={inventorySuppliers}
+              branches={branchRows.map((b) => ({ id: b.id, name: b.name }))}
               limitedView={!admin}
             />
           </div>

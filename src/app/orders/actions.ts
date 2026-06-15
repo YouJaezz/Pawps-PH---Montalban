@@ -25,7 +25,9 @@ import { formatStockLabel } from "@/lib/product-stock";
 import {
   adjustBranchStock,
   getBranchStockQuantity,
+  getBranchName,
   getDefaultBranchId,
+  resolveSaleBranchId,
 } from "@/lib/branch-stock";
 import { formatPhpFromCents, parseMoneyToCents } from "@/lib/money";
 import {
@@ -431,7 +433,8 @@ export async function quickSell(
     }
 
     if (deductStock) {
-      const saleBranchId = await getDefaultBranchId();
+      const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
+      const saleBranchName = await getBranchName(saleBranchId);
       for (const [productId, neededQty] of deductByProduct) {
         const p = productById.get(productId);
         if (!p) continue;
@@ -444,7 +447,7 @@ export async function quickSell(
             p.unitsPerCase,
           );
           return actionError(
-            `Not enough stock at the shop branch for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock", move stock to the shop branch, or restock first.`,
+            `Not enough stock at ${saleBranchName} for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock", transfer stock to this branch, or restock first.`,
           );
         }
       }
@@ -472,7 +475,8 @@ export async function quickSell(
 
     const deliveryMethod =
       storeType === "Walk-in" ? null : deliveryMethodRaw.length ? deliveryMethodRaw : null;
-    const saleBranchId = await getDefaultBranchId();
+    const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
+    const saleBranchName = await getBranchName(saleBranchId);
 
     const insertedOrder = await db
       .insert(orders)
@@ -594,6 +598,7 @@ export async function quickSell(
           amountPaid: totalAmount,
           createdAt: normalizeOrderCreatedAt(createdAt).toISOString(),
           cashierName: session.name ?? session.email,
+          branchName: saleBranchName,
           lines: receiptLines,
         },
       },

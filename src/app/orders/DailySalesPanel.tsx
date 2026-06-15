@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { DailySalesReport } from "@/db/queries/daily-sales";
@@ -25,6 +26,7 @@ export function DailySalesPanel(props: {
 }) {
   const router = useRouter();
   const { report } = props;
+  const [branchFilter, setBranchFilter] = useState("all");
   const dateInputValue = report.dateKey;
   const showDateNav = props.adminMode && !props.todayOnly;
 
@@ -43,13 +45,32 @@ export function DailySalesPanel(props: {
     return d.toISOString().slice(0, 10);
   })();
 
+  const filteredVisits =
+    branchFilter === "all"
+      ? report.collections.visitsTable
+      : report.collections.visitsTable.filter(
+          (r) => String(r.branchId ?? "") === branchFilter,
+        );
+
+  const filteredPayments =
+    branchFilter === "all"
+      ? report.collections.paymentsReceived
+      : report.collections.paymentsReceived.filter(
+          (p) => String(p.branchId ?? "") === branchFilter,
+        );
+
+  const filteredCollectedCents = filteredPayments.reduce(
+    (sum, p) => sum + p.amountCents,
+    0,
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-zinc-50">Daily sales</h2>
           <p className="text-[11px] text-zinc-500">
-            {props.todayOnly ? "Today only · " : ""}
+            {props.todayOnly ? "Today only · live as sales are recorded · " : ""}
             {report.dateLabel}
           </p>
         </div>
@@ -79,6 +100,19 @@ export function DailySalesPanel(props: {
               </Link>
             </>
           ) : null}
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="app-select rounded-md border border-white/10 px-2 py-1 text-[10px] text-zinc-300"
+            aria-label="Filter by branch"
+          >
+            <option value="all">All branches</option>
+            {report.branches.map((b) => (
+              <option key={b.id} value={String(b.id)}>
+                {b.name}
+              </option>
+            ))}
+          </select>
           {props.adminMode ? (
             <a
               href={`/api/export/daily-sales.csv?date=${dateInputValue}`}
@@ -101,8 +135,12 @@ export function DailySalesPanel(props: {
         <StatCard
           compact
           title="Collected today"
-          value={formatPhpFromCents(report.summary.collectedTodayCents)}
-          subtitle={`${report.summary.paymentCount} payment(s) on this date`}
+          value={formatPhpFromCents(
+            branchFilter === "all"
+              ? report.summary.collectedTodayCents
+              : filteredCollectedCents,
+          )}
+          subtitle={`${branchFilter === "all" ? report.summary.paymentCount : filteredPayments.length} payment(s) on this date`}
         />
       </div>
 
@@ -246,6 +284,15 @@ export function DailySalesPanel(props: {
               subtitle={`${m.count} payment(s)`}
             />
           ))}
+          {report.collections.branchBreakdown.map((b) => (
+            <StatCard
+              key={b.branchName}
+              compact
+              title={b.branchName}
+              value={formatPhpFromCents(b.amountCents)}
+              subtitle={`${b.count} sale(s) at branch`}
+            />
+          ))}
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -276,6 +323,7 @@ export function DailySalesPanel(props: {
               <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
                 <tr>
                   <th className="px-2 py-2">Customer</th>
+                  <th className="px-2 py-2">Branch</th>
                   <th className="px-2 py-2">Charges</th>
                   <th className="px-2 py-2">Paid</th>
                   <th className="px-2 py-2">Balance</th>
@@ -283,18 +331,20 @@ export function DailySalesPanel(props: {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {report.collections.visitsTable.length === 0 ? (
+                {filteredVisits.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-2 py-4 text-zinc-500">
-                      No orders on this date.
+                    <td colSpan={6} className="px-2 py-4 text-zinc-500">
+                      No orders on this date
+                      {branchFilter !== "all" ? " for this branch" : ""}.
                     </td>
                   </tr>
                 ) : (
-                  report.collections.visitsTable.map((row) => (
+                  filteredVisits.map((row) => (
                     <tr key={row.id}>
                       <td className="px-2 py-2 font-medium text-zinc-100">
                         {row.customerName}
                       </td>
+                      <td className="px-2 py-2 text-zinc-400">{row.branchName}</td>
                       <td className="px-2 py-2">
                         {formatPhpFromCents(row.chargesCents)}
                       </td>
@@ -331,6 +381,7 @@ export function DailySalesPanel(props: {
                 <tr>
                   <th className="px-2 py-2">Time</th>
                   <th className="px-2 py-2">Customer</th>
+                  <th className="px-2 py-2">Branch</th>
                   <th className="px-2 py-2">Method</th>
                   <th className="px-2 py-2">Cashier</th>
                   <th className="px-2 py-2">Amount</th>
@@ -338,19 +389,21 @@ export function DailySalesPanel(props: {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {report.collections.paymentsReceived.length === 0 ? (
+                {filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-2 py-4 text-zinc-500">
-                      No payments recorded on this date.
+                    <td colSpan={7} className="px-2 py-4 text-zinc-500">
+                      No payments recorded on this date
+                      {branchFilter !== "all" ? " for this branch" : ""}.
                     </td>
                   </tr>
                 ) : (
-                  report.collections.paymentsReceived.map((p) => (
+                  filteredPayments.map((p) => (
                     <tr key={`${p.orderId}-${p.time}`}>
                       <td className="px-2 py-2 text-zinc-400">
                         {formatOrderWhen(p.time)}
                       </td>
                       <td className="px-2 py-2">{p.customerName}</td>
+                      <td className="px-2 py-2 text-zinc-400">{p.branchName}</td>
                       <td className="px-2 py-2">{p.method}</td>
                       <td className="px-2 py-2 text-zinc-400">
                         {p.cashierName ?? "—"}

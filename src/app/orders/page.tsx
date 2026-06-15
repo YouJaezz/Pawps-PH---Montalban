@@ -30,7 +30,7 @@ export default async function OrdersPage(props: {
   const { year, month, day } =
     wantsDailySales && !admin ? phNow() : resolvePhDateParams(sp.date);
 
-  const [{ customerRows, quickSellProducts, boardRows, editableByOrderId }, dailyReport] =
+  const [{ customerRows, branches, quickSellProducts, boardRows, editableByOrderId }, dailyReport] =
     await Promise.all([
       getOrdersPageData(),
       wantsDailySales
@@ -49,11 +49,15 @@ export default async function OrdersPage(props: {
               ? admin
                 ? "Collections, unpaid balances, and payments for the selected date."
                 : "Today's collections, unpaid balances, and payments only."
-              : "Walk-in Quick Sell needs cart only · online orders need customer info · record after checkout"
+              : "Pick branch when selling from home/other site · walk-in needs cart only · record after checkout"
           }
           actions={
             <>
-              <QuickSellPanel products={quickSellProducts} customers={customerRows} />
+              <QuickSellPanel
+                products={quickSellProducts}
+                branches={branches}
+                customers={customerRows}
+              />
               {admin ? (
                 <BulkOrderModal
                   products={quickSellProducts}
