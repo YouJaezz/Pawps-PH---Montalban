@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 
 import {
@@ -156,10 +156,7 @@ export function InvestorDashboard(props: {
     props.currentMetrics &&
     props.currentMetrics.grossRevenueCents !== props.sanityGrossCents;
 
-  const [investorId, setInvestorId] = useState(inv?.id ?? 0);
-  useEffect(() => {
-    if (inv?.id) setInvestorId(inv.id);
-  }, [inv?.id]);
+  const investorId = inv?.id ?? 0;
 
   return (
     <div className="space-y-6">

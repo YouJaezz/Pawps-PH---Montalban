@@ -4,6 +4,7 @@ import { and, desc, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
+import { getActiveBranches } from "@/lib/branch-stock";
 import {
   normalizeOrderCreatedAt,
   orderCreatedMsColumn,
@@ -22,8 +23,9 @@ export async function GET(req: NextRequest) {
   const { start, end } = phDayBounds(year, month, day);
   const dateKey = `${year}-${pad2(month)}-${pad2(day)}`;
 
-  const rows = await db
-    .select({
+  const [rows, activeBranches] = await Promise.all([
+    db
+      .select({
       id: orders.id,
       customerName: orders.customerName,
       location: orders.location,
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest) {
       paymentStatus: orders.paymentStatus,
       deliveryMethod: orders.deliveryMethod,
       storeType: orders.storeType,
+      branchId: orders.branchId,
       createdAt: orders.createdAt,
     })
     .from(orders)
@@ -44,13 +47,20 @@ export async function GET(req: NextRequest) {
         lt(orders.createdAt, end),
       ),
     )
-    .orderBy(desc(orderCreatedMsColumn()));
+    .orderBy(desc(orderCreatedMsColumn())),
+    getActiveBranches(),
+  ]);
+
+  const branchNameById = new Map(activeBranches.map((b) => [b.id, b.name]));
+  const defaultBranchName =
+    activeBranches.find((b) => b.isDefault)?.name ?? "PAWPS Shop";
 
   const header = [
     "order_id",
     "customer_name",
     "location",
     "store_type",
+    "branch",
     "delivery_method",
     "payment_status",
     "subtotal_php",
@@ -66,11 +76,15 @@ export async function GET(req: NextRequest) {
       const createdAt = r.createdAt
         ? normalizeOrderCreatedAt(r.createdAt)
         : null;
+      const branchName = r.branchId
+        ? (branchNameById.get(r.branchId) ?? defaultBranchName)
+        : defaultBranchName;
       const cols = [
         r.id,
         JSON.stringify(r.customerName),
         JSON.stringify(r.location ?? ""),
         r.storeType,
+        JSON.stringify(branchName),
         JSON.stringify(r.deliveryMethod ?? ""),
         r.paymentStatus,
         (r.subtotalCents / 100).toFixed(2),

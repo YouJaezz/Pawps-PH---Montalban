@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 
 import type { OrderEditPayload } from "@/app/orders/OrderEditModal";
 import { db } from "@/db";

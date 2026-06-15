@@ -342,6 +342,15 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                       className={inputClass}
                     />
                   </label>
+                  <label className="mt-2 block space-y-1">
+                    <span className="text-[10px] text-zinc-500">Note (optional)</span>
+                    <input
+                      value={transferNote}
+                      onChange={(e) => setTransferNote(e.target.value)}
+                      placeholder="e.g. Moved home for neighbor sales"
+                      className={inputClass}
+                    />
+                  </label>
                   <input
                     type="hidden"
                     name="stockUnit"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import {
   updateCustomer,
@@ -37,9 +37,7 @@ export function CustomersTable(props: {
     return props.rows.filter((r) => matchesQuery(r.searchText, query));
   }, [props.rows, query]);
 
-  useEffect(() => {
-    if (updateState?.ok) setEditRow(null);
-  }, [updateState?.ok]);
+  const activeEditRow = updateState?.ok ? null : editRow;
 
   return (
     <div>
@@ -134,20 +132,20 @@ export function CustomersTable(props: {
       </ScrollableTable>
 
       <EditModal
-        open={editRow != null}
+        open={activeEditRow != null}
         onClose={() => setEditRow(null)}
         title="Edit customer"
-        subtitle={editRow?.name}
+        subtitle={activeEditRow?.name}
       >
-        {editRow ? (
+        {activeEditRow ? (
           <form action={updateAction} className="space-y-3">
-            <input type="hidden" name="customerId" value={editRow.id} />
+            <input type="hidden" name="customerId" value={activeEditRow.id} />
             <label className="block space-y-1">
               <span className="text-[11px] text-zinc-400">Name *</span>
               <input
                 name="name"
                 required
-                defaultValue={editRow.name}
+                defaultValue={activeEditRow.name}
                 disabled={updatePending}
                 className={modalFieldClass}
               />
@@ -156,7 +154,7 @@ export function CustomersTable(props: {
               <span className="text-[11px] text-zinc-400">Contact</span>
               <input
                 name="contact"
-                defaultValue={editRow.contact ?? ""}
+                defaultValue={activeEditRow.contact ?? ""}
                 disabled={updatePending}
                 className={modalFieldClass}
               />
@@ -165,7 +163,7 @@ export function CustomersTable(props: {
               <span className="text-[11px] text-zinc-400">Location</span>
               <input
                 name="location"
-                defaultValue={editRow.location ?? ""}
+                defaultValue={activeEditRow.location ?? ""}
                 disabled={updatePending}
                 className={modalFieldClass}
               />

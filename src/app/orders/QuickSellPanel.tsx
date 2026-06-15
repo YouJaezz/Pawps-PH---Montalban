@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 
 import {
   quickSell,
@@ -114,6 +114,7 @@ export function QuickSellPanel(props: {
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ModalStep>("form");
+  const [receiptDismissed, setReceiptDismissed] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
@@ -188,25 +189,24 @@ export function QuickSellPanel(props: {
 
   const draftProduct = productById.get(draftProductId);
 
-  const draftAllowedUnits = draftProduct
-    ? saleUnitsForProduct({
-        stockUnit: draftProduct.stockUnit,
-        kgPerSack: draftProduct.kgPerSack,
-        unitsPerCase: draftProduct.unitsPerCase,
-      })
-    : (["Piece"] as SaleUnit[]);
+  const draftAllowedUnits = useMemo(
+    () =>
+      draftProduct
+        ? saleUnitsForProduct({
+            stockUnit: draftProduct.stockUnit,
+            kgPerSack: draftProduct.kgPerSack,
+            unitsPerCase: draftProduct.unitsPerCase,
+          })
+        : (["Piece"] as SaleUnit[]),
+    [draftProduct],
+  );
 
-  useEffect(() => {
-    if (draftProduct && !draftAllowedUnits.includes(draftSaleUnit)) {
-      setDraftSaleUnit(draftAllowedUnits[0] ?? "Piece");
-    }
-  }, [draftProduct, draftAllowedUnits, draftSaleUnit]);
+  const resolvedDraftSaleUnit = draftAllowedUnits.includes(draftSaleUnit)
+    ? draftSaleUnit
+    : (draftAllowedUnits[0] ?? "Piece");
 
-  useEffect(() => {
-    if (state?.ok && state.receipt) {
-      setStep("receipt");
-    }
-  }, [state]);
+  const activeStep: ModalStep =
+    state?.ok && state.receipt && !receiptDismissed ? "receipt" : step;
 
   function resetDraft() {
     setDraftProductId(props.products[0]?.id ?? 0);
@@ -231,6 +231,7 @@ export function QuickSellPanel(props: {
   function closeModal() {
     setOpen(false);
     setStep("form");
+    setReceiptDismissed(true);
     setFormKey((k) => k + 1);
     setCart([]);
     resetDraft();
@@ -249,6 +250,7 @@ export function QuickSellPanel(props: {
   function openModal() {
     setFormKey((k) => k + 1);
     setStep("form");
+    setReceiptDismissed(false);
     setCart([]);
     resetDraft();
     setOpen(true);
@@ -307,7 +309,7 @@ export function QuickSellPanel(props: {
   function addToCart() {
     const p = productById.get(draftProductId);
     if (!p) return;
-    const qtyParsed = parseQuantityInput(draftQuantity, draftSaleUnit);
+    const qtyParsed = parseQuantityInput(draftQuantity, resolvedDraftSaleUnit);
     if (!qtyParsed) return;
 
     setCart((prev) => {
@@ -315,14 +317,17 @@ export function QuickSellPanel(props: {
         (line) =>
           line.kind === "product" &&
           line.productId === draftProductId &&
-          line.saleUnit === draftSaleUnit &&
+          line.saleUnit === resolvedDraftSaleUnit &&
           line.priceTier === draftPriceTier,
       );
       if (idx >= 0) {
         const existing = prev[idx] as ProductCartLine;
-        const existingQty = parseQuantityInput(existing.quantity, draftSaleUnit);
+        const existingQty = parseQuantityInput(
+          existing.quantity,
+          resolvedDraftSaleUnit,
+        );
         const nextQty =
-          draftSaleUnit === "Kilogram"
+          resolvedDraftSaleUnit === "Kilogram"
             ? String(
                 (existingQty?.quantityTenths ?? 0) / 100 +
                   (qtyParsed.quantityTenths ?? 0) / 100,
@@ -340,7 +345,7 @@ export function QuickSellPanel(props: {
           kind: "product",
           productId: draftProductId,
           quantity: draftQuantity,
-          saleUnit: draftSaleUnit,
+          saleUnit: resolvedDraftSaleUnit,
           priceTier: draftPriceTier,
         },
       ];
@@ -415,10 +420,10 @@ export function QuickSellPanel(props: {
                 <div>
                   <div className="text-sm text-zinc-400">Sales</div>
                   <div className="mt-1 text-xl font-semibold tracking-tight">
-                    {step === "receipt" ? "Receipt" : "Quick Sell"}
+                    {activeStep === "receipt" ? "Receipt" : "Quick Sell"}
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    {step === "receipt"
+                    {activeStep === "receipt"
                       ? "Print or save this receipt, then complete the order when ready."
                       : "Ring up walk-ins with cart only — record after checkout. Online orders need customer details."}
                   </div>
@@ -432,7 +437,7 @@ export function QuickSellPanel(props: {
               </div>
             </div>
 
-            {step === "receipt" && state?.receipt ? (
+            {activeStep === "receipt" && state?.receipt ? (
               <div className="space-y-4 overflow-y-auto p-6">
                 <div className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-cyan/80">
                   {state.message ?? "Order created."}
@@ -453,7 +458,7 @@ export function QuickSellPanel(props: {
                 action={formAction}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                {step === "confirm" ? (
+                {activeStep === "confirm" ? (
                   <div className="hidden" aria-hidden>
                     {cart.map((line, idx) =>
                       line.kind === "product" ? (
@@ -509,7 +514,7 @@ export function QuickSellPanel(props: {
                     ) : null}
                   </div>
                 ) : null}
-                {step === "confirm" ? (
+                {activeStep === "confirm" ? (
                   <>
                     {state?.error ? (
                       <div className="mx-6 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -580,7 +585,14 @@ export function QuickSellPanel(props: {
                           setDeductStock(
                             (nextProduct?.stockByBranch[saleBranchId] ?? 0) > 0,
                           );
-                          setDraftSaleUnit("Piece");
+                          const units = nextProduct
+                            ? saleUnitsForProduct({
+                                stockUnit: nextProduct.stockUnit,
+                                kgPerSack: nextProduct.kgPerSack,
+                                unitsPerCase: nextProduct.unitsPerCase,
+                              })
+                            : (["Piece"] as SaleUnit[]);
+                          setDraftSaleUnit(units[0] ?? "Piece");
                         }}
                       />
                     </label>
@@ -590,7 +602,7 @@ export function QuickSellPanel(props: {
                         <div className="text-[11px] text-zinc-400">Sale unit</div>
                         <select
                           className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
-                          value={draftSaleUnit}
+                          value={resolvedDraftSaleUnit}
                           onChange={(e) =>
                             setDraftSaleUnit(e.target.value as SaleUnit)
                           }
@@ -604,28 +616,28 @@ export function QuickSellPanel(props: {
                       </label>
                       <label className="space-y-1">
                         <div className="text-[11px] text-zinc-400">
-                          {draftSaleUnit === "Kilogram"
+                          {resolvedDraftSaleUnit === "Kilogram"
                             ? "Weight (kg)"
-                            : draftSaleUnit === "Sack"
+                            : resolvedDraftSaleUnit === "Sack"
                               ? "Sacks"
-                              : draftSaleUnit === "Case"
+                              : resolvedDraftSaleUnit === "Case"
                                 ? "Cases"
                                 : "Qty (pcs)"}
                         </div>
                         <input
                           inputMode="decimal"
-                          step={draftSaleUnit === "Kilogram" ? "0.25" : "1"}
-                          min={draftSaleUnit === "Kilogram" ? "0.01" : "1"}
+                          step={resolvedDraftSaleUnit === "Kilogram" ? "0.25" : "1"}
+                          min={resolvedDraftSaleUnit === "Kilogram" ? "0.01" : "1"}
                           className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none"
                           value={draftQuantity}
                           onChange={(e) => setDraftQuantity(e.target.value)}
                           onBlur={() => {
-                            if (draftSaleUnit === "Kilogram") {
+                            if (resolvedDraftSaleUnit === "Kilogram") {
                               setDraftQuantity(normalizeKgInput(draftQuantity));
                             }
                           }}
                         />
-                        {draftSaleUnit === "Kilogram" ? (
+                        {resolvedDraftSaleUnit === "Kilogram" ? (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {KG_QUICK_AMOUNTS.map((amount) => (
                               <button

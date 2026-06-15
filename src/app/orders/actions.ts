@@ -723,6 +723,8 @@ export async function createBulkOrder(
       location: locationRaw,
     });
 
+    const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
+
     const insertedOrder = await db
       .insert(orders)
       .values({
@@ -742,6 +744,7 @@ export async function createBulkOrder(
         paymentStatus: "30% Deposit",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
+        branchId: saleBranchId,
         createdByUserId: session.userId,
         cashierName: session.name ?? session.email,
       })

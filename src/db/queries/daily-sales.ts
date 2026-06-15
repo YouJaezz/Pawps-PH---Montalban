@@ -12,7 +12,7 @@ import {
   phDaysBetween,
   phNow,
 } from "@/lib/ph-time";
-import { desc } from "drizzle-orm";
+import { and, desc, gte, lt, ne, sql } from "drizzle-orm";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -21,6 +21,20 @@ function pad2(n: number) {
 function dateKey(year: number, month: number, day: number) {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 }
+
+const orderSelectFields = {
+  id: orders.id,
+  customerName: orders.customerName,
+  orderStatus: orders.orderStatus,
+  totalAmount: orders.totalAmount,
+  amountPaid: orders.amountPaid,
+  paymentStatus: orders.paymentStatus,
+  storeType: orders.storeType,
+  deliveryMethod: orders.deliveryMethod,
+  cashierName: orders.cashierName,
+  branchId: orders.branchId,
+  createdAt: orders.createdAt,
+};
 
 type OrderRow = {
   id: number;
@@ -41,34 +55,71 @@ type OrderRow = {
   onSelectedDate: boolean;
 };
 
+function mapOrderRows(
+  rawRows: Array<{
+    id: number;
+    customerName: string;
+    orderStatus: string;
+    totalAmount: number;
+    amountPaid: number;
+    paymentStatus: string;
+    storeType: string;
+    deliveryMethod: string | null;
+    cashierName: string | null;
+    branchId: number | null;
+    createdAt: Date;
+  }>,
+  branchNameById: Map<number, string>,
+  defaultBranchName: string,
+  startMs: number,
+  endMs: number,
+): OrderRow[] {
+  return rawRows.map((r) => {
+    const createdAt = normalizeOrderCreatedAt(r.createdAt);
+    const createdAtMs = createdAt.getTime();
+    return {
+      ...r,
+      branchName: r.branchId
+        ? (branchNameById.get(r.branchId) ?? defaultBranchName)
+        : defaultBranchName,
+      createdAt,
+      createdAtMs,
+      status: normalizeOrderStatus(r.orderStatus),
+      balance: r.totalAmount - r.amountPaid,
+      onSelectedDate: createdAtMs >= startMs && createdAtMs < endMs,
+    };
+  });
+}
+
 export type DailySalesReport = Awaited<ReturnType<typeof getDailySalesReport>>;
 
 export const getDailySalesReport = cache(
   async (year: number, month: number, day: number) => {
     const { start, end } = phDayBounds(year, month, day);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
     const dateLabel = phDayLabel(year, month, day);
     const selectedKey = dateKey(year, month, day);
     const today = phNow();
     const isToday =
       year === today.year && month === today.month && day === today.day;
 
-    const [rawRows, activeBranches] = await Promise.all([
+    const [unpaidRaw, onDateRaw, activeBranches] = await Promise.all([
       db
-      .select({
-        id: orders.id,
-        customerName: orders.customerName,
-        orderStatus: orders.orderStatus,
-        totalAmount: orders.totalAmount,
-        amountPaid: orders.amountPaid,
-        paymentStatus: orders.paymentStatus,
-        storeType: orders.storeType,
-        deliveryMethod: orders.deliveryMethod,
-        cashierName: orders.cashierName,
-        branchId: orders.branchId,
-        createdAt: orders.createdAt,
-      })
-      .from(orders)
-      .orderBy(desc(orderCreatedMsColumn())),
+        .select(orderSelectFields)
+        .from(orders)
+        .where(
+          and(
+            ne(orders.orderStatus, "Cancelled"),
+            sql`${orders.totalAmount} > ${orders.amountPaid}`,
+          ),
+        )
+        .orderBy(desc(orderCreatedMsColumn())),
+      db
+        .select(orderSelectFields)
+        .from(orders)
+        .where(and(gte(orders.createdAt, start), lt(orders.createdAt, end)))
+        .orderBy(desc(orderCreatedMsColumn())),
       getActiveBranches(),
     ]);
 
@@ -76,24 +127,20 @@ export const getDailySalesReport = cache(
     const defaultBranchName =
       activeBranches.find((b) => b.isDefault)?.name ?? "PAWPS Shop";
 
-    const rows: OrderRow[] = rawRows.map((r) => {
-      const createdAt = normalizeOrderCreatedAt(r.createdAt);
-      const createdAtMs = createdAt.getTime();
-      return {
-        ...r,
-        branchName: r.branchId
-          ? (branchNameById.get(r.branchId) ?? defaultBranchName)
-          : defaultBranchName,
-        createdAt,
-        createdAtMs,
-        status: normalizeOrderStatus(r.orderStatus),
-        balance: r.totalAmount - r.amountPaid,
-        onSelectedDate: createdAtMs >= start.getTime() && createdAtMs < end.getTime(),
-      };
-    });
-
-    const unpaid = rows.filter((r) => r.balance > 0 && r.status !== "Cancelled");
-    const onDate = rows.filter((r) => r.onSelectedDate);
+    const unpaid = mapOrderRows(
+      unpaidRaw,
+      branchNameById,
+      defaultBranchName,
+      startMs,
+      endMs,
+    );
+    const onDate = mapOrderRows(
+      onDateRaw,
+      branchNameById,
+      defaultBranchName,
+      startMs,
+      endMs,
+    );
     const visitsOnDate = onDate.filter((r) => r.status !== "Cancelled");
     const cancelledOnDate = onDate.filter((r) => r.status === "Cancelled");
 

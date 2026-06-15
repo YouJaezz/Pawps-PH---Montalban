@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth-guard";
 import { db } from "@/db";
-import { orderItems, products, stockMovements } from "@/db/schema";
+import { orderItems, products, stockMovements, branchStock } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
 export async function deleteProduct(formData: FormData) {
@@ -36,6 +36,7 @@ export async function deleteProduct(formData: FormData) {
       .where(eq(products.id, productId));
   } else {
     await db.delete(stockMovements).where(eq(stockMovements.productId, productId));
+    await db.delete(branchStock).where(eq(branchStock.productId, productId));
     await db.delete(products).where(eq(products.id, productId));
   }
 

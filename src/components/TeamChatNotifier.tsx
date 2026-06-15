@@ -144,9 +144,12 @@ export function TeamChatNotifier(props: {
   }, [notifyIncoming, onChatPage]);
 
   useEffect(() => {
-    void poll();
+    const initial = window.setTimeout(() => void poll(), 0);
     const id = setInterval(() => void poll(), 5000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, [poll]);
 
   useEffect(() => {

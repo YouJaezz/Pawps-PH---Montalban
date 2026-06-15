@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orderItems, orders } from "@/db/schema";
@@ -17,42 +17,28 @@ export const getBusinessInsights = cache(async () => {
   const todayMs = todayStart.getTime();
   const last7Ms = todayMs - 6 * MS_PER_DAY;
   const last30Ms = todayMs - 29 * MS_PER_DAY;
-
   const createdMs = orderCreatedMsColumn();
 
-  const [inventoryProducts, orderRows] = await Promise.all([
+  const [inventoryProducts, incomeRow, paidLast30Rows] = await Promise.all([
     getActiveInventoryProducts(),
     db
       .select({
-        id: orders.id,
-        amountPaid: orders.amountPaid,
-        totalAmount: orders.totalAmount,
-        paymentStatus: orders.paymentStatus,
-        createdMs: orderCreatedMsColumn(),
+        incomeTodayCents: sql<number>`coalesce(sum(case when ${createdMs} >= ${todayMs} then ${orders.amountPaid} else 0 end), 0)`,
+        incomeLast7DaysCents: sql<number>`coalesce(sum(case when ${createdMs} >= ${last7Ms} then ${orders.amountPaid} else 0 end), 0)`,
+        incomeLast30DaysCents: sql<number>`coalesce(sum(case when ${createdMs} >= ${last30Ms} then ${orders.amountPaid} else 0 end), 0)`,
+        receivablesCents: sql<number>`coalesce(sum(${orders.totalAmount} - ${orders.amountPaid}), 0)`,
       })
       .from(orders),
+    db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(
+        and(eq(orders.paymentStatus, "Paid"), gte(createdMs, last30Ms)),
+      ),
   ]);
 
   const inventoryValuation = inventoryValuationFromRows(inventoryProducts);
-
-  let incomeTodayCents = 0;
-  let incomeLast7DaysCents = 0;
-  let incomeLast30DaysCents = 0;
-  let receivablesCents = 0;
-  const paidLast30Ids: number[] = [];
-
-  for (const row of orderRows) {
-    const ts = Number(row.createdMs);
-    const paid = row.amountPaid;
-    receivablesCents += row.totalAmount - paid;
-
-    if (ts >= last30Ms) {
-      incomeLast30DaysCents += paid;
-      if (row.paymentStatus === "Paid") paidLast30Ids.push(row.id);
-    }
-    if (ts >= last7Ms) incomeLast7DaysCents += paid;
-    if (ts >= todayMs) incomeTodayCents += paid;
-  }
+  const paidLast30Ids = paidLast30Rows.map((r) => r.id);
 
   const lines =
     paidLast30Ids.length === 0
@@ -107,11 +93,13 @@ export const getBusinessInsights = cache(async () => {
     .sort((a, b) => b.revenueCents - a.revenueCents)
     .slice(0, 8);
 
+  const income = incomeRow[0];
+
   return {
-    incomeTodayCents,
-    incomeLast7DaysCents,
-    incomeLast30DaysCents,
-    receivablesCents,
+    incomeTodayCents: Number(income?.incomeTodayCents ?? 0),
+    incomeLast7DaysCents: Number(income?.incomeLast7DaysCents ?? 0),
+    incomeLast30DaysCents: Number(income?.incomeLast30DaysCents ?? 0),
+    receivablesCents: Number(income?.receivablesCents ?? 0),
     topProductsLast30Days: topProducts,
     stockValueCents: inventoryValuation.stockValueCents,
     potentialStockIncomeCents: inventoryValuation.potentialIncomeCents,

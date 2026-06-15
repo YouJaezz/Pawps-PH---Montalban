@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 
 import {
   createBulkOrder,
@@ -55,6 +55,7 @@ export function BulkOrderModal(props: {
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ModalStep>("form");
+  const [receiptDismissed, setReceiptDismissed] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
@@ -76,15 +77,13 @@ export function BulkOrderModal(props: {
   const [discountValue, setDiscountValue] = useState("");
   const [discountNote, setDiscountNote] = useState("");
 
-  useEffect(() => {
-    if (state?.ok && state.receipt) {
-      setStep("receipt");
-    }
-  }, [state]);
+  const activeStep: ModalStep =
+    state?.ok && state.receipt && !receiptDismissed ? "receipt" : step;
 
   function closeModal() {
     setOpen(false);
     setStep("form");
+    setReceiptDismissed(true);
     setFormKey((k) => k + 1);
     setCustomerName("");
     setContact("");
@@ -102,6 +101,7 @@ export function BulkOrderModal(props: {
   function openModal() {
     setFormKey((k) => k + 1);
     setStep("form");
+    setReceiptDismissed(false);
     setOpen(true);
   }
 
@@ -228,10 +228,10 @@ export function BulkOrderModal(props: {
                 <div>
                   <div className="text-sm text-zinc-400">Orders</div>
                   <div className="mt-1 text-xl font-semibold tracking-tight">
-                    {step === "receipt" ? "Receipt" : "Bulk Order (30% deposit)"}
+                    {activeStep === "receipt" ? "Receipt" : "Bulk Order (30% deposit)"}
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    {step === "receipt"
+                    {activeStep === "receipt"
                       ? "Print or save this receipt, then complete the order when ready."
                       : "Search products, add multiple lines, auto-calculates deposit."}
                   </div>
@@ -246,7 +246,7 @@ export function BulkOrderModal(props: {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-            {step === "receipt" && state?.receipt ? (
+            {activeStep === "receipt" && state?.receipt ? (
               <div className="space-y-4 p-6">
                 <div className="rounded-xl border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-cyan/80">
                   {state.message ?? "Bulk order created."}
@@ -262,7 +262,7 @@ export function BulkOrderModal(props: {
               </div>
             ) : (
             <form key={formKey} ref={formRef} action={formAction} className="space-y-4 p-6">
-              {step === "confirm" ? (
+              {activeStep === "confirm" ? (
                 <div className="hidden" aria-hidden>
                   {lines.map((line, idx) => (
                     <div key={`confirm-${idx}`}>
@@ -280,7 +280,7 @@ export function BulkOrderModal(props: {
                   <input type="hidden" name="priceTier" value={priceTier} />
                 </div>
               ) : null}
-              {step === "confirm" ? (
+              {activeStep === "confirm" ? (
                 <>
                   {state?.error ? (
                     <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">

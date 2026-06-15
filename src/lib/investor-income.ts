@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
