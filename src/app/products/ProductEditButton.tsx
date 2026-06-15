@@ -28,17 +28,31 @@ export type ProductEditRow = {
   branchStock: ProductBranchStock[];
 };
 
+type EditTab = "details" | "transfer";
+
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-sm text-zinc-50 outline-none focus:border-white/20";
+
+const readOnlyStockClass =
+  "w-full rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-sm text-zinc-200";
 
 function centsToInput(cents: number) {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }
 
+function branchStockTotal(rows: ProductBranchStock[]) {
+  return rows.reduce((sum, row) => sum + row.stockQuantity, 0);
+}
+
 export function ProductEditButton(props: { product: ProductEditRow }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<EditTab>("details");
   const [pending, startTransition] = useTransition();
+  const [branchStock, setBranchStock] = useState<ProductBranchStock[]>(
+    props.product.branchStock,
+  );
+  const [transferMessage, setTransferMessage] = useState<string | null>(null);
   const [stockUnit, setStockUnit] = useState<StockUnit>(props.product.stockUnit);
   const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg" | "cases" | "pcs">(
     props.product.stockUnit === "Kilogram" ? "kg" : "pcs",
@@ -82,25 +96,42 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   const p = props.product;
   const isWeight =
     stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null;
-  const displayQty = displayStockQuantity(
-    stockUnit === "Sack" ? "Kilogram" : stockUnit,
-    p.stockQuantity,
-  );
+  const stockQtyUnit = stockUnit === "Sack" ? "Kilogram" : stockUnit;
+  const totalStored = branchStockTotal(branchStock);
+  const displayQty = displayStockQuantity(stockQtyUnit, totalStored);
+  const stockUnitLabel =
+    stockUnit === "Kilogram" || stockUnit === "Sack" ? "kg" : "pcs";
+  const canTransfer = branchStock.length > 1;
+
+  function openModal() {
+    setStockUnit(props.product.stockUnit);
+    setKgPerSackInput(
+      props.product.kgPerSack != null
+        ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
+        : "",
+    );
+    setItemType(props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value);
+    setBranchStock(props.product.branchStock);
+    setTransferFrom(String(props.product.branchStock[0]?.branchId ?? ""));
+    setTransferTo(
+      String(
+        props.product.branchStock[1]?.branchId ??
+          props.product.branchStock[0]?.branchId ??
+          "",
+      ),
+    );
+    setTransferQty("");
+    setTransferNote("");
+    setTransferMessage(null);
+    setTab("details");
+    setOpen(true);
+  }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setStockUnit(props.product.stockUnit);
-          setKgPerSackInput(
-            props.product.kgPerSack != null
-              ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
-              : "",
-          );
-          setItemType(props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value);
-          setOpen(true);
-        }}
+        onClick={openModal}
         className="rounded border border-brand-blue/30 px-2 py-0.5 text-[10px] text-brand-blue hover:bg-brand-blue/10"
       >
         Edit
@@ -125,7 +156,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   id="edit-product-title"
                   className="text-lg font-semibold text-zinc-50"
                 >
-                  Edit item
+                  {p.name}
                 </h2>
               </div>
               <button
@@ -137,304 +168,340 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               </button>
             </div>
 
-            <form
-              className="mt-4 space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                startTransition(async () => {
-                  try {
-                    await updateProduct(fd);
-                    setOpen(false);
-                    router.refresh();
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : "Save failed.");
-                  }
-                });
-              }}
-            >
-              <input type="hidden" name="productId" value={p.id} />
+            <div className="mt-4 flex gap-1 rounded-lg border border-white/10 bg-black/20 p-1">
+              <button
+                type="button"
+                onClick={() => setTab("details")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  tab === "details"
+                    ? "bg-white/10 text-zinc-50"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("transfer")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  tab === "transfer"
+                    ? "bg-white/10 text-zinc-50"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Transfer
+              </button>
+            </div>
 
-              <label className="block space-y-1">
-                <span className="text-xs text-zinc-400">Item name *</span>
-                <input
-                  name="name"
-                  required
-                  defaultValue={p.name}
-                  className={inputClass}
-                />
-              </label>
+            {tab === "details" ? (
+              <form
+                className="mt-4 space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  startTransition(async () => {
+                    try {
+                      await updateProduct(fd);
+                      setOpen(false);
+                      router.refresh();
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : "Save failed.");
+                    }
+                  });
+                }}
+              >
+                <input type="hidden" name="productId" value={p.id} />
 
-              <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Brand *</span>
+                  <span className="text-xs text-zinc-400">Item name *</span>
                   <input
-                    name="brand"
+                    name="name"
                     required
-                    defaultValue={p.brand}
+                    defaultValue={p.name}
                     className={inputClass}
                   />
                 </label>
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Flavor</span>
-                  <input
-                    name="variant"
-                    defaultValue={p.variant ?? ""}
-                    placeholder="Chicken, beef…"
-                    className={inputClass}
-                  />
-                </label>
-              </div>
 
-              <ItemTypePicker
-                name="itemType"
-                label="Item type"
-                value={itemType}
-                onChange={setItemType}
-                compact
-              />
-
-              <label className="block space-y-1">
-                <span className="text-xs text-zinc-400">Pack size</span>
-                <input
-                  name="packSize"
-                  defaultValue={p.packSize ?? ""}
-                  placeholder="20kg, 400g, 7kg"
-                  className={inputClass}
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">Stock unit</span>
-                  <select
-                    name="stockUnit"
-                    value={stockUnit}
-                    onChange={(e) => setStockUnit(e.target.value as StockUnit)}
-                    className={inputClass}
-                  >
-                    {STOCK_UNITS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              {isWeight ? (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
-                    <span className="text-xs text-zinc-400">Kg per sack</span>
+                    <span className="text-xs text-zinc-400">Brand *</span>
                     <input
-                      name="kgPerSack"
-                      value={kgPerSackInput}
-                      onChange={(e) => setKgPerSackInput(e.target.value)}
-                      inputMode="decimal"
-                      step="0.1"
+                      name="brand"
+                      required
+                      defaultValue={p.brand}
                       className={inputClass}
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-xs text-zinc-400">Stock entry</span>
+                    <span className="text-xs text-zinc-400">Flavor</span>
+                    <input
+                      name="variant"
+                      defaultValue={p.variant ?? ""}
+                      placeholder="Chicken, beef…"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+
+                <ItemTypePicker
+                  name="itemType"
+                  label="Item type"
+                  value={itemType}
+                  onChange={setItemType}
+                  compact
+                />
+
+                <label className="block space-y-1">
+                  <span className="text-xs text-zinc-400">Pack size</span>
+                  <input
+                    name="packSize"
+                    defaultValue={p.packSize ?? ""}
+                    placeholder="20kg, 400g, 7kg"
+                    className={inputClass}
+                  />
+                </label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">Stock unit</span>
                     <select
-                      name="stockEntryMode"
-                      value={stockEntryMode}
-                      onChange={(e) =>
-                        setStockEntryMode(e.target.value as "sacks" | "kg")
-                      }
+                      name="stockUnit"
+                      value={stockUnit}
+                      onChange={(e) => setStockUnit(e.target.value as StockUnit)}
                       className={inputClass}
                     >
-                      <option value="sacks">Sacks</option>
-                      <option value="kg">Kilograms</option>
+                      {STOCK_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
                     </select>
                   </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">Total on hand</span>
+                    <div className={readOnlyStockClass}>
+                      {String(displayQty)} {stockUnitLabel}
+                    </div>
+                  </label>
                 </div>
-              ) : null}
 
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                <div className="text-xs font-medium text-zinc-200">
-                  Stock by branch
+                {isWeight ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <span className="text-xs text-zinc-400">Kg per sack</span>
+                      <input
+                        name="kgPerSack"
+                        value={kgPerSackInput}
+                        onChange={(e) => setKgPerSackInput(e.target.value)}
+                        inputMode="decimal"
+                        step="0.1"
+                        className={inputClass}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs text-zinc-400">Stock entry</span>
+                      <select
+                        name="stockEntryMode"
+                        value={stockEntryMode}
+                        onChange={(e) =>
+                          setStockEntryMode(e.target.value as "sacks" | "kg")
+                        }
+                        className={inputClass}
+                      >
+                        <option value="sacks">Sacks</option>
+                        <option value="kg">Kilograms</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">
+                      {isWeight ? "Our retail (per kg)" : "Our retail (per pc)"}
+                    </span>
+                    <input
+                      name="retailPrice"
+                      required
+                      defaultValue={centsToInput(p.retailPrice)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">
+                      {isWeight ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
+                    </span>
+                    <input
+                      name="bulkPrice"
+                      defaultValue={centsToInput(p.bulkPrice)}
+                      placeholder="Optional"
+                      className={inputClass}
+                    />
+                  </label>
                 </div>
-                <p className="mt-1 text-[10px] text-zinc-500">
-                  Total on hand: {String(displayQty)}{" "}
-                  {stockUnit === "Kilogram" || stockUnit === "Sack" ? "kg" : "pcs"}
+
+                <p className="text-[10px] text-zinc-600">
+                  Purchase cost and supplier link stay as-is — change those from
+                  the supplier catalog if needed. Use the Transfer tab to move
+                  stock between branches.
                 </p>
-                <div className="mt-2 space-y-2">
-                  {p.branchStock.length === 0 ? (
-                    <p className="text-[10px] text-zinc-600">
-                      No branches yet — add one under Branches.
-                    </p>
-                  ) : (
-                    p.branchStock.map((branch) => {
-                      const branchDisplay = displayStockQuantity(
-                        stockUnit === "Sack" ? "Kilogram" : stockUnit,
-                        branch.stockQuantity,
-                      );
-                      return (
-                        <label key={branch.branchId} className="block space-y-1">
-                          <span className="text-[11px] text-zinc-400">
-                            {branch.branchName}
-                            {branch.isDefault ? " (default)" : ""}
-                          </span>
-                          <input
-                            name={`branchStock_${branch.branchId}`}
-                            type="number"
-                            min={0}
-                            step={
-                              stockUnit === "Kilogram" || stockUnit === "Sack"
-                                ? "0.1"
-                                : "1"
-                            }
-                            defaultValue={String(branchDisplay)}
-                            className={inputClass}
-                          />
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
 
-              {p.branchStock.length > 1 ? (
-                <div className="rounded-lg border border-brand-blue/20 bg-brand-blue/5 p-3">
-                  <div className="text-xs font-medium text-brand-cyan/90">
-                    Move stock between branches
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <label className="block space-y-1">
-                      <span className="text-[10px] text-zinc-500">From</span>
-                      <select
-                        value={transferFrom}
-                        onChange={(e) => setTransferFrom(e.target.value)}
-                        className={inputClass}
-                      >
-                        {p.branchStock.map((b) => (
-                          <option key={b.branchId} value={b.branchId}>
-                            {b.branchName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block space-y-1">
-                      <span className="text-[10px] text-zinc-500">To</span>
-                      <select
-                        value={transferTo}
-                        onChange={(e) => setTransferTo(e.target.value)}
-                        className={inputClass}
-                      >
-                        {p.branchStock.map((b) => (
-                          <option key={b.branchId} value={b.branchId}>
-                            {b.branchName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <label className="mt-2 block space-y-1">
-                    <span className="text-[10px] text-zinc-500">Quantity</span>
-                    <input
-                      value={transferQty}
-                      onChange={(e) => setTransferQty(e.target.value)}
-                      placeholder={
-                        isWeight ? "e.g. 1 sack or 2.5 kg" : "e.g. 12"
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className="mt-2 block space-y-1">
-                    <span className="text-[10px] text-zinc-500">Note (optional)</span>
-                    <input
-                      value={transferNote}
-                      onChange={(e) => setTransferNote(e.target.value)}
-                      placeholder="e.g. Moved home for neighbor sales"
-                      className={inputClass}
-                    />
-                  </label>
-                  <input
-                    type="hidden"
-                    name="stockUnit"
-                    value={stockUnit}
-                  />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="flex-1 rounded-lg bg-zinc-50 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+                  >
+                    {pending ? "Saving…" : "Save changes"}
+                  </button>
                   <button
                     type="button"
-                    disabled={pending || !transferQty.trim()}
-                    onClick={() => {
-                      const fd = new FormData();
-                      fd.set("productId", String(p.id));
-                      fd.set("fromBranchId", transferFrom);
-                      fd.set("toBranchId", transferTo);
-                      fd.set("transferQuantity", transferQty);
-                      fd.set("stockUnit", stockUnit);
-                      fd.set("stockEntryMode", stockEntryMode);
-                      if (kgPerSackInput) fd.set("kgPerSack", kgPerSackInput);
-                      if (transferNote.trim()) fd.set("note", transferNote);
-                      startTransition(async () => {
-                        try {
-                          await transferBranchStock(fd);
-                          setTransferQty("");
-                          router.refresh();
-                        } catch (err) {
-                          alert(
-                            err instanceof Error ? err.message : "Transfer failed.",
-                          );
-                        }
-                      });
-                    }}
-                    className="mt-2 w-full rounded-lg border border-brand-cyan/30 px-3 py-2 text-xs text-brand-cyan/90 hover:bg-brand-blue/10 disabled:opacity-50"
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
                   >
-                    Transfer stock
+                    Cancel
                   </button>
                 </div>
-              ) : null}
+              </form>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-medium text-zinc-200">
+                    Stock by branch
+                  </div>
+                  <p className="mt-1 text-[10px] text-zinc-500">
+                    Total on hand: {String(displayQty)} {stockUnitLabel}
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {branchStock.length === 0 ? (
+                      <p className="text-[10px] text-zinc-600">
+                        No branches yet — add one under Branches.
+                      </p>
+                    ) : (
+                      branchStock.map((branch) => {
+                        const branchDisplay = displayStockQuantity(
+                          stockQtyUnit,
+                          branch.stockQuantity,
+                        );
+                        return (
+                          <div key={branch.branchId} className="space-y-1">
+                            <span className="text-[11px] text-zinc-400">
+                              {branch.branchName}
+                              {branch.isDefault ? " (default)" : ""}
+                            </span>
+                            <div className={readOnlyStockClass}>
+                              {String(branchDisplay)}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">
-                    {isWeight ? "Our retail (per kg)" : "Our retail (per pc)"}
-                  </span>
-                  <input
-                    name="retailPrice"
-                    required
-                    defaultValue={centsToInput(p.retailPrice)}
-                    className={inputClass}
-                  />
-                </label>
-                <label className="block space-y-1">
-                  <span className="text-xs text-zinc-400">
-                    {isWeight ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
-                  </span>
-                  <input
-                    name="bulkPrice"
-                    defaultValue={centsToInput(p.bulkPrice)}
-                    placeholder="Optional"
-                    className={inputClass}
-                  />
-                </label>
+                {transferMessage ? (
+                  <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/90">
+                    {transferMessage}
+                  </div>
+                ) : null}
+
+                {canTransfer ? (
+                  <div className="rounded-lg border border-brand-blue/20 bg-brand-blue/5 p-3">
+                    <div className="text-xs font-medium text-brand-cyan/90">
+                      Move stock between branches
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <span className="text-[10px] text-zinc-500">From</span>
+                        <select
+                          value={transferFrom}
+                          onChange={(e) => setTransferFrom(e.target.value)}
+                          className={inputClass}
+                        >
+                          {branchStock.map((b) => (
+                            <option key={b.branchId} value={b.branchId}>
+                              {b.branchName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-[10px] text-zinc-500">To</span>
+                        <select
+                          value={transferTo}
+                          onChange={(e) => setTransferTo(e.target.value)}
+                          className={inputClass}
+                        >
+                          {branchStock.map((b) => (
+                            <option key={b.branchId} value={b.branchId}>
+                              {b.branchName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <label className="mt-2 block space-y-1">
+                      <span className="text-[10px] text-zinc-500">Quantity</span>
+                      <input
+                        value={transferQty}
+                        onChange={(e) => setTransferQty(e.target.value)}
+                        placeholder={
+                          isWeight ? "e.g. 1 sack or 2.5 kg" : "e.g. 12"
+                        }
+                        className={inputClass}
+                      />
+                    </label>
+                    <label className="mt-2 block space-y-1">
+                      <span className="text-[10px] text-zinc-500">Note (optional)</span>
+                      <input
+                        value={transferNote}
+                        onChange={(e) => setTransferNote(e.target.value)}
+                        placeholder="e.g. Moved home for neighbor sales"
+                        className={inputClass}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={pending || !transferQty.trim()}
+                      onClick={() => {
+                        const fd = new FormData();
+                        fd.set("productId", String(p.id));
+                        fd.set("fromBranchId", transferFrom);
+                        fd.set("toBranchId", transferTo);
+                        fd.set("transferQuantity", transferQty);
+                        fd.set("stockUnit", stockUnit);
+                        fd.set("stockEntryMode", stockEntryMode);
+                        if (kgPerSackInput) fd.set("kgPerSack", kgPerSackInput);
+                        if (transferNote.trim()) fd.set("note", transferNote);
+                        startTransition(async () => {
+                          try {
+                            const updated = await transferBranchStock(fd);
+                            setBranchStock(updated);
+                            setTransferQty("");
+                            setTransferNote("");
+                            setTransferMessage("Stock transferred — quantities updated.");
+                            router.refresh();
+                          } catch (err) {
+                            setTransferMessage(null);
+                            alert(
+                              err instanceof Error ? err.message : "Transfer failed.",
+                            );
+                          }
+                        });
+                      }}
+                      className="mt-2 w-full rounded-lg border border-brand-cyan/30 px-3 py-2 text-xs text-brand-cyan/90 hover:bg-brand-blue/10 disabled:opacity-50"
+                    >
+                      {pending ? "Transferring…" : "Transfer stock"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-zinc-500">
+                    Add at least two active branches under Branches to move stock
+                    between locations.
+                  </p>
+                )}
               </div>
-
-              <p className="text-[10px] text-zinc-600">
-                Purchase cost and supplier link stay as-is — change those from
-                the supplier catalog if needed.
-              </p>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="flex-1 rounded-lg bg-zinc-50 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
-                >
-                  {pending ? "Saving…" : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            )}
 
             <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-zinc-500">
               Current sell retail:{" "}

@@ -463,4 +463,6 @@ export async function transferBranchStock(formData: FormData) {
   revalidatePath("/branches");
   revalidatePath("/orders");
   revalidatePath("/");
+
+  return getProductBranchStock(productId);
 }
