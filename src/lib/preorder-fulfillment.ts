@@ -5,9 +5,12 @@ import {
   preOrderItems,
   preOrders,
   products,
-  stockMovements,
   supplierCatalogItems,
 } from "@/db/schema";
+import {
+  adjustBranchStock,
+  getDefaultBranchId,
+} from "@/lib/branch-stock";
 import { bumpCustomerSpend, resolveCustomerForOrder } from "@/lib/customers-server";
 import {
   getOpenPreOrderIdsForProduct,
@@ -88,12 +91,14 @@ async function preOrderHasStockForAllLines(items: PreOrderItemRow[]) {
 
 async function reserveStockForOrder(orderId: number, note: string) {
   const [order] = await db
-    .select({ stockDeducted: orders.stockDeducted })
+    .select({ stockDeducted: orders.stockDeducted, branchId: orders.branchId })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1);
 
   if (!order || order.stockDeducted) return;
+
+  const branchId = order.branchId ?? (await getDefaultBranchId());
 
   const lines = await db
     .select({
@@ -109,7 +114,6 @@ async function reserveStockForOrder(orderId: number, note: string) {
     const [product] = await db
       .select({
         id: products.id,
-        stockQuantity: products.stockQuantity,
         kgPerSack: products.kgPerSack,
         unitsPerCase: products.unitsPerCase,
       })
@@ -127,15 +131,11 @@ async function reserveStockForOrder(orderId: number, note: string) {
       product.unitsPerCase,
     );
 
-    await db
-      .update(products)
-      .set({ stockQuantity: product.stockQuantity - deductQty })
-      .where(eq(products.id, product.id));
-
-    await db.insert(stockMovements).values({
+    await adjustBranchStock({
+      branchId,
       productId: product.id,
+      delta: -deductQty,
       movementType: "Sale",
-      quantityDelta: -deductQty,
       relatedOrderId: orderId,
       note,
     });
@@ -152,6 +152,8 @@ async function restockShopPreOrderItems(
   preOrderId: number,
   items: PreOrderItemRow[],
 ) {
+  const defaultBranchId = await getDefaultBranchId();
+
   for (const item of items) {
     const qty = effectiveQty(item);
     if (qty <= 0) continue;
@@ -159,15 +161,11 @@ async function restockShopPreOrderItems(
     const product = await findProductForPreOrderItem(item);
     if (!product) continue;
 
-    await db
-      .update(products)
-      .set({ stockQuantity: product.stockQuantity + qty })
-      .where(eq(products.id, product.id));
-
-    await db.insert(stockMovements).values({
+    await adjustBranchStock({
+      branchId: defaultBranchId,
       productId: product.id,
+      delta: qty,
       movementType: "Restock",
-      quantityDelta: qty,
       note: `Pre-order #${preOrderId} received`,
     });
   }
@@ -258,6 +256,7 @@ async function createCustomerOrderFromPreOrder(
   const customerId = await resolveCustomerForOrder({ customerName });
   const noteParts = [`Converted from pre-order #${preOrder.id}`];
   if (preOrder.notes?.trim()) noteParts.push(preOrder.notes.trim());
+  const defaultBranchId = await getDefaultBranchId();
 
   const insertedOrder = await db
     .insert(orders)
@@ -275,6 +274,7 @@ async function createCustomerOrderFromPreOrder(
       deliveryMethod: null,
       storeType: "Online",
       stockDeducted: false,
+      branchId: defaultBranchId,
     })
     .returning({ id: orders.id });
 

@@ -38,6 +38,7 @@ export function isAdminOnlyPath(pathname: string) {
   if (pathname.startsWith("/reports")) return true;
   if (pathname.startsWith("/payroll")) return true;
   if (pathname.startsWith("/suppliers")) return true;
+  if (pathname.startsWith("/branches")) return true;
   if (pathname.startsWith("/delivery")) return true;
   if (pathname.startsWith("/transport")) return true;
   if (pathname.startsWith("/api/export")) return true;

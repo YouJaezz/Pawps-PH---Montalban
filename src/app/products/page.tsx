@@ -17,7 +17,11 @@ import {
 } from "@/lib/catalog-item-display";
 import { computeInventoryValuation } from "@/lib/inventory-valuation";
 import { formatPhpFromCents } from "@/lib/money";
-import { formatDualStock } from "@/lib/product-stock";
+import { formatDualStock, displayStockQuantity } from "@/lib/product-stock";
+import {
+  formatBranchStockSummary,
+  getBranchStockForProducts,
+} from "@/lib/branch-stock";
 import { displayCatalogItemType } from "@/lib/catalog-item-types";
 import { repairInventoryLabelsFromCatalog } from "@/lib/inventory-catalog-sync";
 import { formatSupplierPrice } from "@/lib/price-units";
@@ -122,6 +126,9 @@ export default async function ProductsPage() {
     })),
   );
 
+  const productIds = rows.map((p) => p.id);
+  const branchStockByProduct = await getBranchStockForProducts(productIds);
+
   const inventoryTableRows: InventoryTableRow[] = rows.map((p) => {
     const catalog = p.supplierCatalogItemId
       ? catalogById.get(p.supplierCatalogItemId)
@@ -147,6 +154,13 @@ export default async function ProductsPage() {
       kgPerSack: p.kgPerSack,
       unitsPerCase: p.unitsPerCase,
     });
+    const branchRows = branchStockByProduct.get(p.id) ?? [];
+    const branchSummary = formatBranchStockSummary(
+      branchRows,
+      p.stockUnit as StockUnit,
+      (unit, stored) =>
+        String(displayStockQuantity(unit === "Sack" ? "Kilogram" : unit, stored)),
+    );
     const retailProfit = Math.max(0, p.retailPrice - p.costPrice);
     const bulkProfit =
       p.bulkPrice > 0 ? Math.max(0, p.bulkPrice - p.costPrice) : null;
@@ -169,6 +183,7 @@ export default async function ProductsPage() {
         p.bulkPrice > 0 ? formatPhpFromCents(p.bulkPrice) : "—",
       stockPrimary: stock.primary,
       stockSecondary: stock.secondary,
+      branchSummary,
       profitRetail: formatPhpFromCents(retailProfit),
       profitBulk: bulkProfit != null ? formatPhpFromCents(bulkProfit) : null,
       unitSuffix,
@@ -194,6 +209,7 @@ export default async function ProductsPage() {
         unitsPerCase: p.unitsPerCase,
         retailPrice: p.retailPrice,
         bulkPrice: p.bulkPrice,
+        branchStock: branchRows,
       },
     };
   });
@@ -211,6 +227,10 @@ export default async function ProductsPage() {
             <h1 className="text-2xl font-semibold tracking-tight">
               Stock &amp; pricing
             </h1>
+            <p className="mt-1 max-w-xl text-sm text-zinc-500">
+              Totals include all branches. Manage locations under Branches and
+              move stock when supplies go home.
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <ProductAddButton
@@ -219,6 +239,12 @@ export default async function ProductsPage() {
             />
             {admin ? (
               <>
+                <Link
+                  href="/branches"
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
+                >
+                  Branches
+                </Link>
                 <Link
                   href="/suppliers"
                   className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"

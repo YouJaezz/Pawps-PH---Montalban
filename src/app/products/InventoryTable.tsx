@@ -23,6 +23,7 @@ export type InventoryTableRow = {
   ourWs: string;
   stockPrimary: string;
   stockSecondary: string;
+  branchSummary: string;
   profitRetail: string;
   profitBulk: string | null;
   unitSuffix: string;
@@ -124,6 +125,7 @@ export function InventoryTable(props: {
                 <th className="hidden px-2 py-2 sm:table-cell">Our WS</th>
               ) : null}
               <th className="px-2 py-2">Stock</th>
+              <th className="hidden px-2 py-2 lg:table-cell">Branches</th>
               {!limited ? (
                 <th className="hidden px-2 py-2 xl:table-cell">Profit</th>
               ) : null}
@@ -186,6 +188,9 @@ export function InventoryTable(props: {
                         {p.stockSecondary}
                       </div>
                     ) : null}
+                  </td>
+                  <td className="hidden px-2 py-2 text-[10px] text-zinc-400 lg:table-cell">
+                    {p.branchSummary}
                   </td>
                   {!limited ? (
                     <td className="hidden px-2 py-2 text-brand-cyan/90 xl:table-cell">

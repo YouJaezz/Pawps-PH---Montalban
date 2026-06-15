@@ -22,6 +22,11 @@ import {
   type SaleUnit,
 } from "@/lib/order-line-math";
 import { formatStockLabel } from "@/lib/product-stock";
+import {
+  adjustBranchStock,
+  getBranchStockQuantity,
+  getDefaultBranchId,
+} from "@/lib/branch-stock";
 import { formatPhpFromCents, parseMoneyToCents } from "@/lib/money";
 import {
   normalizeOrderCreatedAt,
@@ -86,13 +91,19 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
 
 async function deductStockForOrder(orderId: number) {
   const [order] = await db
-    .select({ stockDeducted: orders.stockDeducted, notes: orders.notes })
+    .select({
+      stockDeducted: orders.stockDeducted,
+      notes: orders.notes,
+      branchId: orders.branchId,
+    })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1);
 
   if (!order || order.stockDeducted) return;
   if (order.notes?.includes("[no-stock-deduct]")) return;
+
+  const branchId = order.branchId ?? (await getDefaultBranchId());
 
   const lines = await db
     .select({
@@ -110,7 +121,6 @@ async function deductStockForOrder(orderId: number) {
     const [product] = await db
       .select({
         id: products.id,
-        stockQuantity: products.stockQuantity,
         kgPerSack: products.kgPerSack,
         unitsPerCase: products.unitsPerCase,
       })
@@ -128,15 +138,11 @@ async function deductStockForOrder(orderId: number) {
       product.unitsPerCase,
     );
 
-    await db
-      .update(products)
-      .set({ stockQuantity: product.stockQuantity - deductQty })
-      .where(eq(products.id, product.id));
-
-    await db.insert(stockMovements).values({
+    await adjustBranchStock({
+      branchId,
       productId: product.id,
+      delta: -deductQty,
       movementType: "Sale",
-      quantityDelta: -deductQty,
       relatedOrderId: orderId,
       note: "Order completed",
     });
@@ -425,18 +431,20 @@ export async function quickSell(
     }
 
     if (deductStock) {
+      const saleBranchId = await getDefaultBranchId();
       for (const [productId, neededQty] of deductByProduct) {
         const p = productById.get(productId);
         if (!p) continue;
-        if (p.stockQuantity < neededQty) {
+        const onHand = await getBranchStockQuantity(saleBranchId, productId);
+        if (onHand < neededQty) {
           const stockLabel = formatStockLabel(
             p.stockUnit as import("@/db/schema").StockUnit,
-            p.stockQuantity,
+            onHand,
             p.kgPerSack,
             p.unitsPerCase,
           );
           return actionError(
-            `Not enough stock for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock" or restock first.`,
+            `Not enough stock at the shop branch for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock", move stock to the shop branch, or restock first.`,
           );
         }
       }
@@ -464,6 +472,7 @@ export async function quickSell(
 
     const deliveryMethod =
       storeType === "Walk-in" ? null : deliveryMethodRaw.length ? deliveryMethodRaw : null;
+    const saleBranchId = await getDefaultBranchId();
 
     const insertedOrder = await db
       .insert(orders)
@@ -485,6 +494,7 @@ export async function quickSell(
         deliveryMethod,
         storeType,
         stockDeducted: false,
+        branchId: saleBranchId,
         createdByUserId: session.userId,
         cashierName: session.name ?? session.email,
       })
@@ -828,6 +838,7 @@ export async function cancelOrder(formData: FormData) {
       id: orders.id,
       orderStatus: orders.orderStatus,
       stockDeducted: orders.stockDeducted,
+      branchId: orders.branchId,
     })
     .from(orders)
     .where(eq(orders.id, orderId))
@@ -854,6 +865,7 @@ export async function cancelOrder(formData: FormData) {
     .select({
       productId: stockMovements.productId,
       quantityDelta: stockMovements.quantityDelta,
+      branchId: stockMovements.branchId,
     })
     .from(stockMovements)
     .where(
@@ -863,7 +875,8 @@ export async function cancelOrder(formData: FormData) {
       ),
     );
 
-  const restockByProduct = new Map<number, number>();
+  const restockByBranchProduct = new Map<string, number>();
+  const fallbackBranchId = order.branchId ?? (await getDefaultBranchId());
 
   if (order.stockDeducted) {
     for (const l of lines) {
@@ -882,41 +895,30 @@ export async function cancelOrder(formData: FormData) {
         p?.kgPerSack,
         p?.unitsPerCase,
       );
-      restockByProduct.set(
-        l.productId,
-        (restockByProduct.get(l.productId) ?? 0) + qty,
-      );
+      const key = `${fallbackBranchId}:${l.productId}`;
+      restockByBranchProduct.set(key, (restockByBranchProduct.get(key) ?? 0) + qty);
     }
   } else if (saleMovements.length > 0) {
     for (const m of saleMovements) {
       const qty = Math.abs(m.quantityDelta);
-      if (qty > 0) {
-        restockByProduct.set(
-          m.productId,
-          (restockByProduct.get(m.productId) ?? 0) + qty,
-        );
-      }
+      if (qty <= 0) continue;
+      const branchId = m.branchId ?? fallbackBranchId;
+      const key = `${branchId}:${m.productId}`;
+      restockByBranchProduct.set(key, (restockByBranchProduct.get(key) ?? 0) + qty);
     }
   }
 
-  for (const [productId, qty] of restockByProduct) {
-    const [p] = await db
-      .select({ id: products.id, stockQuantity: products.stockQuantity })
-      .from(products)
-      .where(eq(products.id, productId))
-      .limit(1);
+  for (const [key, qty] of restockByBranchProduct) {
+    const [branchIdRaw, productIdRaw] = key.split(":");
+    const branchId = Number.parseInt(branchIdRaw ?? "", 10);
+    const productId = Number.parseInt(productIdRaw ?? "", 10);
+    if (!Number.isFinite(branchId) || !Number.isFinite(productId)) continue;
 
-    if (!p) continue;
-
-    await db
-      .update(products)
-      .set({ stockQuantity: p.stockQuantity + qty })
-      .where(eq(products.id, productId));
-
-    await db.insert(stockMovements).values({
+    await adjustBranchStock({
+      branchId,
       productId,
+      delta: qty,
       movementType: "Cancel",
-      quantityDelta: qty,
       relatedOrderId: orderId,
       note: "Order cancelled — stock restored",
     });

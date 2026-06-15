@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
   products,
-  stockMovements,
   supplierCatalogItems,
   STOCK_UNITS,
   type StockUnit,
@@ -19,6 +18,14 @@ import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
 import { linkPreOrderItemsToProduct } from "@/lib/preorder-inventory-link";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
+import {
+  adjustBranchStock,
+  getActiveBranches,
+  getDefaultBranchId,
+  setBranchStockQuantity,
+  transferBranchStock as transferBranchStockCore,
+  getProductBranchStock,
+} from "@/lib/branch-stock";
 import { and, eq } from "drizzle-orm";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
@@ -186,7 +193,7 @@ export async function createProduct(
       costPrice,
       retailPrice,
       bulkPrice,
-      stockQuantity,
+      stockQuantity: 0,
       stockUnit,
       kgPerSack: trackInKg ? kgPerSack : null,
       unitsPerCase: trackInKg ? null : unitsPerCase,
@@ -215,16 +222,27 @@ export async function createProduct(
   });
 
   if (stockQuantity > 0) {
-    await db.insert(stockMovements).values({
+    const defaultBranchId = await getDefaultBranchId();
+    await adjustBranchStock({
+      branchId: defaultBranchId,
       productId,
+      delta: stockQuantity,
       movementType: "Restock",
-      quantityDelta: stockQuantity,
       note: "Initial stock",
     });
     await tryAutoFulfillPreOrdersForProduct(productId);
+  } else {
+    const defaultBranchId = await getDefaultBranchId();
+    await setBranchStockQuantity({
+      branchId: defaultBranchId,
+      productId,
+      quantity: 0,
+      note: "Initial branch row",
+    });
   }
 
   revalidatePath("/products");
+  revalidatePath("/branches");
   revalidatePath("/preorders");
   revalidatePath("/orders");
   revalidatePath("/");
@@ -259,6 +277,7 @@ export async function restockProduct(formData: FormData) {
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
   const quantity = parseIntOr(formData.get("quantity"), 0);
   const noteRaw = String(formData.get("note") ?? "").trim();
+  const branchIdRaw = Number.parseInt(String(formData.get("branchId") ?? ""), 10);
 
   if (!Number.isFinite(productId) || productId <= 0) {
     throw new Error("Invalid product.");
@@ -268,31 +287,30 @@ export async function restockProduct(formData: FormData) {
   }
 
   const [product] = await db
-    .select({
-      id: products.id,
-      stockQuantity: products.stockQuantity,
-    })
+    .select({ id: products.id })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.archived, false)))
     .limit(1);
 
   if (!product) throw new Error("Product not found.");
 
-  await db
-    .update(products)
-    .set({ stockQuantity: product.stockQuantity + quantity })
-    .where(eq(products.id, productId));
+  const branchId =
+    Number.isFinite(branchIdRaw) && branchIdRaw > 0
+      ? branchIdRaw
+      : await getDefaultBranchId();
 
-  await db.insert(stockMovements).values({
+  await adjustBranchStock({
+    branchId,
     productId,
+    delta: quantity,
     movementType: "Restock",
-    quantityDelta: quantity,
     note: noteRaw.length ? noteRaw : "Manual restock",
   });
 
   await tryAutoFulfillPreOrdersForProduct(productId);
 
   revalidatePath("/products");
+  revalidatePath("/branches");
   revalidatePath("/preorders");
   revalidatePath("/orders");
   revalidatePath("/");
@@ -328,23 +346,13 @@ export async function updateProduct(formData: FormData) {
 
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
-  const unitForParse =
-    stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
-  const newStockStored = parseStockQuantityInput(
-    String(formData.get("stockQuantity") ?? ""),
-    unitForParse,
-    { stockEntryMode, kgPerSack },
-  );
 
   if (retailPrice <= 0) throw new Error("Retail sell price is required.");
-  if (newStockStored == null) throw new Error("Enter a valid stock quantity.");
 
   const [existing] = await db
     .select({
       id: products.id,
-      stockQuantity: products.stockQuantity,
       stockUnit: products.stockUnit,
-      costPrice: products.costPrice,
     })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.archived, false)))
@@ -352,7 +360,10 @@ export async function updateProduct(formData: FormData) {
 
   if (!existing) throw new Error("Product not found.");
 
-  const stockDelta = newStockStored - existing.stockQuantity;
+  const resolvedStockUnit =
+    stockUnit === "Sack" ? ("Kilogram" as const) : stockUnit;
+  const unitForParse =
+    resolvedStockUnit === "Kilogram" ? "Kilogram" : resolvedStockUnit;
 
   await db
     .update(products)
@@ -362,30 +373,94 @@ export async function updateProduct(formData: FormData) {
       variant,
       itemType,
       packSize,
-      stockUnit: stockUnit === "Sack" ? "Kilogram" : stockUnit,
+      stockUnit: resolvedStockUnit,
       kgPerSack:
         stockUnit === "Kilogram" || stockUnit === "Sack" ? kgPerSack : null,
-      stockQuantity: newStockStored,
       retailPrice,
       bulkPrice,
     })
     .where(eq(products.id, productId));
 
-  if (stockDelta !== 0) {
-    await db.insert(stockMovements).values({
+  const activeBranches = await getActiveBranches();
+  const currentBranchStock = await getProductBranchStock(productId);
+  let stockIncreased = false;
+
+  for (const branch of activeBranches) {
+    const raw = String(formData.get(`branchStock_${branch.id}`) ?? "").trim();
+    if (!raw.length) continue;
+
+    const parsed = parseStockQuantityInput(raw, unitForParse, {
+      stockEntryMode,
+      kgPerSack,
+    });
+    if (parsed == null) {
+      throw new Error(`Enter a valid stock quantity for ${branch.name}.`);
+    }
+
+    const current =
+      currentBranchStock.find((r) => r.branchId === branch.id)?.stockQuantity ?? 0;
+    if (parsed > current) stockIncreased = true;
+
+    await setBranchStockQuantity({
+      branchId: branch.id,
       productId,
-      movementType: "Adjustment",
-      quantityDelta: stockDelta,
-      note: "Manual edit — stock corrected",
+      quantity: parsed,
+      note: `Stock edit — ${branch.name}`,
     });
   }
 
-  if (stockDelta > 0) {
+  if (stockIncreased) {
     await tryAutoFulfillPreOrdersForProduct(productId);
   }
 
   revalidatePath("/products");
+  revalidatePath("/branches");
   revalidatePath("/preorders");
+  revalidatePath("/orders");
+  revalidatePath("/");
+}
+
+export async function transferBranchStock(formData: FormData) {
+  await requireAuth();
+
+  const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+  const fromBranchId = Number.parseInt(String(formData.get("fromBranchId") ?? ""), 10);
+  const toBranchId = Number.parseInt(String(formData.get("toBranchId") ?? ""), 10);
+  const noteRaw = String(formData.get("note") ?? "").trim();
+
+  const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
+  const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
+    ? (stockUnitRaw as StockUnit)
+    : ("Piece" as const);
+  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
+  const stockEntryMode =
+    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
+  const unitForParse =
+    stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
+
+  if (!Number.isFinite(productId) || productId <= 0) {
+    throw new Error("Invalid product.");
+  }
+
+  const quantity = parseStockQuantityInput(
+    String(formData.get("transferQuantity") ?? ""),
+    unitForParse,
+    { stockEntryMode, kgPerSack },
+  );
+  if (quantity == null || quantity <= 0) {
+    throw new Error("Enter a valid quantity to move.");
+  }
+
+  await transferBranchStockCore({
+    fromBranchId,
+    toBranchId,
+    productId,
+    quantity,
+    note: noteRaw.length ? noteRaw : undefined,
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/branches");
   revalidatePath("/orders");
   revalidatePath("/");
 }

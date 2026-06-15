@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
-import { updateProduct } from "@/app/products/actions";
+import { updateProduct, transferBranchStock } from "@/app/products/actions";
 import { ItemTypePicker } from "@/components/ItemTypePicker";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
 import { CATALOG_ITEM_TYPES } from "@/lib/catalog-item-types";
+import type { ProductBranchStock } from "@/lib/branch-stock";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
-import { displayStockQuantity, stockQtyLabel } from "@/lib/product-stock";
+import { displayStockQuantity } from "@/lib/product-stock";
 
 export type ProductEditRow = {
   id: number;
@@ -24,6 +25,7 @@ export type ProductEditRow = {
   unitsPerCase: number | null;
   retailPrice: number;
   bulkPrice: number;
+  branchStock: ProductBranchStock[];
 };
 
 const inputClass =
@@ -49,6 +51,19 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   const [itemType, setItemType] = useState(
     props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value,
   );
+  const [transferFrom, setTransferFrom] = useState(
+    () => String(props.product.branchStock[0]?.branchId ?? ""),
+  );
+  const [transferTo, setTransferTo] = useState(
+    () =>
+      String(
+        props.product.branchStock[1]?.branchId ??
+          props.product.branchStock[0]?.branchId ??
+          "",
+      ),
+  );
+  const [transferQty, setTransferQty] = useState("");
+  const [transferNote, setTransferNote] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -237,29 +252,132 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 </div>
               ) : null}
 
-              <label className="block space-y-1">
-                <span className="text-xs text-zinc-400">
-                  {stockQtyLabel(
-                    stockUnit === "Sack" ? "Kilogram" : stockUnit,
-                    isWeight ? stockEntryMode : undefined,
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="text-xs font-medium text-zinc-200">
+                  Stock by branch
+                </div>
+                <p className="mt-1 text-[10px] text-zinc-500">
+                  Total on hand: {String(displayQty)}{" "}
+                  {stockUnit === "Kilogram" || stockUnit === "Sack" ? "kg" : "pcs"}
+                </p>
+                <div className="mt-2 space-y-2">
+                  {p.branchStock.length === 0 ? (
+                    <p className="text-[10px] text-zinc-600">
+                      No branches yet — add one under Branches.
+                    </p>
+                  ) : (
+                    p.branchStock.map((branch) => {
+                      const branchDisplay = displayStockQuantity(
+                        stockUnit === "Sack" ? "Kilogram" : stockUnit,
+                        branch.stockQuantity,
+                      );
+                      return (
+                        <label key={branch.branchId} className="block space-y-1">
+                          <span className="text-[11px] text-zinc-400">
+                            {branch.branchName}
+                            {branch.isDefault ? " (default)" : ""}
+                          </span>
+                          <input
+                            name={`branchStock_${branch.branchId}`}
+                            type="number"
+                            min={0}
+                            step={
+                              stockUnit === "Kilogram" || stockUnit === "Sack"
+                                ? "0.1"
+                                : "1"
+                            }
+                            defaultValue={String(branchDisplay)}
+                            className={inputClass}
+                          />
+                        </label>
+                      );
+                    })
                   )}
-                </span>
-                <input
-                  name="stockQuantity"
-                  type="number"
-                  min={0}
-                  step={
-                    stockUnit === "Kilogram" || stockUnit === "Sack" ? "0.1" : "1"
-                  }
-                  required
-                  defaultValue={String(displayQty)}
-                  className={inputClass}
-                />
-                <span className="text-[10px] text-zinc-600">
-                  Weight items are stored as kg. Use sacks + kg/sack when receiving
-                  by sack.
-                </span>
-              </label>
+                </div>
+              </div>
+
+              {p.branchStock.length > 1 ? (
+                <div className="rounded-lg border border-brand-blue/20 bg-brand-blue/5 p-3">
+                  <div className="text-xs font-medium text-brand-cyan/90">
+                    Move stock between branches
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <span className="text-[10px] text-zinc-500">From</span>
+                      <select
+                        value={transferFrom}
+                        onChange={(e) => setTransferFrom(e.target.value)}
+                        className={inputClass}
+                      >
+                        {p.branchStock.map((b) => (
+                          <option key={b.branchId} value={b.branchId}>
+                            {b.branchName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-[10px] text-zinc-500">To</span>
+                      <select
+                        value={transferTo}
+                        onChange={(e) => setTransferTo(e.target.value)}
+                        className={inputClass}
+                      >
+                        {p.branchStock.map((b) => (
+                          <option key={b.branchId} value={b.branchId}>
+                            {b.branchName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <label className="mt-2 block space-y-1">
+                    <span className="text-[10px] text-zinc-500">Quantity</span>
+                    <input
+                      value={transferQty}
+                      onChange={(e) => setTransferQty(e.target.value)}
+                      placeholder={
+                        isWeight ? "e.g. 1 sack or 2.5 kg" : "e.g. 12"
+                      }
+                      className={inputClass}
+                    />
+                  </label>
+                  <input
+                    type="hidden"
+                    name="stockUnit"
+                    value={stockUnit}
+                  />
+                  <button
+                    type="button"
+                    disabled={pending || !transferQty.trim()}
+                    onClick={() => {
+                      const fd = new FormData();
+                      fd.set("productId", String(p.id));
+                      fd.set("fromBranchId", transferFrom);
+                      fd.set("toBranchId", transferTo);
+                      fd.set("transferQuantity", transferQty);
+                      fd.set("stockUnit", stockUnit);
+                      fd.set("stockEntryMode", stockEntryMode);
+                      if (kgPerSackInput) fd.set("kgPerSack", kgPerSackInput);
+                      if (transferNote.trim()) fd.set("note", transferNote);
+                      startTransition(async () => {
+                        try {
+                          await transferBranchStock(fd);
+                          setTransferQty("");
+                          router.refresh();
+                        } catch (err) {
+                          alert(
+                            err instanceof Error ? err.message : "Transfer failed.",
+                          );
+                        }
+                      });
+                    }}
+                    className="mt-2 w-full rounded-lg border border-brand-cyan/30 px-3 py-2 text-xs text-brand-cyan/90 hover:bg-brand-blue/10 disabled:opacity-50"
+                  >
+                    Transfer stock
+                  </button>
+                </div>
+              ) : null}
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1">

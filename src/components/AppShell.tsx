@@ -68,6 +68,7 @@ function ShellBody(props: {
                     }
                   />
                   <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
+                  <NavItem href="/branches" label="Branches" hint="stock sites" />
                   <NavItem href="/transport" label="Pet Transport" hint="driver" />
                   <NavItem href="/settings" label="Settings" hint="admin" />
                 </>

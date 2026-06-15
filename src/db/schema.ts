@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const STOCK_UNITS = ["Piece", "Kilogram", "Pack", "Sack"] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
@@ -99,6 +99,8 @@ export const orders = sqliteTable("orders", {
   createdByUserId: integer("created_by_user_id"),
   /** Snapshot of cashier display name at sale time. */
   cashierName: text("cashier_name"),
+  /** Branch that fulfilled / deducted stock for this sale. */
+  branchId: integer("branch_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -264,8 +266,9 @@ export const transportJobs = sqliteTable("transport_jobs", {
 export const stockMovements = sqliteTable("stock_movements", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   productId: integer("product_id").notNull(),
+  branchId: integer("branch_id"),
   movementType: text("movement_type", {
-    enum: ["Sale", "Restock", "Adjustment", "Cancel"],
+    enum: ["Sale", "Restock", "Adjustment", "Cancel", "Transfer"],
   }).notNull(),
   quantityDelta: integer("quantity_delta").notNull(),
   relatedOrderId: integer("related_order_id"),
@@ -274,6 +277,36 @@ export const stockMovements = sqliteTable("stock_movements", {
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
 });
+
+/** Physical stock locations (shop, home storage, etc.). */
+export const branches = sqliteTable("branches", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  location: text("location"),
+  notes: text("notes"),
+  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+/** On-hand quantity per product per branch. */
+export const branchStock = sqliteTable(
+  "branch_stock",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    branchId: integer("branch_id").notNull(),
+    productId: integer("product_id").notNull(),
+    stockQuantity: integer("stock_quantity").notNull().default(0),
+  },
+  (table) => ({
+    branchProductUnique: uniqueIndex("branch_stock_branch_product_unique").on(
+      table.branchId,
+      table.productId,
+    ),
+  }),
+);
 
 export const suppliers = sqliteTable("suppliers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
