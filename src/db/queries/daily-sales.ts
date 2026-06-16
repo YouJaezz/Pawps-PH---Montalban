@@ -118,7 +118,8 @@ export const getDailySalesReport = cache(
       db
         .select(orderSelectFields)
         .from(orders)
-        .where(and(gte(orders.createdAt, start), lt(orders.createdAt, end)))
+        // createdAt has legacy mixed seconds/ms values; filter using normalized ms expression.
+        .where(and(gte(orderCreatedMsColumn(), startMs), lt(orderCreatedMsColumn(), endMs)))
         .orderBy(desc(orderCreatedMsColumn())),
       getActiveBranches(),
     ]);

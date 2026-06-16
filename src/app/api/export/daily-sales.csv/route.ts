@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
   const dateParam = req.nextUrl.searchParams.get("date") ?? undefined;
   const { year, month, day } = resolvePhDateParams(dateParam);
   const { start, end } = phDayBounds(year, month, day);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
   const dateKey = `${year}-${pad2(month)}-${pad2(day)}`;
 
   const [rows, activeBranches] = await Promise.all([
@@ -43,8 +45,9 @@ export async function GET(req: NextRequest) {
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, start),
-        lt(orders.createdAt, end),
+        // createdAt has legacy mixed seconds/ms values; filter using normalized ms expression.
+        gte(orderCreatedMsColumn(), startMs),
+        lt(orderCreatedMsColumn(), endMs),
       ),
     )
     .orderBy(desc(orderCreatedMsColumn())),
