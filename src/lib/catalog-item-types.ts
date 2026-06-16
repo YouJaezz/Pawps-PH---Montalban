@@ -9,7 +9,7 @@ export const CATALOG_ITEM_TYPES = [
   { value: "Dog Treats", label: "Dog Treats" },
   { value: "Cat Treats", label: "Cat Treats" },
   { value: "Toys", label: "Toys & Accessories" },
-  { value: "Cat Litter", label: "Cat Litter" },
+  { value: "Cat Litter", label: "Cat Litter (per sack)" },
   { value: "Medicine & Vitamins", label: "Medicine & Vitamins" },
   { value: "Other", label: "Other" },
 ] as const;
@@ -71,6 +71,10 @@ export function normalizeCatalogItemType(raw: string | null | undefined): string
   return "Other";
 }
 
+export function isCatLitterItemType(raw: string | null | undefined) {
+  return normalizeCatalogItemType(raw) === "Cat Litter";
+}
+
 export function displayCatalogItemType(raw: string | null | undefined) {
   const normalized = normalizeCatalogItemType(raw);
   return (
@@ -97,6 +101,9 @@ export function defaultPriceUnitForItemType(itemType: string | null | undefined)
 /** Hint text for the Size field in supplier forms. */
 export function packSizeHintForItemType(itemType: string | null | undefined) {
   const t = normalizeCatalogItemType(itemType).toLowerCase();
+  if (t.includes("litter")) {
+    return "Pack size — volume per sack (e.g. 10 in L, or 7 in kg for reference)";
+  }
   if (t.includes("dry food") || t.includes("litter")) {
     return "Pack size — weight per sack (e.g. 7 in kg, 20 in kg)";
   }

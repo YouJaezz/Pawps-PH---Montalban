@@ -14,7 +14,7 @@ import {
   parseKgPerSackFromInput,
   parseStockQuantityInput,
 } from "@/lib/product-stock";
-import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
+import { normalizeCatalogItemType, isCatLitterItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
 import { linkPreOrderItemsToProduct } from "@/lib/preorder-inventory-link";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
@@ -148,14 +148,24 @@ export async function createProduct(
       const caseSize = catalogRow.unitsPerCase ?? unitsPerCase;
 
       if (!formData.get("costPrice")) {
-        if (trackInKg && catalogRow.perKiloPrice != null && catalogRow.perKiloPrice > 0) {
+        if (
+          !isCatLitterItemType(itemType) &&
+          trackInKg &&
+          catalogRow.perKiloPrice != null &&
+          catalogRow.perKiloPrice > 0
+        ) {
           costPrice = catalogRow.perKiloPrice;
         } else if (
           catalogRow.priceUnit === "Case" &&
           caseSize > 0
         ) {
           costPrice = Math.round(base / caseSize);
-        } else if (trackInKg && kgPerSack != null && kgPerSack > 0) {
+        } else if (
+          !isCatLitterItemType(itemType) &&
+          trackInKg &&
+          kgPerSack != null &&
+          kgPerSack > 0
+        ) {
           costPrice = Math.round(base / (kgPerSack / 10));
         } else {
           costPrice = base;
@@ -222,11 +232,14 @@ export async function createProduct(
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
 
-  const stockUnit: StockUnit = trackInKg ? "Kilogram" : "Piece";
+  const isLitter = isCatLitterItemType(itemType);
+  const useKgStock = trackInKg && !isLitter;
+
+  const stockUnit: StockUnit = useKgStock ? "Kilogram" : "Piece";
   const stockQuantity =
     parseStockQuantityInput(String(formData.get("stockQuantity") ?? "0"), stockUnit, {
       stockEntryMode,
-      kgPerSack,
+      kgPerSack: useKgStock ? kgPerSack : null,
       unitsPerCase,
     }) ?? 0;
 
@@ -243,8 +256,8 @@ export async function createProduct(
       bulkPrice,
       stockQuantity: 0,
       stockUnit,
-      kgPerSack: trackInKg ? kgPerSack : null,
-      unitsPerCase: trackInKg ? null : unitsPerCase,
+      kgPerSack: useKgStock ? kgPerSack : null,
+      unitsPerCase: useKgStock ? null : unitsPerCase,
       expiryDate: null,
       supplierId,
       supplierCatalogItemId:

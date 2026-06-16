@@ -35,7 +35,7 @@ export type ActiveInventoryProduct = Awaited<
 export function inventoryValuationFromRows(
   rows: Pick<
     ActiveInventoryProduct,
-    "costPrice" | "retailPrice" | "stockQuantity" | "stockUnit"
+    "costPrice" | "retailPrice" | "stockQuantity" | "stockUnit" | "itemType"
   >[],
 ) {
   return computeInventoryValuation(
@@ -44,6 +44,7 @@ export function inventoryValuationFromRows(
       retailPrice: p.retailPrice,
       stockQuantity: p.stockQuantity,
       stockUnit: p.stockUnit as StockUnit,
+      itemType: p.itemType,
     })),
   );
 }

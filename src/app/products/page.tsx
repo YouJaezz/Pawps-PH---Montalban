@@ -23,9 +23,9 @@ import {
   getActiveBranches,
   getBranchStockForProducts,
 } from "@/lib/branch-stock";
-import { displayCatalogItemType } from "@/lib/catalog-item-types";
+import { isCatLitterItemType, displayCatalogItemType } from "@/lib/catalog-item-types";
 import { repairInventoryLabelsFromCatalog } from "@/lib/inventory-catalog-sync";
-import { formatSupplierPrice } from "@/lib/price-units";
+import { formatSupplierPrice, retailUnitSuffix } from "@/lib/price-units";
 import { rowSearchText } from "@/lib/table-filter";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -125,6 +125,7 @@ export default async function ProductsPage() {
       retailPrice: p.retailPrice,
       stockQuantity: p.stockQuantity,
       stockUnit: p.stockUnit as StockUnit,
+      itemType: p.itemType,
     })),
   );
 
@@ -155,6 +156,7 @@ export default async function ProductsPage() {
     const stock = formatDualStock(p.stockUnit as StockUnit, p.stockQuantity, {
       kgPerSack: p.kgPerSack,
       unitsPerCase: p.unitsPerCase,
+      itemType,
     });
     const branchRows = branchStockByProduct.get(p.id) ?? [];
     const branchSummary = formatBranchStockSummary(
@@ -166,8 +168,9 @@ export default async function ProductsPage() {
     const retailProfit = Math.max(0, p.retailPrice - p.costPrice);
     const bulkProfit =
       p.bulkPrice > 0 ? Math.max(0, p.bulkPrice - p.costPrice) : null;
-    const isWeight = p.stockUnit === "Kilogram" || p.kgPerSack != null;
-    const unitSuffix = isWeight ? "/kg" : "/pc";
+    const isLitter = isCatLitterItemType(itemType);
+    const isWeight = !isLitter && (p.stockUnit === "Kilogram" || p.kgPerSack != null);
+    const unitSuffix = retailUnitSuffix(itemType, p.stockUnit as StockUnit);
 
     const branchQtyById: Record<number, number> = {};
     for (const line of branchRows) {

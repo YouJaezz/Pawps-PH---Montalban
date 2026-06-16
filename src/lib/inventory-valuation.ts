@@ -1,14 +1,19 @@
 import type { StockUnit } from "@/db/schema";
 import { displayStockQuantity } from "@/lib/product-stock";
+import { isCatLitterItemType } from "@/lib/catalog-item-types";
 
 export type ProductValuationRow = {
   costPrice: number;
   retailPrice: number;
   stockQuantity: number;
   stockUnit: StockUnit;
+  itemType?: string | null;
 };
 
 export function effectiveStockQty(row: ProductValuationRow) {
+  if (isCatLitterItemType(row.itemType) || row.stockUnit === "Piece") {
+    return row.stockQuantity;
+  }
   const unit = row.stockUnit === "Sack" ? "Kilogram" : row.stockUnit;
   return displayStockQuantity(unit, row.stockQuantity);
 }

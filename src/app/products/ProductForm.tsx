@@ -18,12 +18,14 @@ import { formatPhpFromCents } from "@/lib/money";
 import {
   CATALOG_ITEM_TYPES,
   normalizeCatalogItemType,
+  isCatLitterItemType,
 } from "@/lib/catalog-item-types";
 import {
   formatSupplierPrice,
   isPieceProduct,
   isWeightProduct,
   priceUnitLabel,
+  stockPieceLabel,
 } from "@/lib/price-units";
 
 export type CatalogPickOption = {
@@ -159,14 +161,17 @@ export function ProductForm(props: {
     return Math.round(n * 10);
   }, [kgPerSackInput]);
 
+  const isLitter = selectedCatalog
+    ? isCatLitterItemType(selectedCatalog.itemType)
+    : isCatLitterItemType(manualItemType);
+
   const isWeight = selectedCatalog
     ? isWeightProduct({
         priceUnit: selectedCatalog.priceUnit,
         packUnit: selectedCatalog.packUnit,
-        kgPerSack: kgPerSackTenths,
         itemType: selectedCatalog.itemType,
       })
-    : trackInKg;
+    : trackInKg && !isLitter;
 
   const isPiece = selectedCatalog
     ? isPieceProduct({
@@ -174,7 +179,7 @@ export function ProductForm(props: {
         packUnit: selectedCatalog.packUnit,
         itemType: selectedCatalog.itemType,
       })
-    : !trackInKg;
+    : !trackInKg || isLitter;
 
   const unitsPerCase = Number(unitsPerCaseInput) || 24;
 
@@ -228,7 +233,18 @@ export function ProductForm(props: {
     unitsPerCase,
   ]);
 
-  const stockUnitLabel = isWeight && trackInKg ? "kg" : "pcs";
+  const stockUnitLabel =
+    isLitter ? "sacks" : isWeight && trackInKg ? "kg" : stockPieceLabel(manualItemType) + "s";
+  const perUnitRetailLabel = isLitter
+    ? "Our retail (per sack)"
+    : isWeight && trackInKg
+      ? "Our retail (per kg)"
+      : "Our retail (per pc)";
+  const perUnitBulkLabel = isLitter
+    ? "Our wholesale (per sack)"
+    : isWeight && trackInKg
+      ? "Our wholesale (per kg)"
+      : "Our wholesale (per pc)";
   const retailProfitPerUnit = Math.max(0, parseMoneyInput(retailInput) - costPerUnitCents);
   const bulkProfitPerUnit =
     bulkInput.trim().length > 0
@@ -242,15 +258,23 @@ export function ProductForm(props: {
       const piece = isPieceProduct({
         priceUnit: catalog.priceUnit,
         packUnit: catalog.packUnit,
+        itemType: catalog.itemType,
       });
       const weight = isWeightProduct({
         priceUnit: catalog.priceUnit,
         packUnit: catalog.packUnit,
+        itemType: catalog.itemType,
       });
 
       if (piece) {
         setTrackInKg(false);
-        setStockEntryMode(catalog.priceUnit === "Case" ? "cases" : "pcs");
+        setStockEntryMode(
+          isCatLitterItemType(catalog.itemType)
+            ? "pcs"
+            : catalog.priceUnit === "Case"
+              ? "cases"
+              : "pcs",
+        );
         setUnitsPerCaseInput(String(catalog.unitsPerCase ?? 24));
         setRetailInput("");
         setBulkInput("");
@@ -356,7 +380,10 @@ export function ProductForm(props: {
             name="itemType"
             label="Item type *"
             value={manualItemType}
-            onChange={setManualItemType}
+            onChange={(next) => {
+              setManualItemType(next);
+              if (isCatLitterItemType(next)) setTrackInKg(false);
+            }}
             compact
           />
         </div>
@@ -494,6 +521,11 @@ export function ProductForm(props: {
               </select>
             </label>
           </>
+        ) : isLitter && selectedCatalog ? (
+          <>
+            <input type="hidden" name="trackInKg" value="off" />
+            <input type="hidden" name="stockEntryMode" value="pcs" />
+          </>
         ) : isPiece && selectedCatalog ? (
           <>
             <input type="hidden" name="trackInKg" value="off" />
@@ -538,15 +570,17 @@ export function ProductForm(props: {
 
         <label className="space-y-0.5">
           <span className="text-[10px] text-zinc-500">
-            {isWeight && trackInKg
-              ? stockEntryMode === "sacks"
-                ? "Stock (sacks)"
-                : "Stock (kg)"
-              : isPiece
-                ? stockEntryMode === "cases"
-                  ? "Stock (cases)"
-                  : "Stock (pcs)"
-                : "Stock"}
+            {isLitter
+              ? "Stock (sacks)"
+              : isWeight && trackInKg
+                ? stockEntryMode === "sacks"
+                  ? "Stock (sacks)"
+                  : "Stock (kg)"
+                : isPiece
+                  ? stockEntryMode === "cases"
+                    ? "Stock (cases)"
+                    : `Stock (${stockPieceLabel(manualItemType)}s)`
+                  : "Stock"}
           </span>
           <input
             name="stockQuantity"
@@ -565,9 +599,7 @@ export function ProductForm(props: {
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">
-            {isWeight && trackInKg ? "Our retail (per kg)" : "Our retail (per pc)"}
-          </span>
+          <span className="text-[10px] text-zinc-500">{perUnitRetailLabel}</span>
           <input
             name="retailPrice"
             value={retailInput}
@@ -577,9 +609,7 @@ export function ProductForm(props: {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[10px] text-zinc-500">
-            {isWeight && trackInKg ? "Our wholesale (per kg)" : "Our wholesale (per pc)"}
-          </span>
+          <span className="text-[10px] text-zinc-500">{perUnitBulkLabel}</span>
           <input
             name="bulkPrice"
             value={bulkInput}

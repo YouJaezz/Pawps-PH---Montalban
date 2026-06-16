@@ -196,6 +196,7 @@ export function QuickSellPanel(props: {
             stockUnit: draftProduct.stockUnit,
             kgPerSack: draftProduct.kgPerSack,
             unitsPerCase: draftProduct.unitsPerCase,
+            itemType: draftProduct.itemType,
           })
         : (["Piece"] as SaleUnit[]),
     [draftProduct],
@@ -590,6 +591,7 @@ export function QuickSellPanel(props: {
                                 stockUnit: nextProduct.stockUnit,
                                 kgPerSack: nextProduct.kgPerSack,
                                 unitsPerCase: nextProduct.unitsPerCase,
+                                itemType: nextProduct.itemType,
                               })
                             : (["Piece"] as SaleUnit[]);
                           setDraftSaleUnit(units[0] ?? "Piece");

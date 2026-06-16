@@ -1,6 +1,7 @@
 import type { StockUnit } from "@/db/schema";
 import { DEFAULT_UNITS_PER_CASE } from "@/db/schema";
 import { displayKgPerSack } from "@/lib/order-line-math";
+import { isCatLitterItemType } from "@/lib/catalog-item-types";
 
 export function displayStockQuantity(stockUnit: StockUnit, stockQuantity: number) {
   if (stockUnit === "Kilogram" || stockUnit === "Sack") {
@@ -65,7 +66,11 @@ export type DualStockDisplay = {
 export function formatDualStock(
   stockUnit: StockUnit,
   stockQuantity: number,
-  opts?: { kgPerSack?: number | null; unitsPerCase?: number | null },
+  opts?: {
+    kgPerSack?: number | null;
+    unitsPerCase?: number | null;
+    itemType?: string | null;
+  },
 ): DualStockDisplay {
   if (stockUnit === "Kilogram" || stockUnit === "Sack") {
     const kg = displayStockQuantity("Kilogram", stockQuantity);
@@ -87,10 +92,12 @@ export function formatDualStock(
 
   const pcs = stockQuantity;
   const caseSize = opts?.unitsPerCase ?? DEFAULT_UNITS_PER_CASE;
+  const pieceWord = isCatLitterItemType(opts?.itemType) ? "sack" : "pc";
+  const pieceWordPlural = isCatLitterItemType(opts?.itemType) ? "sacks" : "pcs";
   const fullCases = Math.floor(pcs / caseSize);
   const loosePcs = pcs % caseSize;
 
-  if (caseSize > 1) {
+  if (caseSize > 1 && !isCatLitterItemType(opts?.itemType)) {
     const caseLabel =
       loosePcs > 0
         ? `${fullCases} case${fullCases === 1 ? "" : "s"} · ${loosePcs} pcs open`
@@ -98,7 +105,10 @@ export function formatDualStock(
     return { primary: `${pcs} pcs`, secondary: caseLabel };
   }
 
-  return { primary: `${pcs} pcs`, secondary: "—" };
+  return {
+    primary: `${pcs} ${pcs === 1 ? pieceWord : pieceWordPlural}`,
+    secondary: "—",
+  };
 }
 
 export function stockQtyLabel(

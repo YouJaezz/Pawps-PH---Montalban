@@ -1,3 +1,5 @@
+import { isCatLitterItemType } from "@/lib/catalog-item-types";
+
 export const SALE_UNITS = ["Piece", "Kilogram", "Pack", "Sack", "Case"] as const;
 export type SaleUnit = (typeof SALE_UNITS)[number];
 
@@ -145,8 +147,13 @@ export function saleUnitsForProduct(opts: {
   stockUnit: string;
   kgPerSack: number | null | undefined;
   unitsPerCase?: number | null | undefined;
+  itemType?: string | null;
 }) {
   const units: SaleUnit[] = [];
+
+  if (isCatLitterItemType(opts.itemType)) {
+    return ["Piece"] as SaleUnit[];
+  }
 
   if (opts.stockUnit === "Kilogram" || opts.kgPerSack != null) {
     units.push("Kilogram");

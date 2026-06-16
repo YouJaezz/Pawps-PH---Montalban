@@ -1,5 +1,5 @@
-import type { PriceUnit } from "@/db/schema";
-import { normalizeCatalogItemType } from "@/lib/catalog-item-types";
+import type { PriceUnit, StockUnit } from "@/db/schema";
+import { normalizeCatalogItemType, isCatLitterItemType } from "@/lib/catalog-item-types";
 import { DEFAULT_UNITS_PER_CASE } from "@/db/schema";
 import { formatPhpFromCents } from "@/lib/money";
 
@@ -107,8 +107,9 @@ export function isWeightProduct(opts: {
   kgPerSack?: number | null;
   itemType?: string | null;
 }) {
+  if (isCatLitterItemType(opts.itemType)) return false;
   const type = normalizeCatalogItemType(opts.itemType).toLowerCase();
-  if (type.includes("dry food") || type.includes("litter")) return true;
+  if (type.includes("dry food")) return true;
   if (opts.kgPerSack != null && opts.kgPerSack > 0) return true;
   const unit = (opts.packUnit ?? "").toLowerCase();
   return unit === "kg" || opts.priceUnit === "Sack";
@@ -119,6 +120,7 @@ export function isPieceProduct(opts: {
   packUnit?: string | null;
   itemType?: string | null;
 }) {
+  if (isCatLitterItemType(opts.itemType)) return true;
   const type = normalizeCatalogItemType(opts.itemType).toLowerCase();
   if (
     type.includes("can") ||
@@ -137,6 +139,16 @@ export function isPieceProduct(opts: {
     unit === "pc" ||
     unit === "pcs"
   );
+}
+
+export function retailUnitSuffix(itemType: string | null | undefined, stockUnit: StockUnit) {
+  if (isCatLitterItemType(itemType)) return "/sack";
+  if (stockUnit === "Kilogram" || stockUnit === "Sack") return "/kg";
+  return "/pc";
+}
+
+export function stockPieceLabel(itemType: string | null | undefined) {
+  return isCatLitterItemType(itemType) ? "sack" : "pc";
 }
 
 export function defaultUnitsPerCase(priceUnit: PriceUnit | string | null | undefined) {
