@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { AddCatalogItemButton } from "@/app/suppliers/AddCatalogItemButton";
+import { deleteSupplierCatalogItem } from "@/app/suppliers/actions";
 import { CatalogItemEditButton } from "@/app/suppliers/CatalogItemEditButton";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import {
@@ -49,6 +50,7 @@ export function SupplierSearch(props: {
 }) {
   const [query, setQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
     let list = props.rows;
@@ -205,20 +207,50 @@ export function SupplierSearch(props: {
                       {formatSupplierPrice(details.retailPrice, r.priceUnit)}
                     </td>
                     <td className="px-2 py-1 align-top">
-                      <CatalogItemEditButton
-                        id={r.id}
-                        itemName={r.itemName}
-                        brand={r.brand}
-                        variant={r.variant}
-                        unitCost={r.unitCost}
-                        retailPrice={r.retailPrice}
-                        perKiloPrice={r.perKiloPrice}
-                        packSize={details.packSize}
-                        packUnit={details.packUnit}
-                        itemType={r.itemType}
-                        priceUnit={r.priceUnit}
-                        unitsPerCase={r.unitsPerCase}
-                      />
+                      <div className="flex items-start justify-end gap-2">
+                        <CatalogItemEditButton
+                          id={r.id}
+                          itemName={r.itemName}
+                          brand={r.brand}
+                          variant={r.variant}
+                          unitCost={r.unitCost}
+                          retailPrice={r.retailPrice}
+                          perKiloPrice={r.perKiloPrice}
+                          packSize={details.packSize}
+                          packUnit={details.packUnit}
+                          itemType={r.itemType}
+                          priceUnit={r.priceUnit}
+                          unitsPerCase={r.unitsPerCase}
+                        />
+                        {deleteId === r.id ? (
+                          <div className="flex items-center gap-1">
+                            <form action={deleteSupplierCatalogItem}>
+                              <input type="hidden" name="id" value={r.id} />
+                              <button
+                                type="submit"
+                                className="text-[10px] text-red-300 hover:text-red-200"
+                              >
+                                Confirm
+                              </button>
+                            </form>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteId(null)}
+                              className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteId(r.id)}
+                            className="text-[10px] text-red-400/80 hover:text-red-300"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
