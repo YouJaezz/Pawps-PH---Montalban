@@ -495,6 +495,8 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
   userId: integer("user_id").notNull(),
   periodYear: integer("period_year").notNull(),
   periodMonth: integer("period_month").notNull(),
+  /** 0 = legacy monthly, 1 = 1st-15th, 2 = 16th-end */
+  periodHalf: integer("period_half").notNull().default(0),
   minutesWorked: integer("minutes_worked").notNull(),
   hourlyRateCents: integer("hourly_rate_cents").notNull(),
   grossPayCents: integer("gross_pay_cents").notNull(),

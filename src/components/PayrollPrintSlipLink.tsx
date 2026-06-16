@@ -4,9 +4,10 @@ export function PayrollPrintSlipLink(props: {
   userId: number;
   year: number;
   month: number;
+  half: 0 | 1 | 2;
   compact?: boolean;
 }) {
-  const href = `/payroll/slip/${props.userId}?year=${props.year}&month=${props.month}`;
+  const href = `/payroll/slip/${props.userId}?year=${props.year}&month=${props.month}&half=${props.half}`;
 
   if (props.compact) {
     return (

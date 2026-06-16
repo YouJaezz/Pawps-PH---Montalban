@@ -11,7 +11,7 @@ import {
 } from "@/db/queries/payroll";
 import { requireAdmin } from "@/lib/auth-guard";
 import { parseMoneyToCents } from "@/lib/money";
-import { phIsCurrentMonth, phMonthLabel } from "@/lib/ph-time";
+import { payrollPeriodLabel, resolvePayrollPayoutPeriod, canLockPayrollPeriod, isSemiMonthlyEnabled } from "@/lib/payroll-period";
 
 export type PayrollActionResult = {
   ok?: boolean;
@@ -53,20 +53,23 @@ export async function generatePayrollPayout(
   await requireAdmin();
 
   const userId = Number.parseInt(String(formData.get("userId") ?? ""), 10);
-  const year = Number.parseInt(String(formData.get("year") ?? ""), 10);
-  const month = Number.parseInt(String(formData.get("month") ?? ""), 10);
+  const { year, month, half } = resolvePayrollPayoutPeriod(
+    String(formData.get("year") ?? ""),
+    String(formData.get("month") ?? ""),
+    String(formData.get("half") ?? ""),
+  );
   const markPaid = formData.get("markPaid") === "on";
 
-  if (
-    !Number.isFinite(userId) ||
-    !Number.isFinite(year) ||
-    !Number.isFinite(month)
-  ) {
+  if (!Number.isFinite(userId) || userId <= 0) {
     return { error: "Invalid payroll request." };
   }
 
-  if (phIsCurrentMonth(year, month)) {
-    return { error: "Wait until the month ends before locking payroll." };
+  if (isSemiMonthlyEnabled(year, month) && half === 0) {
+    return { error: "Invalid payroll period." };
+  }
+
+  if (!canLockPayrollPeriod({ year, month, half })) {
+    return { error: "Wait until the payroll period ends before locking payroll." };
   }
 
   const [existing] = await db
@@ -77,6 +80,7 @@ export async function generatePayrollPayout(
         eq(payrollPayouts.userId, userId),
         eq(payrollPayouts.periodYear, year),
         eq(payrollPayouts.periodMonth, month),
+        eq(payrollPayouts.periodHalf, half),
       ),
     )
     .limit(1);
@@ -85,10 +89,14 @@ export async function generatePayrollPayout(
 
   const { rows } = await getPayrollDashboard();
   const row = rows.find(
-    (r) => r.userId === userId && r.year === year && r.month === month,
+    (r) =>
+      r.userId === userId &&
+      r.year === year &&
+      r.month === month &&
+      r.half === half,
   );
   if (!row) return { error: "Payroll row not found." };
-  if (row.minutesWorked <= 0) return { error: "No hours recorded for this month." };
+  if (row.minutesWorked <= 0) return { error: "No hours recorded for this period." };
   if (row.hourlyRateCents <= 0) return { error: "Set an hourly rate first." };
 
   const grossPayCents = grossPayFromMinutes(
@@ -100,6 +108,7 @@ export async function generatePayrollPayout(
     userId,
     periodYear: year,
     periodMonth: month,
+    periodHalf: half,
     minutesWorked: row.minutesWorked,
     hourlyRateCents: row.hourlyRateCents,
     grossPayCents,
@@ -109,7 +118,7 @@ export async function generatePayrollPayout(
 
   revalidatePayroll();
 
-  const monthLabel = phMonthLabel(year, month);
+  const monthLabel = payrollPeriodLabel(year, month, half);
   const peso = (grossPayCents / 100).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
   });

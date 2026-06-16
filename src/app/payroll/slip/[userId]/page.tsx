@@ -5,13 +5,13 @@ import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { getPayrollSlipData } from "@/db/queries/payroll";
 import { requireAdmin } from "@/lib/auth-guard";
-import { resolvePayrollReportPeriod } from "@/db/queries/payroll-attendance";
+import { resolvePayrollPayoutPeriod } from "@/lib/payroll-period";
 
 export const dynamic = "force-dynamic";
 
 export default async function PayrollSlipPage(props: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; half?: string }>;
 }) {
   await requireAdmin();
   const { userId: userIdRaw } = await props.params;
@@ -19,8 +19,8 @@ export default async function PayrollSlipPage(props: {
   const userId = Number(userIdRaw);
   if (!Number.isFinite(userId) || userId <= 0) notFound();
 
-  const { year, month } = resolvePayrollReportPeriod(sp.year, sp.month);
-  const slip = await getPayrollSlipData(userId, year, month);
+  const { year, month, half } = resolvePayrollPayoutPeriod(sp.year, sp.month, sp.half);
+  const slip = await getPayrollSlipData(userId, year, month, half);
   if (!slip) notFound();
 
   return (

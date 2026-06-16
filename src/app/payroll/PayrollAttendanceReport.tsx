@@ -10,6 +10,7 @@ import { ScrollableTable } from "@/components/ScrollableTable";
 import type { PayrollAttendanceReport } from "@/db/queries/payroll-attendance";
 import { formatPhpFromCents } from "@/lib/money";
 import { formatDuration } from "@/lib/time-duration";
+import { isSemiMonthlyEnabled } from "@/lib/payroll-period";
 
 function fmtPunch(d: Date | string) {
   return new Date(d).toLocaleString("en-PH", {
@@ -308,12 +309,19 @@ export function PayrollAttendanceReport(props: {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <PayrollPrintSlipLink
-                        userId={s.userId}
-                        year={report.year}
-                        month={report.month}
-                        compact
-                      />
+                      {isSemiMonthlyEnabled(report.year, report.month) ? (
+                        <span className="text-[10px] text-zinc-600">
+                          Use payroll table below
+                        </span>
+                      ) : (
+                        <PayrollPrintSlipLink
+                          userId={s.userId}
+                          year={report.year}
+                          month={report.month}
+                          half={0}
+                          compact
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

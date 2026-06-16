@@ -4,6 +4,7 @@ export type PayrollSlipData = {
   periodLabel: string;
   year: number;
   month: number;
+  half: 0 | 1 | 2;
   minutesWorked: number;
   hourlyRateCents: number;
   grossPayCents: number;

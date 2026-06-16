@@ -190,6 +190,13 @@
       "when": 1780087000000,
       "tag": "0027_branches",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1781300000000,
+      "tag": "0028_payroll_semi_monthly",
+      "breakpoints": true
     }
   ]
 }

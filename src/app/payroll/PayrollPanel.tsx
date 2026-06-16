@@ -47,6 +47,7 @@ export function PayrollPanel(props: {
     employeeName: string;
     year: number;
     month: number;
+    half: 0 | 1 | 2;
     label: string;
     minutesWorked: number;
     hourlyRateCents: number;
@@ -159,14 +160,14 @@ export function PayrollPanel(props: {
       </EditModal>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <div className="text-sm font-medium text-zinc-100">Monthly payroll</div>
+        <div className="text-sm font-medium text-zinc-100">Payroll (twice a month)</div>
         <p className="mt-1 text-[11px] text-zinc-500">
           Based on Time In/Out hours × hourly rate. Hours above match the attendance
           report
           {props.reportYear && props.reportMonth
             ? ` for ${props.reportYear}-${String(props.reportMonth).padStart(2, "0")}`
             : ""}
-          . Lock month after it ends, then mark paid when disbursed. Use{" "}
+          . Lock period after it ends (1–15 and 16–30), then mark paid when disbursed. Use{" "}
           <span className="text-brand-blue">Print slip</span> in the last column for
           a printable employee payroll.
         </p>
@@ -185,7 +186,7 @@ export function PayrollPanel(props: {
             </thead>
             <tbody className="divide-y divide-white/10">
               {props.rows.map((row) => (
-                <tr key={`${row.userId}-${row.year}-${row.month}`}>
+                <tr key={`${row.userId}-${row.year}-${row.month}-${row.half}`}>
                   <td className="px-3 py-2 text-zinc-200">{row.employeeName}</td>
                   <td className="px-3 py-2">{row.label}</td>
                   <td className="px-3 py-2">{formatDuration(row.minutesWorked)}</td>
@@ -198,6 +199,7 @@ export function PayrollPanel(props: {
                       userId={row.userId}
                       year={row.year}
                       month={row.month}
+                      half={row.half}
                       compact
                     />
                   </td>
@@ -208,6 +210,7 @@ export function PayrollPanel(props: {
                         <input type="hidden" name="userId" value={row.userId} />
                         <input type="hidden" name="year" value={row.year} />
                         <input type="hidden" name="month" value={row.month} />
+                        <input type="hidden" name="half" value={row.half} />
                         <button
                           type="submit"
                           disabled={pending}
