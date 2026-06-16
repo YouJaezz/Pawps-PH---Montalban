@@ -19,7 +19,7 @@ import {
   normalizeCatalogItemType,
 } from "@/lib/catalog-item-types";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 const INSERT_CHUNK = 40;
 
@@ -445,19 +445,25 @@ export async function createSupplierCatalogItem(formData: FormData) {
   const safeUnitsPerCase =
     Number.isFinite(unitsPerCase) && unitsPerCase > 0 ? unitsPerCase : 24;
 
-  // Guard against accidental double-submit: treat "create" as an upsert by key.
-  const [existingItem] = await db
-    .select({ id: supplierCatalogItems.id })
+  const targetKey = catalogItemKey({ brand, variant, itemName });
+  const supplierItems = await db
+    .select({
+      id: supplierCatalogItems.id,
+      itemName: supplierCatalogItems.itemName,
+      brand: supplierCatalogItems.brand,
+      variant: supplierCatalogItems.variant,
+    })
     .from(supplierCatalogItems)
-    .where(
-      and(
-        eq(supplierCatalogItems.supplierId, supplierId),
-        eq(supplierCatalogItems.itemName, itemName),
-        brand == null ? isNull(supplierCatalogItems.brand) : eq(supplierCatalogItems.brand, brand),
-        variant == null ? isNull(supplierCatalogItems.variant) : eq(supplierCatalogItems.variant, variant),
-      ),
-    )
-    .limit(1);
+    .where(eq(supplierCatalogItems.supplierId, supplierId));
+
+  const existingItem = supplierItems.find(
+    (row) =>
+      catalogItemKey({
+        brand: row.brand,
+        variant: row.variant,
+        itemName: row.itemName,
+      }) === targetKey,
+  );
 
   if (existingItem) {
     await db

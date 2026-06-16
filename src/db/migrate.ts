@@ -4,6 +4,7 @@ import { readMigrationFiles } from "drizzle-orm/migrator";
 import { eq, sql } from "drizzle-orm";
 
 import { investorAgreements, investors, users } from "./schema";
+import { repairCatalogDuplicates } from "../lib/catalog-integrity";
 import { repairDatabaseIntegrity } from "../lib/db-integrity";
 import { hashPassword } from "../lib/password";
 
@@ -204,6 +205,7 @@ async function main() {
 
   await applyMigrations(client);
   await fixLegacyTimestamps(client);
+  await repairCatalogDuplicates(client);
   await repairDatabaseIntegrity(client);
   await seedAdminUser(db);
   await seedDefaultInvestor(db);

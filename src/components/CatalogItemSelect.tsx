@@ -9,6 +9,7 @@ import {
   displayCatalogProductName,
 } from "@/lib/catalog-item-display";
 import { displayCatalogItemType, normalizeCatalogItemType } from "@/lib/catalog-item-types";
+import { catalogItemKey } from "@/lib/supplier-item-key";
 
 export type CatalogSelectOption = {
   id: number;
@@ -21,6 +22,24 @@ export type CatalogSelectOption = {
 const fieldClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20";
 
+function dedupeCatalogOptions(items: CatalogSelectOption[]) {
+  const byKey = new Map<string, CatalogSelectOption>();
+  for (const item of items) {
+    const key = catalogItemKey({
+      brand: item.brand,
+      variant: item.variant,
+      itemName: item.itemName,
+    });
+    const existing = byKey.get(key);
+    if (!existing || item.id < existing.id) {
+      byKey.set(key, item);
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) =>
+    a.itemName.localeCompare(b.itemName),
+  );
+}
+
 export function CatalogItemSelect(props: {
   items: CatalogSelectOption[];
   value: string;
@@ -30,19 +49,24 @@ export function CatalogItemSelect(props: {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
+  const uniqueItems = useMemo(
+    () => dedupeCatalogOptions(props.items),
+    [props.items],
+  );
+
   const typeOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const item of props.items) {
+    for (const item of uniqueItems) {
       set.add(normalizeCatalogItemType(item.itemType));
     }
     return Array.from(set).sort((a, b) =>
       displayCatalogItemType(a).localeCompare(displayCatalogItemType(b)),
     );
-  }, [props.items]);
+  }, [uniqueItems]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return props.items.filter((c) => {
+    return uniqueItems.filter((c) => {
       const type = normalizeCatalogItemType(c.itemType);
       if (typeFilter !== "all" && type !== typeFilter) return false;
       if (!q) return true;
@@ -57,9 +81,11 @@ export function CatalogItemSelect(props: {
         .toLowerCase();
       return label.includes(q);
     });
-  }, [props.items, query, typeFilter]);
+  }, [uniqueItems, query, typeFilter]);
 
-  const selected = props.items.find((c) => String(c.id) === props.value);
+  const selected =
+    props.items.find((c) => String(c.id) === props.value) ??
+    uniqueItems.find((c) => String(c.id) === props.value);
 
   return (
     <div className="space-y-2">

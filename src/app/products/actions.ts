@@ -26,6 +26,7 @@ import {
   transferBranchStock as transferBranchStockCore,
   getProductBranchStock,
 } from "@/lib/branch-stock";
+import { catalogItemKey } from "@/lib/supplier-item-key";
 import { and, eq } from "drizzle-orm";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
@@ -169,6 +170,53 @@ export async function createProduct(
 
   if (costPrice <= 0) {
     return { ok: false, error: "Cost must be set from supplier wholesale price." };
+  }
+
+  if (catalogItemId && Number.isFinite(catalogItemId)) {
+    const [linkedProduct] = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(
+        and(
+          eq(products.supplierCatalogItemId, catalogItemId),
+          eq(products.archived, false),
+        ),
+      )
+      .limit(1);
+
+    if (linkedProduct) {
+      return {
+        ok: false,
+        error: `"${linkedProduct.name}" is already in inventory. Edit that item instead of adding again.`,
+      };
+    }
+  } else {
+    const targetKey = catalogItemKey({ brand, variant, itemName: name });
+    const activeProducts = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        variant: products.variant,
+      })
+      .from(products)
+      .where(eq(products.archived, false));
+
+    const duplicate = activeProducts.find(
+      (row) =>
+        catalogItemKey({
+          brand: row.brand,
+          variant: row.variant,
+          itemName: row.name,
+        }) === targetKey,
+    );
+
+    if (duplicate) {
+      return {
+        ok: false,
+        error: `"${duplicate.name}" is already in inventory. Edit that item instead of adding again.`,
+      };
+    }
   }
 
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));

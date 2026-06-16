@@ -4,7 +4,6 @@ import {
   CATALOG_ITEM_TYPE_GROUPS,
   type CatalogItemTypeValue,
 } from "@/lib/catalog-item-types";
-import { ItemTypeBadge } from "@/components/ItemTypeBadge";
 
 export function ItemTypePicker(props: {
   name?: string;
@@ -43,14 +42,14 @@ export function ItemTypePicker(props: {
                         : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/[0.03]"
                     }`}
                   >
-                    <span className="min-w-0 text-[11px] text-zinc-200">{t.label}</span>
+                    <span className="min-w-0 flex-1 text-[11px] leading-snug text-zinc-200">
+                      {t.label}
+                    </span>
                     {selected ? (
                       <span className="shrink-0 text-[9px] font-medium text-brand-blue">
                         Selected
                       </span>
-                    ) : (
-                      <ItemTypeBadge itemType={t.value} size="xs" />
-                    )}
+                    ) : null}
                   </button>
                 );
               })}
