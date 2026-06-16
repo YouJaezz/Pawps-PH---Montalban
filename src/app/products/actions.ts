@@ -22,6 +22,7 @@ import {
   adjustBranchStock,
   getActiveBranches,
   getDefaultBranchId,
+  resolveSaleBranchId,
   setBranchStockQuantity,
   transferBranchStock as transferBranchStockCore,
   getProductBranchStock,
@@ -283,9 +284,9 @@ export async function createProduct(
   });
 
   if (stockQuantity > 0) {
-    const defaultBranchId = await getDefaultBranchId();
+    const branchId = await resolveSaleBranchId(formData.get("branchId"));
     await adjustBranchStock({
-      branchId: defaultBranchId,
+      branchId,
       productId,
       delta: stockQuantity,
       movementType: "Restock",
@@ -293,9 +294,9 @@ export async function createProduct(
     });
     await tryAutoFulfillPreOrdersForProduct(productId);
   } else {
-    const defaultBranchId = await getDefaultBranchId();
+    const branchId = await resolveSaleBranchId(formData.get("branchId"));
     await setBranchStockQuantity({
-      branchId: defaultBranchId,
+      branchId,
       productId,
       quantity: 0,
       note: "Initial branch row",

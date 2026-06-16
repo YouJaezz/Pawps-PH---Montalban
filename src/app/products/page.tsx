@@ -247,6 +247,11 @@ export default async function ProductsPage() {
             <ProductAddButton
               suppliers={suppliersForForm}
               catalogItems={catalogPickItems}
+              branches={branchRows.map((b) => ({
+                id: b.id,
+                name: b.name,
+                isDefault: b.isDefault,
+              }))}
             />
             {admin ? (
               <>

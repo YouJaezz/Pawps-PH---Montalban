@@ -97,9 +97,16 @@ function ProfitLine(props: {
   );
 }
 
+export type BranchOption = {
+  id: number;
+  name: string;
+  isDefault?: boolean;
+};
+
 export function ProductForm(props: {
   suppliers: SupplierOption[];
   catalogItems: CatalogPickOption[];
+  branches: BranchOption[];
   onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState<
@@ -126,6 +133,11 @@ export function ProductForm(props: {
   const [unitsPerCaseInput, setUnitsPerCaseInput] = useState("24");
   const [manualItemType, setManualItemType] = useState<string>(
     CATALOG_ITEM_TYPES[0]!.value,
+  );
+  const defaultBranchId =
+    props.branches.find((b) => b.isDefault)?.id ?? props.branches[0]?.id ?? 0;
+  const [branchId, setBranchId] = useState(
+    defaultBranchId ? String(defaultBranchId) : "",
   );
 
   useEffect(() => {
@@ -567,6 +579,29 @@ export function ProductForm(props: {
             Track stock by kilogram (sacks convert to kg)
           </label>
         )}
+
+        {props.branches.length > 0 ? (
+          <label className="col-span-2 space-y-0.5">
+            <span className="text-[10px] text-zinc-500">Receiving branch *</span>
+            <select
+              name="branchId"
+              required
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className={fieldClass}
+            >
+              {props.branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-zinc-600">
+              Initial stock is added to this branch only.
+            </span>
+          </label>
+        ) : null}
 
         <label className="space-y-0.5">
           <span className="text-[10px] text-zinc-500">

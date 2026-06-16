@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ProductForm, type CatalogPickOption, type SupplierOption } from "@/app/products/ProductForm";
+import { ProductForm, type BranchOption, type CatalogPickOption, type SupplierOption } from "@/app/products/ProductForm";
 
 export function ProductAddButton(props: {
   suppliers: SupplierOption[];
   catalogItems: CatalogPickOption[];
+  branches: BranchOption[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -71,6 +72,7 @@ export function ProductAddButton(props: {
               <ProductForm
                 suppliers={props.suppliers}
                 catalogItems={props.catalogItems}
+                branches={props.branches}
                 onSuccess={() => {
                   setOpen(false);
                   router.refresh();
