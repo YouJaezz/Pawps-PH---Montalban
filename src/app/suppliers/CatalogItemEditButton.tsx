@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { updateSupplierCatalogItem } from "@/app/suppliers/actions";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
@@ -33,7 +34,10 @@ export function CatalogItemEditButton(props: {
   priceUnit?: string | null;
   unitsPerCase?: number | null;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const normalizedType = normalizeCatalogItemType(props.itemType);
   const [itemType, setItemType] = useState<string>(normalizedType);
   const [priceUnit, setPriceUnit] = useState<PriceUnit>(
@@ -56,7 +60,23 @@ export function CatalogItemEditButton(props: {
         subtitle={props.itemName}
         maxWidth="lg"
       >
-        <form action={updateSupplierCatalogItem} className="space-y-2">
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            const fd = new FormData(e.currentTarget);
+            startTransition(async () => {
+              try {
+                await updateSupplierCatalogItem(fd);
+                setOpen(false);
+                router.refresh();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to save item.");
+              }
+            });
+          }}
+        >
           <input type="hidden" name="id" value={props.id} />
           <input
             name="itemName"
@@ -148,11 +168,17 @@ export function CatalogItemEditButton(props: {
               className={modalFieldClass}
             />
           ) : null}
+          {error ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
+              {error}
+            </div>
+          ) : null}
           <button
             type="submit"
-            className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900"
+            disabled={pending}
+            className="rounded-lg bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
           >
-            Save catalog item
+            {pending ? "Saving…" : "Save catalog item"}
           </button>
         </form>
       </EditModal>

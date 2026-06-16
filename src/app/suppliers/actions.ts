@@ -19,7 +19,7 @@ import {
   normalizeCatalogItemType,
 } from "@/lib/catalog-item-types";
 import { catalogItemKey, percentChange } from "@/lib/supplier-item-key";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 const INSERT_CHUNK = 40;
 
@@ -436,22 +436,65 @@ export async function createSupplierCatalogItem(formData: FormData) {
     priceUnitRaw === "Piece" || priceUnitRaw === "Case" ? priceUnitRaw : "Sack";
   const unitsPerCase = Number.parseInt(String(formData.get("unitsPerCase") ?? "24"), 10);
 
-  await db.insert(supplierCatalogItems).values({
+  const brand = brandRaw.length ? brandRaw : null;
+  const variant = variantRaw.length ? variantRaw : null;
+  const itemType = normalizeCatalogItemType(itemTypeRaw);
+  const packSize = packSizeRaw.length ? packSizeRaw : null;
+  const packUnit = packUnitRaw.length ? packUnitRaw : null;
+  const notes = notesRaw.length ? notesRaw : null;
+  const safeUnitsPerCase =
+    Number.isFinite(unitsPerCase) && unitsPerCase > 0 ? unitsPerCase : 24;
+
+  // Guard against accidental double-submit: treat "create" as an upsert by key.
+  const [existingItem] = await db
+    .select({ id: supplierCatalogItems.id })
+    .from(supplierCatalogItems)
+    .where(
+      and(
+        eq(supplierCatalogItems.supplierId, supplierId),
+        eq(supplierCatalogItems.itemName, itemName),
+        brand == null ? isNull(supplierCatalogItems.brand) : eq(supplierCatalogItems.brand, brand),
+        variant == null ? isNull(supplierCatalogItems.variant) : eq(supplierCatalogItems.variant, variant),
+      ),
+    )
+    .limit(1);
+
+  if (existingItem) {
+    await db
+      .update(supplierCatalogItems)
+      .set({
+        itemName,
+        brand,
+        variant,
+        itemType,
+        unitCost: unitCost || null,
+        retailPrice: retailPrice || null,
+        perKiloPrice: perKiloPrice || null,
+        packSize,
+        packUnit,
+        notes,
+        priceUnit,
+        unitsPerCase: safeUnitsPerCase,
+      })
+      .where(eq(supplierCatalogItems.id, existingItem.id));
+  } else {
+    await db.insert(supplierCatalogItems).values({
     supplierId,
     itemName,
-    brand: brandRaw.length ? brandRaw : null,
-    variant: variantRaw.length ? variantRaw : null,
-    itemType: normalizeCatalogItemType(itemTypeRaw),
+    brand,
+    variant,
+    itemType,
     unitCost: unitCost || null,
     retailPrice: retailPrice || null,
     perKiloPrice: perKiloPrice || null,
-    packSize: packSizeRaw.length ? packSizeRaw : null,
-    packUnit: packUnitRaw.length ? packUnitRaw : null,
-    notes: notesRaw.length ? notesRaw : null,
+    packSize,
+    packUnit,
+    notes,
     documentId: null,
     priceUnit,
-    unitsPerCase: Number.isFinite(unitsPerCase) && unitsPerCase > 0 ? unitsPerCase : 24,
-  });
+    unitsPerCase: safeUnitsPerCase,
+    });
+  }
 
   revalidatePath("/suppliers");
   revalidatePath("/products");
