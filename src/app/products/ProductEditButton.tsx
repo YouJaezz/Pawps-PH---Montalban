@@ -154,7 +154,15 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
     (stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null);
   const stockQtyUnit = stockUnit === "Sack" ? "Kilogram" : stockUnit;
   const totalStored = branchStockTotal(branchStock);
-  const displayQty = displayStockQuantity(stockQtyUnit, totalStored);
+  const formattedStock = (storedQty: number) =>
+    stockInputDisplay(
+      storedQty,
+      stockQtyUnit,
+      stockEntryMode,
+      kgPerSackTenths,
+      p.unitsPerCase,
+    );
+  const totalDisplayQty = formattedStock(totalStored);
   const stockUnitLabel = isLitter
     ? "sacks"
     : stockUnit === "Kilogram" || stockUnit === "Sack"
@@ -400,7 +408,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   <label className="block space-y-1">
                     <span className="text-xs text-zinc-400">Total on hand</span>
                     <div className={readOnlyStockClass}>
-                      {String(displayQty)} {stockUnitLabel}
+                      {totalDisplayQty} {stockUnitLabel}
                     </div>
                   </label>
                 </div>
@@ -465,11 +473,13 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
                   <div className="text-xs font-medium text-zinc-200">
-                    Stock by branch
+                    Adjust stock
                   </div>
                   <p className="text-[10px] text-zinc-500">
-                    Set {branchStockQtyLabel.toLowerCase()} at each location. Total
-                    on hand: {String(displayQty)} {stockUnitLabel}.
+                    Set on-hand {branchStockQtyLabel.toLowerCase()} per branch
+                    (restock, recount, or correction). Total: {totalDisplayQty}{" "}
+                    {stockUnitLabel}. To move stock between branches without
+                    changing the total, use the Transfer tab.
                   </p>
                   {branchStock.length === 0 ? (
                     <p className="text-[10px] text-zinc-600">
@@ -527,8 +537,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
 
                 <p className="text-[10px] text-zinc-600">
                   Purchase cost and supplier link stay as-is — change those from
-                  the supplier catalog if needed. Use the Transfer tab to move
-                  stock between branches without changing the total.
+                  the supplier catalog if needed.
                 </p>
 
                 <div className="flex gap-2 pt-1">
@@ -550,39 +559,25 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
               </form>
             ) : (
               <div className="mt-4 space-y-3">
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs font-medium text-zinc-200">
-                    Stock by branch
+                {branchStock.length > 0 ? (
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-zinc-400">
+                    <span className="text-zinc-500">Current stock · </span>
+                    {branchStock.map((branch, idx) => (
+                      <span key={branch.branchId}>
+                        {idx > 0 ? " · " : ""}
+                        {branch.branchName}
+                        {branch.isDefault ? " (default)" : ""}:{" "}
+                        <span className="text-zinc-200">
+                          {formattedStock(branch.stockQuantity)} {stockUnitLabel}
+                        </span>
+                      </span>
+                    ))}
+                    <span className="text-zinc-500">
+                      {" "}
+                      · Total {totalDisplayQty} {stockUnitLabel}
+                    </span>
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-500">
-                    Total on hand: {String(displayQty)} {stockUnitLabel}
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {branchStock.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600">
-                        No branches yet — add one under Branches.
-                      </p>
-                    ) : (
-                      branchStock.map((branch) => {
-                        const branchDisplay = displayStockQuantity(
-                          stockQtyUnit,
-                          branch.stockQuantity,
-                        );
-                        return (
-                          <div key={branch.branchId} className="space-y-1">
-                            <span className="text-[11px] text-zinc-400">
-                              {branch.branchName}
-                              {branch.isDefault ? " (default)" : ""}
-                            </span>
-                            <div className={readOnlyStockClass}>
-                              {String(branchDisplay)}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
+                ) : null}
 
                 {transferMessage ? (
                   <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/90">
@@ -631,7 +626,11 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                         value={transferQty}
                         onChange={(e) => setTransferQty(e.target.value)}
                         placeholder={
-                          isWeight ? "e.g. 1 sack or 2.5 kg" : "e.g. 12"
+                          isWeight
+                            ? "e.g. 1 sack or 2.5 kg"
+                            : stockEntryMode === "cases"
+                              ? "e.g. 1 case"
+                              : "e.g. 12"
                         }
                         className={inputClass}
                       />
@@ -691,29 +690,31 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 ) : (
                   <p className="text-[11px] text-zinc-500">
                     Add at least two active branches under Branches to move stock
-                    between locations.
+                    between locations. Adjust quantities on the Details tab.
                   </p>
                 )}
               </div>
             )}
 
-            <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-zinc-500">
-              Current sell retail:{" "}
-              <span className="text-zinc-200">
-                {formatPhpFromCents(p.retailPrice)}
-                {isWeight ? " / kg" : ""}
-              </span>
-              {p.bulkPrice > 0 ? (
-                <>
-                  {" "}
-                  · bulk{" "}
-                  <span className="text-zinc-200">
-                    {formatPhpFromCents(p.bulkPrice)}
-                    {isWeight ? " / kg" : ""}
-                  </span>
-                </>
-              ) : null}
-            </div>
+            {tab === "details" ? (
+              <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-zinc-500">
+                Current sell retail:{" "}
+                <span className="text-zinc-200">
+                  {formatPhpFromCents(p.retailPrice)}
+                  {isWeight ? " / kg" : ""}
+                </span>
+                {p.bulkPrice > 0 ? (
+                  <>
+                    {" "}
+                    · bulk{" "}
+                    <span className="text-zinc-200">
+                      {formatPhpFromCents(p.bulkPrice)}
+                      {isWeight ? " / kg" : ""}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
