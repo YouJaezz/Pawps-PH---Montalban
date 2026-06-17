@@ -153,6 +153,8 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
     !isLitter &&
     (stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null);
   const stockQtyUnit = stockUnit === "Sack" ? "Kilogram" : stockUnit;
+  const kgPerSackTenths =
+    parseKgPerSackTenths(kgPerSackInput) ?? p.kgPerSack ?? null;
   const totalStored = branchStockTotal(branchStock);
   const formattedStock = (storedQty: number) =>
     stockInputDisplay(
@@ -181,8 +183,6 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
       : stockEntryMode === "cases"
         ? "Quantity (cases)"
         : "Quantity (pcs)";
-  const kgPerSackTenths =
-    parseKgPerSackTenths(kgPerSackInput) ?? p.kgPerSack ?? null;
   const canTransfer = branchStock.length > 1;
 
   function refreshBranchStockInputs(
