@@ -415,6 +415,7 @@ export async function updateProduct(formData: FormData) {
     .select({
       id: products.id,
       stockUnit: products.stockUnit,
+      unitsPerCase: products.unitsPerCase,
     })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.archived, false)))
@@ -454,6 +455,7 @@ export async function updateProduct(formData: FormData) {
     const parsed = parseStockQuantityInput(raw, unitForParse, {
       stockEntryMode,
       kgPerSack,
+      unitsPerCase: existing.unitsPerCase,
     });
     if (parsed == null) {
       throw new Error(`Enter a valid stock quantity for ${branch.name}.`);

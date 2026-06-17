@@ -6,7 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateProduct, transferBranchStock } from "@/app/products/actions";
 import { ItemTypePicker } from "@/components/ItemTypePicker";
 import { STOCK_UNITS, type StockUnit } from "@/db/schema";
-import { CATALOG_ITEM_TYPES } from "@/lib/catalog-item-types";
+import { CATALOG_ITEM_TYPES, isCatLitterItemType } from "@/lib/catalog-item-types";
 import type { ProductBranchStock } from "@/lib/branch-stock";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
@@ -44,6 +44,57 @@ function branchStockTotal(rows: ProductBranchStock[]) {
   return rows.reduce((sum, row) => sum + row.stockQuantity, 0);
 }
 
+function stockInputDisplay(
+  storedQty: number,
+  stockQtyUnit: StockUnit,
+  stockEntryMode: "sacks" | "kg" | "cases" | "pcs",
+  kgPerSackTenths: number | null,
+  unitsPerCase: number | null,
+) {
+  if (storedQty <= 0) return "0";
+  if (
+    stockQtyUnit === "Kilogram" &&
+    stockEntryMode === "sacks" &&
+    kgPerSackTenths != null &&
+    kgPerSackTenths > 0
+  ) {
+    const sacks = storedQty / kgPerSackTenths;
+    return sacks % 1 === 0 ? String(sacks) : sacks.toFixed(1);
+  }
+  if (stockEntryMode === "cases" && unitsPerCase != null && unitsPerCase > 0) {
+    const cases = storedQty / unitsPerCase;
+    return cases % 1 === 0 ? String(cases) : cases.toFixed(1);
+  }
+  const display = displayStockQuantity(stockQtyUnit, storedQty);
+  return display % 1 === 0 ? String(display) : display.toFixed(1);
+}
+
+function branchStockInputsFromRows(
+  rows: ProductBranchStock[],
+  stockQtyUnit: StockUnit,
+  stockEntryMode: "sacks" | "kg" | "cases" | "pcs",
+  kgPerSackTenths: number | null,
+  unitsPerCase: number | null,
+) {
+  const inputs: Record<number, string> = {};
+  for (const branch of rows) {
+    inputs[branch.branchId] = stockInputDisplay(
+      branch.stockQuantity,
+      stockQtyUnit,
+      stockEntryMode,
+      kgPerSackTenths,
+      unitsPerCase,
+    );
+  }
+  return inputs;
+}
+
+function parseKgPerSackTenths(raw: string) {
+  const n = Number(raw.trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.max(1, Math.round(n * 10));
+}
+
 export function ProductEditButton(props: { product: ProductEditRow }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -51,6 +102,9 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   const [pending, startTransition] = useTransition();
   const [branchStock, setBranchStock] = useState<ProductBranchStock[]>(
     props.product.branchStock,
+  );
+  const [branchStockInputs, setBranchStockInputs] = useState<Record<number, string>>(
+    {},
   );
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
   const [stockUnit, setStockUnit] = useState<StockUnit>(props.product.stockUnit);
@@ -94,24 +148,85 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   }, [open]);
 
   const p = props.product;
+  const isLitter = isCatLitterItemType(itemType);
   const isWeight =
-    stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null;
+    !isLitter &&
+    (stockUnit === "Kilogram" || stockUnit === "Sack" || p.kgPerSack != null);
   const stockQtyUnit = stockUnit === "Sack" ? "Kilogram" : stockUnit;
   const totalStored = branchStockTotal(branchStock);
   const displayQty = displayStockQuantity(stockQtyUnit, totalStored);
-  const stockUnitLabel =
-    stockUnit === "Kilogram" || stockUnit === "Sack" ? "kg" : "pcs";
+  const stockUnitLabel = isLitter
+    ? "sacks"
+    : stockUnit === "Kilogram" || stockUnit === "Sack"
+      ? stockEntryMode === "sacks"
+        ? "sacks"
+        : "kg"
+      : stockEntryMode === "cases"
+        ? "cases"
+        : "pcs";
+  const branchStockQtyLabel = isLitter
+    ? "Quantity (sacks)"
+    : isWeight
+      ? stockEntryMode === "sacks"
+        ? "Quantity (sacks)"
+        : "Quantity (kg)"
+      : stockEntryMode === "cases"
+        ? "Quantity (cases)"
+        : "Quantity (pcs)";
+  const kgPerSackTenths =
+    parseKgPerSackTenths(kgPerSackInput) ?? p.kgPerSack ?? null;
   const canTransfer = branchStock.length > 1;
 
+  function refreshBranchStockInputs(
+    rows: ProductBranchStock[],
+    entryMode: typeof stockEntryMode,
+    kgTenths: number | null,
+  ) {
+    setBranchStockInputs(
+      branchStockInputsFromRows(
+        rows,
+        stockQtyUnit,
+        entryMode,
+        kgTenths,
+        p.unitsPerCase,
+      ),
+    );
+  }
+
   function openModal() {
-    setStockUnit(props.product.stockUnit);
-    setKgPerSackInput(
+    const nextItemType = props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value;
+    const nextStockUnit = props.product.stockUnit;
+    const nextKgPerSackInput =
       props.product.kgPerSack != null
         ? String(displayKgPerSack(props.product.kgPerSack) ?? "")
-        : "",
-    );
-    setItemType(props.product.itemType ?? CATALOG_ITEM_TYPES[0]!.value);
+        : "";
+    const nextKgTenths = props.product.kgPerSack ?? null;
+    const nextEntryMode: "sacks" | "kg" | "cases" | "pcs" = isCatLitterItemType(
+      nextItemType,
+    )
+      ? "pcs"
+      : nextStockUnit === "Kilogram" || nextStockUnit === "Sack" || props.product.kgPerSack
+        ? "sacks"
+        : props.product.unitsPerCase && props.product.unitsPerCase > 1
+          ? "cases"
+          : "pcs";
+    const nextStockQtyUnit =
+      nextStockUnit === "Sack" ? "Kilogram" : nextStockUnit;
+
+    setStockUnit(nextStockUnit);
+    setKgPerSackInput(nextKgPerSackInput);
+    setItemType(nextItemType);
+    setStockEntryMode(nextEntryMode);
     setBranchStock(props.product.branchStock);
+    setBranchStockInputs(
+      branchStockInputsFromRows(
+        props.product.branchStock,
+        nextStockQtyUnit,
+        nextEntryMode,
+        nextKgTenths,
+        props.product.unitsPerCase,
+      ),
+    );
     setTransferFrom(String(props.product.branchStock[0]?.branchId ?? ""));
     setTransferTo(
       String(
@@ -211,6 +326,11 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 }}
               >
                 <input type="hidden" name="productId" value={p.id} />
+                <input
+                  type="hidden"
+                  name="unitsPerCase"
+                  value={p.unitsPerCase ?? 24}
+                />
 
                 <label className="block space-y-1">
                   <span className="text-xs text-zinc-400">Item name *</span>
@@ -303,9 +423,15 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                       <select
                         name="stockEntryMode"
                         value={stockEntryMode}
-                        onChange={(e) =>
-                          setStockEntryMode(e.target.value as "sacks" | "kg")
-                        }
+                        onChange={(e) => {
+                          const mode = e.target.value as "sacks" | "kg";
+                          setStockEntryMode(mode);
+                          refreshBranchStockInputs(
+                            branchStock,
+                            mode,
+                            parseKgPerSackTenths(kgPerSackInput) ?? p.kgPerSack,
+                          );
+                        }}
                         className={inputClass}
                       >
                         <option value="sacks">Sacks</option>
@@ -313,7 +439,66 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                       </select>
                     </label>
                   </div>
-                ) : null}
+                ) : !isLitter &&
+                  !isWeight &&
+                  p.unitsPerCase != null &&
+                  p.unitsPerCase > 1 ? (
+                  <label className="block space-y-1">
+                    <span className="text-xs text-zinc-400">Stock entry</span>
+                    <select
+                      name="stockEntryMode"
+                      value={stockEntryMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as "cases" | "pcs";
+                        setStockEntryMode(mode);
+                        refreshBranchStockInputs(branchStock, mode, null);
+                      }}
+                      className={inputClass}
+                    >
+                      <option value="cases">Cases</option>
+                      <option value="pcs">Pieces</option>
+                    </select>
+                  </label>
+                ) : (
+                  <input type="hidden" name="stockEntryMode" value={stockEntryMode} />
+                )}
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
+                  <div className="text-xs font-medium text-zinc-200">
+                    Stock by branch
+                  </div>
+                  <p className="text-[10px] text-zinc-500">
+                    Set {branchStockQtyLabel.toLowerCase()} at each location. Total
+                    on hand: {String(displayQty)} {stockUnitLabel}.
+                  </p>
+                  {branchStock.length === 0 ? (
+                    <p className="text-[10px] text-zinc-600">
+                      No branches configured — add one under Branches.
+                    </p>
+                  ) : (
+                    branchStock.map((branch) => (
+                      <label key={branch.branchId} className="block space-y-1">
+                        <span className="text-[11px] text-zinc-400">
+                          {branch.branchName}
+                          {branch.isDefault ? " (default)" : ""}
+                        </span>
+                        <input
+                          name={`branchStock_${branch.branchId}`}
+                          value={branchStockInputs[branch.branchId] ?? ""}
+                          onChange={(e) =>
+                            setBranchStockInputs((prev) => ({
+                              ...prev,
+                              [branch.branchId]: e.target.value,
+                            }))
+                          }
+                          inputMode="decimal"
+                          className={inputClass}
+                          aria-label={`${branchStockQtyLabel} at ${branch.branchName}`}
+                        />
+                      </label>
+                    ))
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
@@ -343,7 +528,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 <p className="text-[10px] text-zinc-600">
                   Purchase cost and supplier link stay as-is — change those from
                   the supplier catalog if needed. Use the Transfer tab to move
-                  stock between branches.
+                  stock between branches without changing the total.
                 </p>
 
                 <div className="flex gap-2 pt-1">
@@ -477,6 +662,15 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                           try {
                             const updated = await transferBranchStock(fd);
                             setBranchStock(updated);
+                            setBranchStockInputs(
+                              branchStockInputsFromRows(
+                                updated,
+                                stockQtyUnit,
+                                stockEntryMode,
+                                kgPerSackTenths,
+                                p.unitsPerCase,
+                              ),
+                            );
                             setTransferQty("");
                             setTransferNote("");
                             setTransferMessage("Stock transferred — quantities updated.");
