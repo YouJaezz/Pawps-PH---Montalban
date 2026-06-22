@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { SocialApiConfig } from "@/lib/social-engagement";
-import { formatSocialDate } from "@/lib/social-engagement";
 
 export function SocialSyncButton(props: {
   config: SocialApiConfig;
@@ -88,9 +87,4 @@ export function SocialSyncButton(props: {
       ) : null}
     </div>
   );
-}
-
-export function formatLastSynced(d: Date | null) {
-  if (!d) return "Never";
-  return formatSocialDate(d);
 }

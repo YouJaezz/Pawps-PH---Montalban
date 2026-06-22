@@ -57,6 +57,11 @@ export function formatSocialDate(d: Date | null | undefined) {
   }).format(d);
 }
 
+export function formatLastSynced(d: Date | null) {
+  if (!d) return "Never";
+  return formatSocialDate(d);
+}
+
 export function engagementTotal(post: {
   likeCount: number;
   commentCount: number;

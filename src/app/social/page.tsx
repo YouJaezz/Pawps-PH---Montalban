@@ -5,7 +5,6 @@ import { SocialContentTable } from "@/app/social/SocialContentTable";
 import { SocialPageTabs } from "@/app/social/SocialPageTabs";
 import { SocialSetupBanner } from "@/app/social/SocialSetupBanner";
 import {
-  formatLastSynced,
   SocialSyncButton,
 } from "@/app/social/SocialSyncButton";
 import {
@@ -14,7 +13,11 @@ import {
   getSocialEngagementSummary,
 } from "@/db/queries/social-engagements";
 import { requireAdmin } from "@/lib/auth-guard";
-import { formatCount, getSocialApiConfig } from "@/lib/social-engagement";
+import {
+  formatCount,
+  formatLastSynced,
+  getSocialApiConfig,
+} from "@/lib/social-engagement";
 
 export const dynamic = "force-dynamic";
 
