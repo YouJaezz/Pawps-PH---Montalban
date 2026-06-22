@@ -1,6 +1,8 @@
 import { cache } from "react";
 
 import { getActiveInventoryProducts, inventoryValuationFromRows } from "@/db/queries/inventory-products";
+import { mergeInventoryRowsByCatalog } from "@/lib/catalog-product-merge";
+import type { StockUnit } from "@/db/schema";
 import { toStockAlertRow, type StockAlertRow } from "@/lib/stock-alerts";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -10,24 +12,37 @@ export const getInventoryAtAGlance = cache(async (opts?: { daysUntilExpiry?: num
   const cutoff = new Date(Date.now() + daysUntilExpiry * MS_PER_DAY);
 
   const allProducts = await getActiveInventoryProducts();
+  const mergedProducts = mergeInventoryRowsByCatalog(
+    allProducts.map((p) => ({
+      ...p,
+      stockUnit: p.stockUnit as StockUnit,
+    })),
+  );
   const { stockValueCents } = inventoryValuationFromRows(allProducts);
 
-  const expiringSoon = allProducts
+  const expiringAll = mergedProducts
     .filter((p) => p.expiryDate && p.expiryDate <= cutoff)
-    .sort((a, b) => a.expiryDate!.getTime() - b.expiryDate!.getTime())
-    .slice(0, 8);
+    .sort((a, b) => a.expiryDate!.getTime() - b.expiryDate!.getTime());
+
+  const expiringSoon = expiringAll.slice(0, 8);
 
   return {
     totalStockValueCents: stockValueCents,
     expiringSoon,
-    expiringSoonCount: expiringSoon.length,
+    expiringSoonCount: expiringAll.length,
     cutoff,
   };
 });
 
 export const getStockAlerts = cache(async () => {
   const allProducts = await getActiveInventoryProducts();
-  const alerts = allProducts
+  const mergedProducts = mergeInventoryRowsByCatalog(
+    allProducts.map((p) => ({
+      ...p,
+      stockUnit: p.stockUnit as StockUnit,
+    })),
+  );
+  const alerts = mergedProducts
     .map((p) =>
       toStockAlertRow({
         id: p.id,

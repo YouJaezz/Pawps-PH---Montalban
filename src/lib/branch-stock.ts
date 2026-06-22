@@ -115,6 +115,67 @@ export async function getBranchStockQuantity(
   return row?.stockQuantity ?? 0;
 }
 
+export async function getMergedBranchStockQuantity(
+  branchId: number,
+  productIds: number[],
+): Promise<number> {
+  if (productIds.length === 0) return 0;
+  if (productIds.length === 1) {
+    return getBranchStockQuantity(branchId, productIds[0]!);
+  }
+
+  const rows = await db
+    .select({ stockQuantity: branchStock.stockQuantity })
+    .from(branchStock)
+    .where(
+      and(
+        eq(branchStock.branchId, branchId),
+        inArray(branchStock.productId, productIds),
+      ),
+    );
+
+  return rows.reduce((sum, row) => sum + row.stockQuantity, 0);
+}
+
+/** Deduct sale qty across supplier-linked rows — fullest lots first. */
+export async function deductMergedBranchStock(params: {
+  branchId: number;
+  productIds: number[];
+  quantity: number;
+  movementType: MovementType;
+  note?: string | null;
+  relatedOrderId?: number;
+}) {
+  const needed = params.quantity;
+  if (needed <= 0) return;
+
+  const stocks: { productId: number; qty: number }[] = [];
+  for (const productId of params.productIds) {
+    const qty = await getBranchStockQuantity(params.branchId, productId);
+    if (qty > 0) stocks.push({ productId, qty });
+  }
+  stocks.sort((a, b) => b.qty - a.qty);
+
+  let remaining = needed;
+  for (const { productId, qty } of stocks) {
+    if (remaining <= 0) break;
+    const take = Math.min(qty, remaining);
+    await adjustBranchStock({
+      branchId: params.branchId,
+      productId,
+      delta: -take,
+      movementType: params.movementType,
+      relatedOrderId: params.relatedOrderId,
+      note: params.note,
+    });
+    remaining -= take;
+  }
+
+  if (remaining > 0) {
+    throw new Error("Not enough stock at this branch.");
+  }
+}
+
 export async function getProductBranchStock(
   productId: number,
 ): Promise<ProductBranchStock[]> {

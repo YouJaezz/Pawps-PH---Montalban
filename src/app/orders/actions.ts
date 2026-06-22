@@ -24,11 +24,13 @@ import {
 import { formatStockLabel } from "@/lib/product-stock";
 import {
   adjustBranchStock,
-  getBranchStockQuantity,
+  deductMergedBranchStock,
+  getMergedBranchStockQuantity,
   getBranchName,
   getDefaultBranchId,
   resolveSaleBranchId,
 } from "@/lib/branch-stock";
+import { buildCatalogSiblingMap } from "@/lib/catalog-product-merge";
 import { formatPhpFromCents, parseMoneyToCents } from "@/lib/money";
 import {
   normalizeOrderCreatedAt,
@@ -91,6 +93,30 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+async function loadCatalogSiblingMap(
+  productIds: number[],
+): Promise<Map<number, number[]>> {
+  const uniqueIds = [...new Set(productIds)];
+  if (uniqueIds.length === 0) return new Map();
+
+  const allActive = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      brand: products.brand,
+      variant: products.variant,
+    })
+    .from(products)
+    .where(eq(products.archived, false));
+
+  const full = buildCatalogSiblingMap(allActive);
+  const result = new Map<number, number[]>();
+  for (const id of uniqueIds) {
+    result.set(id, full.get(id) ?? [id]);
+  }
+  return result;
+}
+
 async function deductStockForOrder(orderId: number) {
   const [order] = await db
     .select({
@@ -118,11 +144,16 @@ async function deductStockForOrder(orderId: number) {
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
 
+  const siblingMap = await loadCatalogSiblingMap(
+    lines.filter((l) => !l.isExcessSale).map((l) => l.productId),
+  );
+
   for (const line of lines) {
     if (line.isExcessSale) continue;
     const [product] = await db
       .select({
         id: products.id,
+        name: products.name,
         kgPerSack: products.kgPerSack,
         unitsPerCase: products.unitsPerCase,
       })
@@ -140,10 +171,11 @@ async function deductStockForOrder(orderId: number) {
       product.unitsPerCase,
     );
 
-    await adjustBranchStock({
+    const sourceIds = siblingMap.get(product.id) ?? [product.id];
+    await deductMergedBranchStock({
       branchId,
-      productId: product.id,
-      delta: -deductQty,
+      productIds: sourceIds,
+      quantity: deductQty,
       movementType: "Sale",
       relatedOrderId: orderId,
       note: "Order completed",
@@ -435,10 +467,12 @@ export async function quickSell(
     if (deductStock) {
       const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
       const saleBranchName = await getBranchName(saleBranchId);
+      const siblingMap = await loadCatalogSiblingMap([...deductByProduct.keys()]);
       for (const [productId, neededQty] of deductByProduct) {
         const p = productById.get(productId);
         if (!p) continue;
-        const onHand = await getBranchStockQuantity(saleBranchId, productId);
+        const sourceIds = siblingMap.get(productId) ?? [productId];
+        const onHand = await getMergedBranchStockQuantity(saleBranchId, sourceIds);
         if (onHand < neededQty) {
           const stockLabel = formatStockLabel(
             p.stockUnit as import("@/db/schema").StockUnit,
@@ -886,7 +920,15 @@ export async function cancelOrder(formData: FormData) {
   const restockByBranchProduct = new Map<string, number>();
   const fallbackBranchId = order.branchId ?? (await getDefaultBranchId());
 
-  if (order.stockDeducted) {
+  if (saleMovements.length > 0) {
+    for (const m of saleMovements) {
+      const qty = Math.abs(m.quantityDelta);
+      if (qty <= 0) continue;
+      const branchId = m.branchId ?? fallbackBranchId;
+      const key = `${branchId}:${m.productId}`;
+      restockByBranchProduct.set(key, (restockByBranchProduct.get(key) ?? 0) + qty);
+    }
+  } else if (order.stockDeducted) {
     for (const l of lines) {
       const [p] = await db
         .select({
@@ -904,14 +946,6 @@ export async function cancelOrder(formData: FormData) {
         p?.unitsPerCase,
       );
       const key = `${fallbackBranchId}:${l.productId}`;
-      restockByBranchProduct.set(key, (restockByBranchProduct.get(key) ?? 0) + qty);
-    }
-  } else if (saleMovements.length > 0) {
-    for (const m of saleMovements) {
-      const qty = Math.abs(m.quantityDelta);
-      if (qty <= 0) continue;
-      const branchId = m.branchId ?? fallbackBranchId;
-      const key = `${branchId}:${m.productId}`;
       restockByBranchProduct.set(key, (restockByBranchProduct.get(key) ?? 0) + qty);
     }
   }

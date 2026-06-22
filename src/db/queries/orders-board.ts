@@ -9,6 +9,7 @@ import {
   getActiveBranches,
   getBranchStockForProducts,
 } from "@/lib/branch-stock";
+import { mergeProductsForSales } from "@/lib/catalog-product-merge";
 import { formatQuantityLabel, type SaleUnit } from "@/lib/order-line-math";
 import {
   normalizeOrderCreatedAt,
@@ -69,27 +70,29 @@ export const getOrdersPageData = cache(async () => {
   const productIds = inventoryProducts.map((p) => p.id);
   const branchStockByProduct = await getBranchStockForProducts(productIds);
 
-  const quickSellProducts = inventoryProducts.map((p) => {
-    const branchLines = branchStockByProduct.get(p.id) ?? [];
-    const stockByBranch: Record<number, number> = {};
-    for (const line of branchLines) {
-      stockByBranch[line.branchId] = line.stockQuantity;
-    }
-    return {
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      variant: p.variant,
-      itemType: p.itemType,
-      retailPrice: p.retailPrice,
-      bulkPrice: p.bulkPrice,
-      stockQuantity: p.stockQuantity,
-      stockUnit: p.stockUnit,
-      kgPerSack: p.kgPerSack,
-      unitsPerCase: p.unitsPerCase,
-      stockByBranch,
-    };
-  });
+  const quickSellProducts = mergeProductsForSales(
+    inventoryProducts.map((p) => {
+      const branchLines = branchStockByProduct.get(p.id) ?? [];
+      const stockByBranch: Record<number, number> = {};
+      for (const line of branchLines) {
+        stockByBranch[line.branchId] = line.stockQuantity;
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        variant: p.variant,
+        itemType: p.itemType,
+        retailPrice: p.retailPrice,
+        bulkPrice: p.bulkPrice,
+        stockQuantity: p.stockQuantity,
+        stockUnit: p.stockUnit as import("@/db/schema").StockUnit,
+        kgPerSack: p.kgPerSack,
+        unitsPerCase: p.unitsPerCase,
+        stockByBranch,
+      };
+    }),
+  );
 
   const productById = new Map(inventoryProducts.map((p) => [p.id, p]));
   const recentOrderIds = recentOrders.map((o) => o.id);
