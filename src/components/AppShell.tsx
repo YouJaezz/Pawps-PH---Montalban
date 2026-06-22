@@ -46,7 +46,6 @@ function ShellBody(props: {
                 <>
                   <NavItem href="/" label="Dashboard" />
                   <NavItem href="/reports" label="Reports" hint="insights" />
-                  <NavItem href="/social" label="Social" hint="FB · TikTok" />
                   <NavItem href="/payroll" label="Payroll" hint="employees" />
                   <NavItem href="/investors" label="Investors" hint="confidential" />
                 </>

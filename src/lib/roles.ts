@@ -36,7 +36,6 @@ export function isAdminOnlyPath(pathname: string) {
   if (pathname === "/" || pathname.startsWith("/settings")) return true;
   if (pathname.startsWith("/investors")) return true;
   if (pathname.startsWith("/reports")) return true;
-  if (pathname.startsWith("/social")) return true;
   if (pathname.startsWith("/payroll")) return true;
   if (pathname.startsWith("/suppliers")) return true;
   if (pathname.startsWith("/branches")) return true;
