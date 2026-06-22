@@ -40,6 +40,7 @@ export type BulkOrderProduct = {
   itemType: string | null;
   retailPrice: number;
   bulkPrice: number;
+  stockQuantity: number;
   stockUnit: StockUnit;
   kgPerSack: number | null;
   unitsPerCase: number | null;
@@ -113,7 +114,9 @@ export function BulkOrderModal(props: {
 
   const productOptions = useMemo<ProductSelectOption[]>(
     () =>
-      props.products.map((p) => ({
+      props.products
+        .filter((p) => p.stockQuantity > 0)
+        .map((p) => ({
         id: p.id,
         name: p.name,
         brand: p.brand,

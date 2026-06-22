@@ -10,6 +10,14 @@ export function displayStockQuantity(stockUnit: StockUnit, stockQuantity: number
   return stockQuantity;
 }
 
+export function parseStockEntryMode(
+  raw: FormDataEntryValue | null | undefined,
+): "sacks" | "kg" | "cases" | "pcs" {
+  const v = String(raw ?? "").trim();
+  if (v === "sacks" || v === "cases" || v === "pcs") return v;
+  return "kg";
+}
+
 export function parseStockQuantityInput(
   raw: string,
   stockUnit: StockUnit,

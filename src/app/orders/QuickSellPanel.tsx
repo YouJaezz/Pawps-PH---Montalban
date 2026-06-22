@@ -86,11 +86,19 @@ function branchStockQty(p: QuickSellProduct, branchId: number) {
   return p.stockByBranch[branchId] ?? 0;
 }
 
+function productsInStockAt(products: QuickSellProduct[], branchId: number) {
+  return products.filter((p) => branchStockQty(p, branchId) > 0);
+}
+
+function defaultProductIdForBranch(products: QuickSellProduct[], branchId: number) {
+  return productsInStockAt(products, branchId)[0]?.id ?? products[0]?.id ?? 0;
+}
+
 function toSelectOptions(
   products: QuickSellProduct[],
   branchId: number,
 ): ProductSelectOption[] {
-  return products.map((p) => ({
+  return productsInStockAt(products, branchId).map((p) => ({
     id: p.id,
     name: p.name,
     brand: p.brand,
@@ -123,8 +131,8 @@ export function QuickSellPanel(props: {
   >(quickSell, null);
 
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [draftProductId, setDraftProductId] = useState<number>(
-    props.products[0]?.id ?? 0,
+  const [draftProductId, setDraftProductId] = useState<number>(() =>
+    defaultProductIdForBranch(props.products, defaultBranchId),
   );
   const [draftSaleUnit, setDraftSaleUnit] = useState<SaleUnit>("Piece");
   const [draftQuantity, setDraftQuantity] = useState("1");
@@ -133,7 +141,8 @@ export function QuickSellPanel(props: {
   );
   const [saleBranchId, setSaleBranchId] = useState(defaultBranchId);
   const [deductStock, setDeductStock] = useState(() => {
-    const first = props.products[0];
+    const id = defaultProductIdForBranch(props.products, defaultBranchId);
+    const first = props.products.find((p) => p.id === id);
     return first ? branchStockQty(first, defaultBranchId) > 0 : false;
   });
   const [customerName, setCustomerName] = useState("");
@@ -210,23 +219,37 @@ export function QuickSellPanel(props: {
     state?.ok && state.receipt && !receiptDismissed ? "receipt" : step;
 
   function resetDraft() {
-    setDraftProductId(props.products[0]?.id ?? 0);
+    const nextId = defaultProductIdForBranch(props.products, saleBranchId);
+    setDraftProductId(nextId);
     setDraftSaleUnit("Piece");
     setDraftQuantity("1");
     setDraftPriceTier("Retail");
-    setDeductStock(
-      props.products[0]
-        ? branchStockQty(props.products[0], saleBranchId) > 0
-        : false,
-    );
+    const product = productById.get(nextId);
+    setDeductStock(product ? branchStockQty(product, saleBranchId) > 0 : false);
   }
 
   function handleSaleBranchChange(nextId: number) {
     setSaleBranchId(nextId);
     const product = productById.get(draftProductId);
-    if (product) {
-      setDeductStock(branchStockQty(product, nextId) > 0);
+    if (!product || branchStockQty(product, nextId) <= 0) {
+      const nextProductId = defaultProductIdForBranch(props.products, nextId);
+      setDraftProductId(nextProductId);
+      const nextProduct = productById.get(nextProductId);
+      if (nextProduct) {
+        const units = saleUnitsForProduct({
+          stockUnit: nextProduct.stockUnit,
+          kgPerSack: nextProduct.kgPerSack,
+          unitsPerCase: nextProduct.unitsPerCase,
+          itemType: nextProduct.itemType,
+        });
+        setDraftSaleUnit(units[0] ?? "Piece");
+        setDeductStock(branchStockQty(nextProduct, nextId) > 0);
+      } else {
+        setDeductStock(false);
+      }
+      return;
     }
+    setDeductStock(branchStockQty(product, nextId) > 0);
   }
 
   function closeModal() {
@@ -571,10 +594,88 @@ export function QuickSellPanel(props: {
                   </div>
                 ) : null}
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 pt-4">
+                  <div className="sticky top-0 z-10 -mx-6 border-b border-white/10 bg-[#0a1018] px-6 pb-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="space-y-1">
+                        <div className="text-xs font-medium text-zinc-200">
+                          Selling from (branch)
+                        </div>
+                        <select
+                          value={saleBranchId}
+                          onChange={(e) =>
+                            handleSaleBranchChange(Number.parseInt(e.target.value, 10))
+                          }
+                          className="w-full rounded-xl border border-brand-blue/30 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-brand-blue/50"
+                        >
+                          {props.branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                              {b.isDefault ? " (shop)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="space-y-1">
+                        <div className="text-xs font-medium text-zinc-200">Store type</div>
+                        <select
+                          value={storeType}
+                          onChange={(e) => handleStoreTypeChange(e.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                        >
+                          <option value="Walk-in">Walk-in (shop)</option>
+                          <option value="Online">Online / delivery</option>
+                        </select>
+                      </label>
+                      {!isWalkIn ? (
+                        <label className="space-y-1 sm:col-span-2">
+                          <div className="text-xs text-zinc-300">Delivery method</div>
+                          <select
+                            name="deliveryMethod"
+                            value={deliveryMethod}
+                            onChange={(e) => setDeliveryMethod(e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
+                          >
+                            <option>Montalban Free Delivery</option>
+                            <option>Lalamove</option>
+                            <option>Other</option>
+                          </select>
+                        </label>
+                      ) : (
+                        <div className="rounded-xl border border-brand-cyan/20 bg-brand-blue/10 px-3 py-2 text-[11px] text-brand-cyan/90 sm:col-span-2">
+                          Walk-in sale — no customer info needed. Cashier and totals
+                          are still recorded for daily sales.
+                        </div>
+                      )}
+                    </div>
+                    {!isWalkIn ? (
+                      <div className="mt-3">
+                        <CustomerPicker
+                          customers={props.customers}
+                          customerName={customerName}
+                          contact={contact}
+                          location={location}
+                          customerId={customerId}
+                          onCustomerNameChange={setCustomerName}
+                          onContactChange={setContact}
+                          onLocationChange={setLocation}
+                          onCustomerIdChange={setCustomerId}
+                          required
+                          helperText="Online and pre-order customers are saved to your customer list."
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs font-medium text-zinc-200">
                       Add to cart
                     </div>
+                    {productOptions.length === 0 ? (
+                      <p className="mt-2 text-[11px] text-amber-300/90">
+                        No in-stock products at {saleBranchName}. Switch branch or
+                        restock in Inventory.
+                      </p>
+                    ) : null}
                     <label className="mt-2 block space-y-1">
                       <ProductSelectField
                         label="Product"
@@ -672,7 +773,8 @@ export function QuickSellPanel(props: {
                     <button
                       type="button"
                       onClick={addToCart}
-                      className="mt-3 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue/15"
+                      disabled={productOptions.length === 0}
+                      className="mt-3 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/10 px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue/15 disabled:opacity-50"
                     >
                       Add to cart
                     </button>
@@ -866,73 +968,6 @@ export function QuickSellPanel(props: {
                       <input type="hidden" name="priceTier" value={line.priceTier} />
                     </div>
                   ))}
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="space-y-1">
-                      <div className="text-xs text-zinc-300">Selling from (branch)</div>
-                      <select
-                        value={saleBranchId}
-                        onChange={(e) =>
-                          handleSaleBranchChange(Number.parseInt(e.target.value, 10))
-                        }
-                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                      >
-                        {props.branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                            {b.isDefault ? " (shop)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="space-y-1">
-                      <div className="text-xs text-zinc-300">Store type</div>
-                      <select
-                        value={storeType}
-                        onChange={(e) => handleStoreTypeChange(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                      >
-                        <option value="Walk-in">Walk-in (shop)</option>
-                        <option value="Online">Online / delivery</option>
-                      </select>
-                    </label>
-                    {!isWalkIn ? (
-                      <label className="space-y-1">
-                        <div className="text-xs text-zinc-300">Delivery method</div>
-                        <select
-                          name="deliveryMethod"
-                          value={deliveryMethod}
-                          onChange={(e) => setDeliveryMethod(e.target.value)}
-                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-white/20"
-                        >
-                          <option>Montalban Free Delivery</option>
-                          <option>Lalamove</option>
-                          <option>Other</option>
-                        </select>
-                      </label>
-                    ) : (
-                      <div className="rounded-xl border border-brand-cyan/20 bg-brand-blue/10 px-3 py-2 text-[11px] text-brand-cyan/90">
-                        Walk-in sale — no customer info needed. Cashier and totals
-                        are still recorded for daily sales.
-                      </div>
-                    )}
-                  </div>
-
-                  {!isWalkIn ? (
-                    <CustomerPicker
-                      customers={props.customers}
-                      customerName={customerName}
-                      contact={contact}
-                      location={location}
-                      customerId={customerId}
-                      onCustomerNameChange={setCustomerName}
-                      onContactChange={setContact}
-                      onLocationChange={setLocation}
-                      onCustomerIdChange={setCustomerId}
-                      required
-                      helperText="Online and pre-order customers are saved to your customer list."
-                    />
-                  ) : null}
 
                   <label className="flex items-center gap-3 text-sm text-zinc-200">
                     <input

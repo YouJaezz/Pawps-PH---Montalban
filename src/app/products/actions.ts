@@ -12,6 +12,7 @@ import {
 import {
   displayStockQuantity,
   parseKgPerSackFromInput,
+  parseStockEntryMode,
   parseStockQuantityInput,
 } from "@/lib/product-stock";
 import { normalizeCatalogItemType, isCatLitterItemType } from "@/lib/catalog-item-types";
@@ -93,15 +94,7 @@ export async function createProduct(
     purchaseTierRaw === "Retail" ? ("Retail" as const) : ("Wholesale" as const);
 
   const trackInKg = formData.get("trackInKg") === "on";
-  const stockEntryModeRaw = String(formData.get("stockEntryMode") ?? "");
-  const stockEntryMode =
-    stockEntryModeRaw === "sacks"
-      ? ("sacks" as const)
-      : stockEntryModeRaw === "cases"
-        ? ("cases" as const)
-        : stockEntryModeRaw === "pcs"
-          ? ("pcs" as const)
-          : ("kg" as const);
+  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
   const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
   const unitsPerCaseRaw = Number.parseInt(String(formData.get("unitsPerCase") ?? "24"), 10);
   const unitsPerCase =
@@ -399,8 +392,7 @@ export async function updateProduct(formData: FormData) {
     ? (stockUnitRaw as StockUnit)
     : ("Piece" as const);
   const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
-  const stockEntryMode =
-    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
+  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
 
   if (!name || !brand) {
     throw new Error("Product name and brand are required.");
@@ -463,6 +455,7 @@ export async function updateProduct(formData: FormData) {
 
     const current =
       currentBranchStock.find((r) => r.branchId === branch.id)?.stockQuantity ?? 0;
+    if (parsed === current) continue;
     if (parsed > current) stockIncreased = true;
 
     await setBranchStockQuantity({
@@ -497,8 +490,7 @@ export async function transferBranchStock(formData: FormData) {
     ? (stockUnitRaw as StockUnit)
     : ("Piece" as const);
   const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
-  const stockEntryMode =
-    String(formData.get("stockEntryMode") ?? "") === "sacks" ? "sacks" : "kg";
+  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
   const unitForParse =
     stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
 
@@ -506,10 +498,20 @@ export async function transferBranchStock(formData: FormData) {
     throw new Error("Invalid product.");
   }
 
+  const [productRow] = await db
+    .select({ unitsPerCase: products.unitsPerCase })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
   const quantity = parseStockQuantityInput(
     String(formData.get("transferQuantity") ?? ""),
     unitForParse,
-    { stockEntryMode, kgPerSack },
+    {
+      stockEntryMode,
+      kgPerSack,
+      unitsPerCase: productRow?.unitsPerCase,
+    },
   );
   if (quantity == null || quantity <= 0) {
     throw new Error("Enter a valid quantity to move.");
