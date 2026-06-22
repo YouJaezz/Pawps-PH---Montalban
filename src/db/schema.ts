@@ -510,3 +510,59 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const SOCIAL_PLATFORMS = ["facebook", "tiktok"] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+export const socialPosts = sqliteTable(
+  "social_posts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    platform: text("platform", { enum: SOCIAL_PLATFORMS }).notNull(),
+    externalId: text("external_id").notNull(),
+    caption: text("caption"),
+    permalink: text("permalink"),
+    thumbnailUrl: text("thumbnail_url"),
+    publishedAt: integer("published_at", { mode: "timestamp" }),
+    viewCount: integer("view_count").notNull().default(0),
+    likeCount: integer("like_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    shareCount: integer("share_count").notNull().default(0),
+    reachCount: integer("reach_count").notNull().default(0),
+    syncedAt: integer("synced_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => ({
+    platformExternalIdx: uniqueIndex("social_posts_platform_external_idx").on(
+      table.platform,
+      table.externalId,
+    ),
+  }),
+);
+
+export const socialComments = sqliteTable(
+  "social_comments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    platform: text("platform", { enum: SOCIAL_PLATFORMS }).notNull(),
+    externalId: text("external_id").notNull(),
+    postExternalId: text("post_external_id").notNull(),
+    authorName: text("author_name"),
+    authorHandle: text("author_handle"),
+    message: text("message").notNull(),
+    likeCount: integer("like_count").notNull().default(0),
+    publishedAt: integer("published_at", { mode: "timestamp" }),
+    permalink: text("permalink"),
+    isHidden: integer("is_hidden", { mode: "boolean" }).notNull().default(false),
+    syncedAt: integer("synced_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => ({
+    platformExternalIdx: uniqueIndex("social_comments_platform_external_idx").on(
+      table.platform,
+      table.externalId,
+    ),
+  }),
+);
+
