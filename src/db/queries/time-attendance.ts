@@ -3,12 +3,18 @@ import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 
 import { db } from "@/db";
 import { timeEntries, users } from "@/db/schema";
+import {
+  getAttendanceSettings,
+  isStaffAttendanceLocked,
+  runAutoClockOut,
+} from "@/db/queries/attendance-settings";
 import { phMonthBounds, phMonthLabel, phNow } from "@/lib/ph-time";
 import { entryMinutes } from "@/lib/time-duration";
 
 export { entryMinutes, formatDuration } from "@/lib/time-duration";
 
 export async function getUserOpenShift(userId: number) {
+  await runAutoClockOut();
   const [row] = await db
     .select({
       id: timeEntries.id,
@@ -45,6 +51,9 @@ export async function getActiveShifts() {
 
 export const getAttendancePageData = cache(
   async (viewerUserId: number, adminView: boolean) => {
+    await runAutoClockOut();
+    const settings = await getAttendanceSettings();
+    const staffLocked = !adminView && isStaffAttendanceLocked(settings);
     const { year, month } = phNow();
     const { start, end } = phMonthBounds(year, month);
     const monthLabel = phMonthLabel(year, month);
@@ -143,6 +152,8 @@ export const getAttendancePageData = cache(
       teamTotals,
       activeShifts,
       employees: employeeRows,
+      settings,
+      staffLocked,
     };
   },
 );

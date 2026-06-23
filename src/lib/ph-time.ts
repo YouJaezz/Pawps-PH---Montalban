@@ -138,3 +138,56 @@ export function phStartOfToday() {
   const { year, month, day } = phNow();
   return new Date(`${year}-${pad2(month)}-${pad2(day)}T00:00:00+08:00`);
 }
+
+/** PH wall-clock time on a calendar day (e.g. daily attendance cutoff). */
+export function phDateTimeAt(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+) {
+  return new Date(
+    `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:${pad2(minute)}:00+08:00`,
+  );
+}
+
+export function formatPhTime(hour: number, minute: number) {
+  const d = phDateTimeAt(2000, 1, 1, hour, minute);
+  return d.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: PH_TIMEZONE,
+  });
+}
+
+export function toPhDatetimeLocalValue(d: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PH_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+
+  return `${pick("year")}-${pick("month")}-${pick("day")}T${pick("hour")}:${pick("minute")}`;
+}
+
+export function parsePhDatetimeLocal(value: string) {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const [, y, m, d, hh, mm] = match;
+  return phDateTimeAt(
+    Number(y),
+    Number(m),
+    Number(d),
+    Number(hh),
+    Number(mm),
+  );
+}

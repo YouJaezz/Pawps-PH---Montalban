@@ -7,8 +7,13 @@ import {
   clockOut,
   type AttendanceActionResult,
 } from "@/app/attendance/actions";
+import { AttendanceSettingsPanel } from "@/app/attendance/AttendanceSettingsPanel";
+import { TimeEntryEditButton } from "@/app/attendance/TimeEntryEditButton";
 import { LiveShiftTimer } from "@/components/LiveShiftTimer";
 import { ScrollableTable } from "@/components/ScrollableTable";
+import type { AttendanceSettings } from "@/db/queries/attendance-settings";
+import { formatCutoffLabel, nextAttendanceUnlockLabel } from "@/lib/attendance-cutoff";
+import { PH_TIMEZONE } from "@/lib/ph-time";
 import { formatDuration } from "@/lib/time-duration";
 
 function Banner(props: { state: AttendanceActionResult | null }) {
@@ -36,6 +41,7 @@ function fmtWhen(d: Date) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: PH_TIMEZONE,
   });
 }
 
@@ -66,6 +72,8 @@ export function AttendancePanel(props: {
     clockInAt: string;
     name: string;
   }>;
+  settings: AttendanceSettings;
+  staffLocked: boolean;
 }) {
   const [inState, inAction, inPending] = useActionState<
     AttendanceActionResult | null,
@@ -79,10 +87,26 @@ export function AttendancePanel(props: {
   const feedback = inState ?? outState;
   const clockedIn = !!props.openEntry;
   const liveClockIn = props.openClockInAt;
+  const cutoffLabel = formatCutoffLabel(props.settings);
+  const unlockLabel = nextAttendanceUnlockLabel();
 
   return (
     <div className="space-y-6">
+      {props.adminView ? (
+        <AttendanceSettingsPanel settings={props.settings} />
+      ) : null}
+
       <Banner state={feedback} />
+
+      {props.staffLocked ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="font-medium">Time clock closed for today</div>
+          <p className="mt-1 text-xs text-amber-100/80">
+            Everyone was auto timed-out at {cutoffLabel} (Philippines time). Time
+            in and time out will be available again from {unlockLabel}.
+          </p>
+        </div>
+      ) : null}
 
       {clockedIn && liveClockIn ? (
         <div className="rounded-xl border border-brand-cyan/40 bg-gradient-to-br from-brand-blue/15 to-transparent p-5">
@@ -118,6 +142,12 @@ export function AttendancePanel(props: {
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">Time clock</div>
+        {props.settings.autoCutoffEnabled ? (
+          <p className="mt-1 text-[10px] text-zinc-500">
+            Auto time-out daily at {cutoffLabel} PH
+            {props.adminView ? " · you can change this above" : ""}
+          </p>
+        ) : null}
         {clockedIn ? (
           <>
             <p className="mt-2 text-xs text-brand-cyan/80">
@@ -131,8 +161,8 @@ export function AttendancePanel(props: {
             <form action={outAction} className="mt-3">
               <button
                 type="submit"
-                disabled={outPending}
-                className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-200 ring-1 ring-red-500/40 hover:bg-red-500/30 disabled:opacity-50"
+                disabled={outPending || props.staffLocked}
+                className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-200 ring-1 ring-red-500/40 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {outPending ? "Clocking out…" : "Time out"}
               </button>
@@ -142,8 +172,8 @@ export function AttendancePanel(props: {
           <form action={inAction} className="mt-3">
             <button
               type="submit"
-              disabled={inPending}
-              className="rounded-lg bg-brand-blue/20 px-4 py-2 text-sm font-medium text-brand-cyan/70 ring-1 ring-brand-blue/40 hover:bg-brand-blue/30 disabled:opacity-50"
+              disabled={inPending || props.staffLocked}
+              className="rounded-lg bg-brand-blue/20 px-4 py-2 text-sm font-medium text-brand-cyan/70 ring-1 ring-brand-blue/40 hover:bg-brand-blue/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {inPending ? "Clocking in…" : "Time in"}
             </button>
@@ -209,13 +239,14 @@ export function AttendancePanel(props: {
                 <th className="px-3 py-2">Time in</th>
                 <th className="px-3 py-2">Time out</th>
                 <th className="px-3 py-2">Duration</th>
+                {props.adminView ? <th className="px-3 py-2 w-16" /> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {props.monthEntries.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={props.adminView ? 4 : 3}
+                    colSpan={props.adminView ? 5 : 3}
                     className="px-3 py-4 text-zinc-500"
                   >
                     No entries this month yet.
@@ -253,6 +284,16 @@ export function AttendancePanel(props: {
                         />
                       )}
                     </td>
+                    {props.adminView ? (
+                      <td className="px-3 py-2">
+                        <TimeEntryEditButton
+                          entryId={e.id}
+                          employeeName={e.employeeName}
+                          clockInAt={e.clockInAt}
+                          clockOutAt={e.clockOutAt}
+                        />
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}

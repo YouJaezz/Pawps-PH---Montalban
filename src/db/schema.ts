@@ -470,6 +470,19 @@ export const timeEntries = sqliteTable("time_entries", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/** Singleton — daily auto time-out cutoff (Philippines time). */
+export const attendanceSettings = sqliteTable("attendance_settings", {
+  id: integer("id").primaryKey(),
+  autoCutoffEnabled: integer("auto_cutoff_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  cutoffHour: integer("cutoff_hour").notNull().default(19),
+  cutoffMinute: integer("cutoff_minute").notNull().default(30),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export const teamMessages = sqliteTable("team_messages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   senderUserId: integer("sender_user_id").notNull(),

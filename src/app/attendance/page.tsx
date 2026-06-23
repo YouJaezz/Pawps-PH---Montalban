@@ -30,6 +30,8 @@ export default async function AttendancePage() {
             teamTotals={data.teamTotals}
             activeShifts={data.activeShifts}
             openClockInAt={data.openEntry?.clockInAt.toISOString() ?? null}
+            settings={data.settings}
+            staffLocked={data.staffLocked}
           />
         </div>
       </div>

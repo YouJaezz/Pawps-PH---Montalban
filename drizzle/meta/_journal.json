@@ -211,6 +211,13 @@
       "when": 1781500000000,
       "tag": "0030_drop_social_engagements",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1781600000000,
+      "tag": "0031_attendance_settings",
+      "breakpoints": true
     }
   ]
 }
