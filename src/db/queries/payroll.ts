@@ -319,6 +319,6 @@ export async function getPayrollSlipData(
     shiftCount: entries.length,
     daysWorked,
     punches,
-    daySummaries: buildPayrollSlipDaySummaries(punches),
+    daySummaries: buildPayrollSlipDaySummaries(punches, hourlyRateCents),
   };
 }

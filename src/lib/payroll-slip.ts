@@ -25,5 +25,6 @@ export type PayrollSlipData = {
     totalMinutes: number;
     shiftCount: number;
     scheduleCompact: string;
+    dayPayCents: number;
   }>;
 };

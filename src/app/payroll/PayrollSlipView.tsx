@@ -13,8 +13,16 @@ import {
 import { formatPhpFromCents } from "@/lib/money";
 import { formatOrderWhenLong } from "@/lib/order-timestamp";
 
-function DaySummaryTable(props: { rows: PayrollSlipDaySummary[] }) {
+function DaySummaryTable(props: {
+  rows: PayrollSlipDaySummary[];
+  hourlyRateCents: number;
+}) {
   if (props.rows.length === 0) return null;
+
+  const rateLabel =
+    props.hourlyRateCents > 0
+      ? `${formatPhpFromCents(props.hourlyRateCents)}/hr`
+      : "—";
 
   return (
     <table className="payroll-slip-days-table w-full border-collapse">
@@ -22,7 +30,8 @@ function DaySummaryTable(props: { rows: PayrollSlipDaySummary[] }) {
         <tr className="border-b border-zinc-300 text-left text-zinc-600">
           <th className="py-0.5 pr-1 font-semibold">Day</th>
           <th className="py-0.5 pr-1 font-semibold">Time in / out</th>
-          <th className="py-0.5 text-right font-semibold">Hrs</th>
+          <th className="py-0.5 pr-1 text-right font-semibold">Hrs</th>
+          <th className="py-0.5 text-right font-semibold">Day pay</th>
         </tr>
       </thead>
       <tbody>
@@ -39,8 +48,22 @@ function DaySummaryTable(props: { rows: PayrollSlipDaySummary[] }) {
             <td className="py-0.5 pr-1 leading-tight text-zinc-700">
               {day.scheduleCompact}
             </td>
-            <td className="whitespace-nowrap py-0.5 text-right font-medium">
+            <td className="whitespace-nowrap py-0.5 pr-1 text-right font-medium">
               {formatDurationTable(day.totalMinutes)}
+            </td>
+            <td className="whitespace-nowrap py-0.5 text-right leading-tight">
+              {props.hourlyRateCents > 0 && day.totalMinutes > 0 ? (
+                <>
+                  <span className="text-[10px] text-zinc-500 print:text-[7pt]">
+                    {formatDurationTable(day.totalMinutes)} × {rateLabel}
+                  </span>
+                  <div className="font-semibold">
+                    = {formatPhpFromCents(day.dayPayCents)}
+                  </div>
+                </>
+              ) : (
+                "—"
+              )}
             </td>
           </tr>
         ))}
@@ -52,6 +75,10 @@ function DaySummaryTable(props: { rows: PayrollSlipDaySummary[] }) {
 export function PayrollSlipView(props: { slip: PayrollSlipData }) {
   const { slip } = props;
   const [leftDays, rightDays] = splitDaySummariesForPrint(slip.daySummaries);
+  const dayPayTotalCents = slip.daySummaries.reduce(
+    (sum, day) => sum + day.dayPayCents,
+    0,
+  );
 
   return (
     <div className="space-y-4">
@@ -136,16 +163,24 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
 
             {rightDays.length > 0 ? (
               <div className="payroll-slip-days-cols grid grid-cols-1 gap-x-4 print:grid-cols-2">
-                <DaySummaryTable rows={leftDays} />
-                <DaySummaryTable rows={rightDays} />
+                <DaySummaryTable rows={leftDays} hourlyRateCents={slip.hourlyRateCents} />
+                <DaySummaryTable rows={rightDays} hourlyRateCents={slip.hourlyRateCents} />
               </div>
             ) : (
-              <DaySummaryTable rows={leftDays} />
+              <DaySummaryTable rows={leftDays} hourlyRateCents={slip.hourlyRateCents} />
             )}
 
-            <div className="mt-1 flex justify-end border-t border-zinc-200 pt-1 text-[10px] print:text-[8pt]">
-              <span className="text-zinc-500">Period total&nbsp;</span>
-              <span className="font-bold">{formatDurationLong(slip.minutesWorked)}</span>
+            <div className="mt-1 flex flex-wrap items-baseline justify-end gap-x-4 gap-y-0.5 border-t border-zinc-200 pt-1 text-[10px] print:text-[8pt]">
+              <span>
+                <span className="text-zinc-500">Period hours&nbsp;</span>
+                <span className="font-bold">{formatDurationLong(slip.minutesWorked)}</span>
+              </span>
+              {slip.hourlyRateCents > 0 ? (
+                <span>
+                  <span className="text-zinc-500">From daily rows&nbsp;</span>
+                  <span className="font-bold">{formatPhpFromCents(dayPayTotalCents)}</span>
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}

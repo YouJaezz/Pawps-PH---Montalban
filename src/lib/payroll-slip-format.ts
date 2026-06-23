@@ -16,6 +16,8 @@ export type PayrollSlipDaySummary = {
   shiftCount: number;
   /** e.g. 7:02a–5:30p or 7:02a–12:00p · 1:00p–5:30p */
   scheduleCompact: string;
+  /** grossPayFromMinutes(totalMinutes, hourlyRate) */
+  dayPayCents: number;
 };
 
 /** Compact clock time for slip rows — 7:02a, 5:30p */
@@ -47,6 +49,7 @@ function formatPair(inIso: string, outIso: string | null) {
 
 export function buildPayrollSlipDaySummaries(
   punches: PayrollSlipPunch[],
+  hourlyRateCents = 0,
 ): PayrollSlipDaySummary[] {
   const byDay = new Map<string, PayrollSlipPunch[]>();
   for (const punch of punches) {
@@ -81,6 +84,7 @@ export function buildPayrollSlipDaySummaries(
         totalMinutes,
         shiftCount: dayPunches.length,
         scheduleCompact,
+        dayPayCents: Math.round((totalMinutes * hourlyRateCents) / 60),
       };
     });
 }
