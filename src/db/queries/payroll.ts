@@ -40,6 +40,11 @@ type PayrollRow = {
   payoutId: number | null;
   status: "Open" | "Projected" | "Accrued" | "Paid";
   canGenerate: boolean;
+  lockedAt: string | null;
+  paidAt: string | null;
+  paymentMethod: string | null;
+  paymentReference: string | null;
+  paymentNotes: string | null;
 };
 
 function findPayout(
@@ -97,6 +102,11 @@ function buildPayrollRow(
       payoutId: existing.id,
       status: existing.status as "Accrued" | "Paid",
       canGenerate: false,
+      lockedAt: existing.createdAt?.toISOString() ?? null,
+      paidAt: existing.paidAt?.toISOString() ?? null,
+      paymentMethod: existing.paymentMethod ?? null,
+      paymentReference: existing.paymentReference ?? null,
+      paymentNotes: existing.notes ?? null,
     };
   }
 
@@ -122,6 +132,11 @@ function buildPayrollRow(
       canLockPayrollPeriod(periodRef) &&
       minutesWorked > 0 &&
       emp.hourlyRateCents > 0,
+    lockedAt: null,
+    paidAt: null,
+    paymentMethod: null,
+    paymentReference: null,
+    paymentNotes: null,
   };
 }
 
@@ -255,8 +270,30 @@ export const getPayrollDashboard = cache(async () => {
     }
   }
 
-  return { employees, semiMonthlyRows, dailyRows };
+  return {
+    employees,
+    semiMonthlyRows,
+    dailyRows,
+    paymentSummary: summarizePayrollPayments(semiMonthlyRows, dailyRows),
+  };
 });
+
+function summarizePayrollPayments(
+  semiMonthlyRows: PayrollRow[],
+  dailyRows: PayrollRow[],
+) {
+  const rows = [...semiMonthlyRows, ...dailyRows];
+  const awaiting = rows.filter((r) => r.status === "Accrued");
+  const paid = rows.filter((r) => r.status === "Paid");
+  return {
+    awaitingCount: awaiting.length,
+    awaitingTotalCents: awaiting.reduce((sum, r) => sum + r.grossPayCents, 0),
+    paidCount: paid.length,
+    paidTotalCents: paid.reduce((sum, r) => sum + r.grossPayCents, 0),
+  };
+}
+
+export type { PayrollRow };
 
 export async function getPayrollSlipData(
   userId: number,
@@ -373,6 +410,9 @@ export async function getPayrollSlipData(
     grossPayCents,
     status,
     paidAt: payout?.paidAt?.toISOString() ?? null,
+    paymentMethod: payout?.paymentMethod ?? null,
+    paymentReference: payout?.paymentReference ?? null,
+    paymentNotes: payout?.notes ?? null,
     shiftCount: entries.length,
     daysWorked,
     punches,

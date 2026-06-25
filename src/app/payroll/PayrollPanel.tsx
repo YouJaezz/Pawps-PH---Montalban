@@ -4,16 +4,21 @@ import { useActionState, useState } from "react";
 
 import {
   generatePayrollPayout,
-  markPayrollPaid,
   resetPayrollPayout,
   updateEmployeeHourlyRate,
   type PayrollActionResult,
 } from "@/app/payroll/actions";
+import { PayrollRecordPaymentModal } from "@/app/payroll/PayrollRecordPaymentModal";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { PayrollPrintSlipLink } from "@/components/PayrollPrintSlipLink";
 import { ScrollableTable } from "@/components/ScrollableTable";
 import { formatDuration } from "@/lib/time-duration";
 import { formatPhpFromCents } from "@/lib/money";
+import { formatOrderWhen } from "@/lib/order-timestamp";
+import {
+  formatPaymentSummary,
+  payrollStatusLabel,
+} from "@/lib/payroll-payment";
 import {
   formatPayDayHint,
   payScheduleLabel,
@@ -39,6 +44,28 @@ function Banner(props: { state: PayrollActionResult | null }) {
   return null;
 }
 
+function PayrollStatusBadge(props: {
+  status: "Open" | "Projected" | "Accrued" | "Paid";
+}) {
+  const label = payrollStatusLabel(props.status);
+  const className =
+    props.status === "Paid"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : props.status === "Accrued"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+        : props.status === "Projected"
+          ? "border-brand-blue/30 bg-brand-blue/10 text-brand-cyan/80"
+          : "border-white/10 bg-white/5 text-zinc-400";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 type PayrollRow = {
   userId: number;
   employeeName: string;
@@ -54,14 +81,18 @@ type PayrollRow = {
   payoutId: number | null;
   status: "Open" | "Projected" | "Accrued" | "Paid";
   canGenerate: boolean;
+  paidAt: string | null;
+  paymentMethod: string | null;
+  paymentReference: string | null;
+  paymentNotes: string | null;
 };
 
 function PayrollRowsTable(props: {
   rows: PayrollRow[];
   genAction: (payload: FormData) => void;
-  paidAction: (payload: FormData) => void;
   resetAction: (payload: FormData) => void;
   pending: boolean;
+  onRecordPayment: (row: PayrollRow) => void;
 }) {
   return (
     <ScrollableTable maxHeight="max-h-[min(60vh,480px)]">
@@ -73,76 +104,112 @@ function PayrollRowsTable(props: {
             <th className="px-3 py-2">Hours</th>
             <th className="px-3 py-2">Gross pay</th>
             <th className="px-3 py-2">Status</th>
+            <th className="px-3 py-2">Payment</th>
             <th className="px-3 py-2">Print slip</th>
             <th className="px-3 py-2">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
-          {props.rows.map((row) => (
-            <tr
-              key={`${row.userId}-${row.year}-${row.month}-${row.half}-${row.periodDay}`}
-            >
-              <td className="px-3 py-2 text-zinc-200">{row.employeeName}</td>
-              <td className="px-3 py-2">{row.label}</td>
-              <td className="px-3 py-2">{formatDuration(row.minutesWorked)}</td>
-              <td className="px-3 py-2 font-medium text-brand-cyan/80">
-                {formatPhpFromCents(row.grossPayCents)}
-              </td>
-              <td className="px-3 py-2 text-zinc-400">{row.status}</td>
-              <td className="px-3 py-2">
-                <PayrollPrintSlipLink
-                  userId={row.userId}
-                  year={row.year}
-                  month={row.month}
-                  half={row.half}
-                  periodDay={row.periodDay}
-                  compact
-                />
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex flex-col gap-1">
-                  {row.canGenerate ? (
-                    <form action={props.genAction} className="inline">
-                      <input type="hidden" name="userId" value={row.userId} />
-                      <input type="hidden" name="year" value={row.year} />
-                      <input type="hidden" name="month" value={row.month} />
-                      <input type="hidden" name="half" value={row.half} />
-                      <input
-                        type="hidden"
-                        name="periodDay"
-                        value={row.periodDay}
-                      />
-                      <button
-                        type="submit"
-                        disabled={props.pending}
-                        className="text-[10px] text-zinc-300 underline disabled:opacity-50"
-                      >
-                        Lock payroll
-                      </button>
-                    </form>
-                  ) : null}
-                  {row.status === "Accrued" && row.payoutId ? (
-                    <div className="flex flex-col gap-0.5">
-                      <form action={props.paidAction}>
+          {props.rows.map((row) => {
+            const paymentSummary =
+              row.status === "Paid"
+                ? formatPaymentSummary({
+                    paymentMethod: row.paymentMethod,
+                    paymentReference: row.paymentReference,
+                    notes: row.paymentNotes,
+                  })
+                : null;
+
+            return (
+              <tr
+                key={`${row.userId}-${row.year}-${row.month}-${row.half}-${row.periodDay}`}
+              >
+                <td className="px-3 py-2 text-zinc-200">{row.employeeName}</td>
+                <td className="px-3 py-2">{row.label}</td>
+                <td className="px-3 py-2">{formatDuration(row.minutesWorked)}</td>
+                <td className="px-3 py-2 font-medium text-brand-cyan/80">
+                  {formatPhpFromCents(row.grossPayCents)}
+                </td>
+                <td className="px-3 py-2">
+                  <PayrollStatusBadge status={row.status} />
+                </td>
+                <td className="px-3 py-2 text-[10px] text-zinc-400">
+                  {row.status === "Paid" && row.paidAt ? (
+                    <div>
+                      <div className="text-zinc-300">
+                        {formatOrderWhen(row.paidAt)}
+                      </div>
+                      {paymentSummary ? (
+                        <div className="mt-0.5 text-zinc-500">{paymentSummary}</div>
+                      ) : null}
+                    </div>
+                  ) : row.status === "Accrued" ? (
+                    <span className="text-amber-200/80">Not yet paid</span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <PayrollPrintSlipLink
+                    userId={row.userId}
+                    year={row.year}
+                    month={row.month}
+                    half={row.half}
+                    periodDay={row.periodDay}
+                    compact
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-col gap-1">
+                    {row.canGenerate ? (
+                      <form action={props.genAction} className="inline">
+                        <input type="hidden" name="userId" value={row.userId} />
+                        <input type="hidden" name="year" value={row.year} />
+                        <input type="hidden" name="month" value={row.month} />
+                        <input type="hidden" name="half" value={row.half} />
                         <input
                           type="hidden"
-                          name="payoutId"
-                          value={row.payoutId}
+                          name="periodDay"
+                          value={row.periodDay}
                         />
                         <button
                           type="submit"
                           disabled={props.pending}
-                          className="text-[10px] text-brand-cyan/80 underline"
+                          className="text-[10px] text-zinc-300 underline disabled:opacity-50"
                         >
-                          Mark paid
+                          Lock payroll
                         </button>
                       </form>
+                    ) : null}
+                    {row.status === "Accrued" && row.payoutId ? (
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => props.onRecordPayment(row)}
+                          disabled={props.pending}
+                          className="text-left text-[10px] font-medium text-brand-cyan underline disabled:opacity-50"
+                        >
+                          Record payment
+                        </button>
+                        <form action={props.resetAction}>
+                          <input
+                            type="hidden"
+                            name="payoutId"
+                            value={row.payoutId}
+                          />
+                          <button
+                            type="submit"
+                            disabled={props.pending}
+                            className="text-[10px] text-red-300/80 underline"
+                          >
+                            Reset lock
+                          </button>
+                        </form>
+                      </div>
+                    ) : null}
+                    {row.status === "Paid" && row.payoutId ? (
                       <form action={props.resetAction}>
-                        <input
-                          type="hidden"
-                          name="payoutId"
-                          value={row.payoutId}
-                        />
+                        <input type="hidden" name="payoutId" value={row.payoutId} />
                         <button
                           type="submit"
                           disabled={props.pending}
@@ -151,27 +218,50 @@ function PayrollRowsTable(props: {
                           Reset
                         </button>
                       </form>
-                    </div>
-                  ) : null}
-                  {row.status === "Paid" && row.payoutId ? (
-                    <form action={props.resetAction}>
-                      <input type="hidden" name="payoutId" value={row.payoutId} />
-                      <button
-                        type="submit"
-                        disabled={props.pending}
-                        className="text-[10px] text-red-300/80 underline"
-                      >
-                        Reset
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
-              </td>
-            </tr>
-          ))}
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </ScrollableTable>
+  );
+}
+
+function PaymentSummaryCards(props: {
+  awaitingCount: number;
+  awaitingTotalCents: number;
+  paidCount: number;
+  paidTotalCents: number;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+        <div className="text-[10px] font-medium uppercase tracking-wide text-amber-200/70">
+          Awaiting payment
+        </div>
+        <div className="mt-1 text-lg font-semibold text-amber-100">
+          {formatPhpFromCents(props.awaitingTotalCents)}
+        </div>
+        <div className="mt-0.5 text-[10px] text-amber-200/60">
+          {props.awaitingCount} locked period{props.awaitingCount === 1 ? "" : "s"}{" "}
+          ready to disburse
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+        <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-200/70">
+          Recorded as paid
+        </div>
+        <div className="mt-1 text-lg font-semibold text-emerald-100">
+          {formatPhpFromCents(props.paidTotalCents)}
+        </div>
+        <div className="mt-0.5 text-[10px] text-emerald-200/60">
+          {props.paidCount} payment{props.paidCount === 1 ? "" : "s"} in view
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -186,6 +276,12 @@ export function PayrollPanel(props: {
   }>;
   semiMonthlyRows: PayrollRow[];
   dailyRows: PayrollRow[];
+  paymentSummary: {
+    awaitingCount: number;
+    awaitingTotalCents: number;
+    paidCount: number;
+    paidTotalCents: number;
+  };
   reportYear?: number;
   reportMonth?: number;
 }) {
@@ -197,24 +293,32 @@ export function PayrollPanel(props: {
     PayrollActionResult | null,
     FormData
   >(generatePayrollPayout, null);
-  const [paidState, paidAction, paidPending] = useActionState<
-    PayrollActionResult | null,
-    FormData
-  >(markPayrollPaid, null);
   const [resetState, resetAction, resetPending] = useActionState<
     PayrollActionResult | null,
     FormData
   >(resetPayrollPayout, null);
 
   const [rateEditId, setRateEditId] = useState<number | null>(null);
-  const feedback = rateState ?? genState ?? paidState ?? resetState;
-  const pending = ratePending || genPending || paidPending || resetPending;
+  const [paymentRow, setPaymentRow] = useState<PayrollRow | null>(null);
+  const feedback = rateState ?? genState ?? resetState;
+  const pending = ratePending || genPending || resetPending;
 
   const rateEmployee = props.employees.find((e) => e.id === rateEditId);
 
   return (
     <div className="space-y-6">
       <Banner state={feedback} />
+
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="text-sm font-medium text-zinc-100">Disbursement summary</div>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Lock payroll when hours are final, then record payment once the employee
+          has been paid — including method, date, and reference for your records.
+        </p>
+        <div className="mt-3">
+          <PaymentSummaryCards {...props.paymentSummary} />
+        </div>
+      </div>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">
@@ -315,13 +419,28 @@ export function PayrollPanel(props: {
         ) : null}
       </EditModal>
 
+      <PayrollRecordPaymentModal
+        row={
+          paymentRow?.payoutId
+            ? {
+                payoutId: paymentRow.payoutId,
+                employeeName: paymentRow.employeeName,
+                label: paymentRow.label,
+                grossPayCents: paymentRow.grossPayCents,
+              }
+            : null
+        }
+        onClose={() => setPaymentRow(null)}
+      />
+
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">
           Semi-monthly payroll
         </div>
         <p className="mt-1 text-[11px] text-zinc-500">
-          For regular staff paid every 15th and end of month. Lock each period
-          after it ends (1–15 and 16–30), then mark paid when disbursed.
+          Lock each period after it ends, then use{" "}
+          <span className="text-brand-cyan">Record payment</span> when you have
+          disbursed pay.
           {props.reportYear && props.reportMonth
             ? ` Hours match the attendance report for ${props.reportYear}-${String(props.reportMonth).padStart(2, "0")}.`
             : ""}
@@ -335,9 +454,9 @@ export function PayrollPanel(props: {
             <PayrollRowsTable
               rows={props.semiMonthlyRows}
               genAction={genAction}
-              paidAction={paidAction}
               resetAction={resetAction}
               pending={pending}
+              onRecordPayment={setPaymentRow}
             />
           </div>
         )}
@@ -346,8 +465,8 @@ export function PayrollPanel(props: {
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <div className="text-sm font-medium text-zinc-100">Daily payroll</div>
         <p className="mt-1 text-[11px] text-zinc-500">
-          For staff paid per day worked. Lock each day after it ends, then mark
-          paid when disbursed. Shows the last 30 calendar days.
+          Lock each day after it ends, then record payment when the employee has
+          been paid for that day. Shows the last 30 calendar days.
         </p>
         {props.dailyRows.length === 0 ? (
           <p className="mt-3 text-[11px] text-zinc-500">
@@ -358,9 +477,9 @@ export function PayrollPanel(props: {
             <PayrollRowsTable
               rows={props.dailyRows}
               genAction={genAction}
-              paidAction={paidAction}
               resetAction={resetAction}
               pending={pending}
+              onRecordPayment={setPaymentRow}
             />
           </div>
         )}

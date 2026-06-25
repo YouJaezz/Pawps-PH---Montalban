@@ -12,6 +12,11 @@ import {
 } from "@/lib/payroll-slip-format";
 import { formatPhpFromCents } from "@/lib/money";
 import { formatOrderWhenLong } from "@/lib/order-timestamp";
+import {
+  formatPaymentSummary,
+  paymentMethodLabel,
+  payrollStatusLabel,
+} from "@/lib/payroll-payment";
 
 function DaySummaryTable(props: {
   rows: PayrollSlipDaySummary[];
@@ -140,10 +145,21 @@ export function PayrollSlipView(props: { slip: PayrollSlipData }) {
           <div>
             <span className="text-zinc-500">Status</span>
             <div>
-              {slip.status}
+              {payrollStatusLabel(
+                slip.status as "Open" | "Projected" | "Accrued" | "Paid",
+              )}
               {slip.paidAt ? (
                 <span className="block text-[10px] text-zinc-500 print:text-[7.5pt]">
-                  {formatOrderWhenLong(slip.paidAt)}
+                  Paid {formatOrderWhenLong(slip.paidAt)}
+                </span>
+              ) : null}
+              {slip.status === "Paid" && slip.paymentMethod ? (
+                <span className="block text-[10px] text-zinc-500 print:text-[7.5pt]">
+                  {formatPaymentSummary({
+                    paymentMethod: slip.paymentMethod,
+                    paymentReference: slip.paymentReference ?? null,
+                    notes: slip.paymentNotes ?? null,
+                  }) ?? paymentMethodLabel(slip.paymentMethod)}
                 </span>
               ) : null}
             </div>

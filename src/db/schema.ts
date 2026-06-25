@@ -523,6 +523,11 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
     .notNull()
     .default("Accrued"),
   paidAt: integer("paid_at", { mode: "timestamp" }),
+  paymentMethod: text("payment_method", {
+    enum: ["cash", "gcash", "bank_transfer", "check", "other"],
+  }),
+  paymentReference: text("payment_reference"),
+  paidByUserId: integer("paid_by_user_id"),
   notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

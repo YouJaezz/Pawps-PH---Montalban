@@ -12,6 +12,11 @@ import {
 import { requireAdmin } from "@/lib/auth-guard";
 import { parseMoneyToCents } from "@/lib/money";
 import {
+  normalizePaymentMethod,
+  parsePhDateInput,
+  paymentMethodLabel,
+} from "@/lib/payroll-payment";
+import {
   canLockPayrollPeriod,
   isDailyPayPeriod,
   isSemiMonthlyEnabled,
@@ -69,7 +74,6 @@ export async function generatePayrollPayout(
     String(formData.get("half") ?? ""),
     String(formData.get("periodDay") ?? formData.get("day") ?? ""),
   );
-  const markPaid = formData.get("markPaid") === "on";
 
   if (!Number.isFinite(userId) || userId <= 0) {
     return { error: "Invalid payroll request." };
@@ -131,8 +135,8 @@ export async function generatePayrollPayout(
     minutesWorked: row.minutesWorked,
     hourlyRateCents: row.hourlyRateCents,
     grossPayCents,
-    status: markPaid ? "Paid" : "Accrued",
-    paidAt: markPaid ? new Date() : null,
+    status: "Accrued",
+    paidAt: null,
   });
 
   revalidatePayroll();
@@ -144,7 +148,7 @@ export async function generatePayrollPayout(
 
   return {
     ok: true,
-    message: `${monthLabel} payroll locked — ₱${peso} for ${row.employeeName}.`,
+    message: `${monthLabel} locked for ${row.employeeName} — ₱${peso} awaiting payment.`,
   };
 }
 
@@ -152,20 +156,72 @@ export async function markPayrollPaid(
   _prev: PayrollActionResult | null,
   formData: FormData,
 ): Promise<PayrollActionResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const payoutId = Number.parseInt(String(formData.get("payoutId") ?? ""), 10);
   if (!Number.isFinite(payoutId) || payoutId <= 0) {
     return { error: "Invalid payout." };
   }
 
+  const paymentMethod = normalizePaymentMethod(
+    String(formData.get("paymentMethod") ?? ""),
+  );
+  if (!paymentMethod) {
+    return { error: "Select how the employee was paid." };
+  }
+
+  const paymentReference = String(formData.get("paymentReference") ?? "")
+    .trim()
+    .slice(0, 120);
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 500);
+  const paidAt =
+    parsePhDateInput(String(formData.get("paidAt") ?? "")) ?? new Date();
+
+  const [payout] = await db
+    .select({
+      id: payrollPayouts.id,
+      status: payrollPayouts.status,
+      grossPayCents: payrollPayouts.grossPayCents,
+      userId: payrollPayouts.userId,
+    })
+    .from(payrollPayouts)
+    .where(eq(payrollPayouts.id, payoutId))
+    .limit(1);
+
+  if (!payout) return { error: "Payout not found." };
+  if (payout.status === "Paid") {
+    return { error: "This payout is already recorded as paid." };
+  }
+
+  const [employee] = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, payout.userId))
+    .limit(1);
+
   await db
     .update(payrollPayouts)
-    .set({ status: "Paid", paidAt: new Date() })
+    .set({
+      status: "Paid",
+      paidAt,
+      paymentMethod,
+      paymentReference: paymentReference || null,
+      notes: notes || null,
+      paidByUserId: admin.userId,
+    })
     .where(eq(payrollPayouts.id, payoutId));
 
   revalidatePayroll();
-  return { ok: true, message: "Marked paid." };
+
+  const peso = (payout.grossPayCents / 100).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+  });
+  const employeeName = employee?.name ?? employee?.email ?? "Employee";
+
+  return {
+    ok: true,
+    message: `Recorded ₱${peso} paid to ${employeeName} via ${paymentMethodLabel(paymentMethod)}.`,
+  };
 }
 
 export async function resetPayrollPayout(

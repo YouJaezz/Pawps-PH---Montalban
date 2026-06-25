@@ -12,6 +12,9 @@ export type PayrollSlipData = {
   grossPayCents: number;
   status: string;
   paidAt: string | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
   shiftCount: number;
   daysWorked: number;
   punches: Array<{

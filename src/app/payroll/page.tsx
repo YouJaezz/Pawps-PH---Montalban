@@ -47,6 +47,7 @@ export default async function PayrollPage(props: {
             }))}
             semiMonthlyRows={data.semiMonthlyRows}
             dailyRows={data.dailyRows}
+            paymentSummary={data.paymentSummary}
             reportYear={year}
             reportMonth={month}
           />
