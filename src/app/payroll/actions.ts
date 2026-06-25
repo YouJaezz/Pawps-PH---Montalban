@@ -163,19 +163,8 @@ export async function markPayrollPaid(
     return { error: "Invalid payout." };
   }
 
-  const paymentMethod = normalizePaymentMethod(
-    String(formData.get("paymentMethod") ?? ""),
-  );
-  if (!paymentMethod) {
-    return { error: "Select how the employee was paid." };
-  }
-
-  const paymentReference = String(formData.get("paymentReference") ?? "")
-    .trim()
-    .slice(0, 120);
-  const notes = String(formData.get("notes") ?? "").trim().slice(0, 500);
-  const paidAt =
-    parsePhDateInput(String(formData.get("paidAt") ?? "")) ?? new Date();
+  const payment = readPaymentFields(formData);
+  if ("error" in payment) return { error: payment.error };
 
   const [payout] = await db
     .select({
@@ -203,10 +192,10 @@ export async function markPayrollPaid(
     .update(payrollPayouts)
     .set({
       status: "Paid",
-      paidAt,
-      paymentMethod,
-      paymentReference: paymentReference || null,
-      notes: notes || null,
+      paidAt: payment.paidAt,
+      paymentMethod: payment.paymentMethod,
+      paymentReference: payment.paymentReference || null,
+      notes: payment.notes || null,
       paidByUserId: admin.userId,
     })
     .where(eq(payrollPayouts.id, payoutId));
@@ -220,8 +209,138 @@ export async function markPayrollPaid(
 
   return {
     ok: true,
-    message: `Recorded ₱${peso} paid to ${employeeName} via ${paymentMethodLabel(paymentMethod)}.`,
+    message: `Recorded ₱${peso} paid to ${employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.`,
   };
+}
+
+function readPaymentFields(formData: FormData) {
+  const paymentMethod = normalizePaymentMethod(
+    String(formData.get("paymentMethod") ?? ""),
+  );
+  if (!paymentMethod) {
+    return { error: "Select how the employee was paid." as const };
+  }
+
+  return {
+    paymentMethod,
+    paymentReference: String(formData.get("paymentReference") ?? "")
+      .trim()
+      .slice(0, 120),
+    notes: String(formData.get("notes") ?? "").trim().slice(0, 500),
+    paidAt:
+      parsePhDateInput(String(formData.get("paidAt") ?? "")) ?? new Date(),
+  };
+}
+
+/** Lock payroll and record payment in one step (for periods ready to pay). */
+export async function lockAndRecordPayrollPayment(
+  _prev: PayrollActionResult | null,
+  formData: FormData,
+): Promise<PayrollActionResult> {
+  const admin = await requireAdmin();
+
+  const userId = Number.parseInt(String(formData.get("userId") ?? ""), 10);
+  const { year, month, half, periodDay } = resolvePayrollPayoutPeriod(
+    String(formData.get("year") ?? ""),
+    String(formData.get("month") ?? ""),
+    String(formData.get("half") ?? ""),
+    String(formData.get("periodDay") ?? formData.get("day") ?? ""),
+  );
+  const payment = readPaymentFields(formData);
+  if ("error" in payment) return { error: payment.error };
+
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return { error: "Invalid payroll request." };
+  }
+
+  if (
+    !isDailyPayPeriod(periodDay) &&
+    isSemiMonthlyEnabled(year, month) &&
+    half === 0
+  ) {
+    return { error: "Invalid payroll period." };
+  }
+
+  if (!canLockPayrollPeriod({ year, month, half, periodDay })) {
+    return { error: "Wait until the payroll period ends before paying." };
+  }
+
+  const [existing] = await db
+    .select({ id: payrollPayouts.id })
+    .from(payrollPayouts)
+    .where(
+      and(
+        eq(payrollPayouts.userId, userId),
+        eq(payrollPayouts.periodYear, year),
+        eq(payrollPayouts.periodMonth, month),
+        eq(payrollPayouts.periodHalf, half),
+        eq(payrollPayouts.periodDay, periodDay),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    return { error: "Payroll for this period is already locked. Use Pay now on that row instead." };
+  }
+
+  const { semiMonthlyRows, dailyRows } = await getPayrollDashboard();
+  const row = [...semiMonthlyRows, ...dailyRows].find(
+    (r) =>
+      r.userId === userId &&
+      r.year === year &&
+      r.month === month &&
+      r.half === half &&
+      r.periodDay === periodDay,
+  );
+  if (!row) return { error: "Payroll row not found." };
+  if (row.minutesWorked <= 0) return { error: "No hours recorded for this period." };
+  if (row.hourlyRateCents <= 0) return { error: "Set an hourly rate first." };
+
+  const grossPayCents = grossPayFromMinutes(
+    row.minutesWorked,
+    row.hourlyRateCents,
+  );
+
+  await db.insert(payrollPayouts).values({
+    userId,
+    periodYear: year,
+    periodMonth: month,
+    periodHalf: half,
+    periodDay,
+    minutesWorked: row.minutesWorked,
+    hourlyRateCents: row.hourlyRateCents,
+    grossPayCents,
+    status: "Paid",
+    paidAt: payment.paidAt,
+    paymentMethod: payment.paymentMethod,
+    paymentReference: payment.paymentReference || null,
+    notes: payment.notes || null,
+    paidByUserId: admin.userId,
+  });
+
+  revalidatePayroll();
+
+  const monthLabel = payrollPeriodLabel(year, month, half, periodDay);
+  const peso = (grossPayCents / 100).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+  });
+
+  return {
+    ok: true,
+    message: `${monthLabel}: recorded ₱${peso} paid to ${row.employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.`,
+  };
+}
+
+/** Modal form handler — record on locked payout or lock + pay in one step. */
+export async function submitPayrollPayment(
+  _prev: PayrollActionResult | null,
+  formData: FormData,
+): Promise<PayrollActionResult> {
+  const mode = String(formData.get("paymentMode") ?? "record");
+  if (mode === "lock_and_pay") {
+    return lockAndRecordPayrollPayment(_prev, formData);
+  }
+  return markPayrollPaid(_prev, formData);
 }
 
 export async function resetPayrollPayout(

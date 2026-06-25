@@ -1,5 +1,5 @@
 import { PayrollAttendanceReport } from "@/app/payroll/PayrollAttendanceReport";
-import { PayrollPanel } from "@/app/payroll/PayrollPanel";
+import { PayrollWorkspace } from "@/app/payroll/PayrollWorkspace";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -30,13 +30,11 @@ export default async function PayrollPage(props: {
         <PageHeader
           eyebrow="Admin"
           title="Payroll"
-          description="Staff hours from Time In/Out, hourly rates, per-employee pay schedule (daily or semi-monthly), printable slips, and disbursement."
+          description="Pay employees, track hours from Time In/Out, and print payroll slips."
         />
 
         <div className="mt-6 space-y-6">
-          <PayrollAttendanceReport report={attendanceReport} />
-
-          <PayrollPanel
+          <PayrollWorkspace
             employees={data.employees.map((e) => ({
               id: e.id,
               name: e.name,
@@ -51,6 +49,8 @@ export default async function PayrollPage(props: {
             reportYear={year}
             reportMonth={month}
           />
+
+          <PayrollAttendanceReport report={attendanceReport} />
         </div>
       </div>
     </AppShell>

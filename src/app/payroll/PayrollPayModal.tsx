@@ -1,57 +1,75 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import {
-  markPayrollPaid,
+  submitPayrollPayment,
   type PayrollActionResult,
 } from "@/app/payroll/actions";
 import { EditModal, modalFieldClass } from "@/components/EditModal";
 import { formatPhpFromCents } from "@/lib/money";
 import { phDateInputValue } from "@/lib/payroll-payment";
+import type { PayrollPayModalRow } from "@/lib/payroll-pay-modal";
 
-type PaymentRow = {
-  payoutId: number;
-  employeeName: string;
-  label: string;
-  grossPayCents: number;
-};
-
-export function PayrollRecordPaymentModal(props: {
-  row: PaymentRow | null;
+export function PayrollPayModal(props: {
+  row: PayrollPayModalRow | null;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<
     PayrollActionResult | null,
     FormData
-  >(markPayrollPaid, null);
+  >(submitPayrollPayment, null);
 
   useEffect(() => {
     if (state?.ok) {
       props.onClose();
+      router.refresh();
     }
-  }, [state?.ok, props.onClose]);
+  }, [state?.ok, props.onClose, router]);
 
   const row = props.row;
+  const isLockAndPay = row?.kind === "lock_and_pay";
 
   return (
     <EditModal
       open={row != null}
       onClose={props.onClose}
-      title="Record payment"
+      title="Pay employee"
       subtitle={row ? `${row.employeeName} · ${row.label}` : undefined}
     >
       {row ? (
         <form action={action} className="space-y-3">
-          <input type="hidden" name="payoutId" value={row.payoutId} />
+          <input
+            type="hidden"
+            name="paymentMode"
+            value={isLockAndPay ? "lock_and_pay" : "record"}
+          />
+          {row.kind === "record" ? (
+            <input type="hidden" name="payoutId" value={row.payoutId} />
+          ) : (
+            <>
+              <input type="hidden" name="userId" value={row.userId} />
+              <input type="hidden" name="year" value={row.year} />
+              <input type="hidden" name="month" value={row.month} />
+              <input type="hidden" name="half" value={row.half} />
+              <input type="hidden" name="periodDay" value={row.periodDay} />
+            </>
+          )}
 
           <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs">
             <div className="text-[10px] uppercase tracking-wide text-zinc-500">
-              Amount to record
+              Amount to pay
             </div>
             <div className="mt-0.5 text-lg font-semibold text-brand-cyan/90">
               {formatPhpFromCents(row.grossPayCents)}
             </div>
+            {isLockAndPay ? (
+              <p className="mt-1 text-[10px] text-zinc-500">
+                Locks this payroll period and records payment together.
+              </p>
+            ) : null}
           </div>
 
           <label className="block space-y-1">
@@ -109,9 +127,9 @@ export function PayrollRecordPaymentModal(props: {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-brand-cyan/90 px-3 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-50"
+            className="w-full rounded-lg bg-emerald-400 px-3 py-2.5 text-xs font-semibold text-zinc-900 disabled:opacity-50"
           >
-            {pending ? "Saving…" : "Confirm payment recorded"}
+            {pending ? "Saving…" : "Confirm payment"}
           </button>
         </form>
       ) : null}
