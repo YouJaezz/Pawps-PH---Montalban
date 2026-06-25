@@ -8,6 +8,7 @@ import {
 } from "@/db/queries/payroll-attendance";
 import { getPayrollDashboard } from "@/db/queries/payroll";
 import { requireAdmin } from "@/lib/auth-guard";
+import { normalizePaySchedule } from "@/lib/payroll-period";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function PayrollPage(props: {
         <PageHeader
           eyebrow="Admin"
           title="Payroll"
-          description="Staff hours from Time In/Out, hourly rates, printable slips, and monthly disbursement."
+          description="Staff hours from Time In/Out, hourly rates, per-employee pay schedule (daily or semi-monthly), printable slips, and disbursement."
         />
 
         <div className="mt-6 space-y-6">
@@ -41,9 +42,11 @@ export default async function PayrollPage(props: {
               name: e.name,
               email: e.email,
               hourlyRateCents: e.hourlyRateCents,
+              paySchedule: normalizePaySchedule(e.paySchedule),
               role: e.role,
             }))}
-            rows={data.rows}
+            semiMonthlyRows={data.semiMonthlyRows}
+            dailyRows={data.dailyRows}
             reportYear={year}
             reportMonth={month}
           />

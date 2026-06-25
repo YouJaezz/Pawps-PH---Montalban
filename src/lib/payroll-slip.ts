@@ -5,6 +5,8 @@ export type PayrollSlipData = {
   year: number;
   month: number;
   half: 0 | 1 | 2;
+  /** 1-31 for daily pay slips; 0 for semi-monthly */
+  periodDay?: number;
   minutesWorked: number;
   hourlyRateCents: number;
   grossPayCents: number;

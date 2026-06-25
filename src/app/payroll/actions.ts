@@ -11,7 +11,14 @@ import {
 } from "@/db/queries/payroll";
 import { requireAdmin } from "@/lib/auth-guard";
 import { parseMoneyToCents } from "@/lib/money";
-import { payrollPeriodLabel, resolvePayrollPayoutPeriod, canLockPayrollPeriod, isSemiMonthlyEnabled } from "@/lib/payroll-period";
+import {
+  canLockPayrollPeriod,
+  isDailyPayPeriod,
+  isSemiMonthlyEnabled,
+  normalizePaySchedule,
+  payrollPeriodLabel,
+  resolvePayrollPayoutPeriod,
+} from "@/lib/payroll-period";
 
 export type PayrollActionResult = {
   ok?: boolean;
@@ -32,6 +39,9 @@ export async function updateEmployeeHourlyRate(
 
   const userId = Number.parseInt(String(formData.get("userId") ?? ""), 10);
   const hourlyRateCents = parseMoneyToCents(formData.get("hourlyRate"));
+  const paySchedule = normalizePaySchedule(
+    String(formData.get("paySchedule") ?? ""),
+  );
 
   if (!Number.isFinite(userId) || userId <= 0) {
     return { error: "Invalid employee." };
@@ -39,11 +49,11 @@ export async function updateEmployeeHourlyRate(
 
   await db
     .update(users)
-    .set({ hourlyRateCents })
+    .set({ hourlyRateCents, paySchedule })
     .where(eq(users.id, userId));
 
   revalidatePayroll();
-  return { ok: true, message: "Hourly rate saved." };
+  return { ok: true, message: "Pay settings saved." };
 }
 
 export async function generatePayrollPayout(
@@ -53,10 +63,11 @@ export async function generatePayrollPayout(
   await requireAdmin();
 
   const userId = Number.parseInt(String(formData.get("userId") ?? ""), 10);
-  const { year, month, half } = resolvePayrollPayoutPeriod(
+  const { year, month, half, periodDay } = resolvePayrollPayoutPeriod(
     String(formData.get("year") ?? ""),
     String(formData.get("month") ?? ""),
     String(formData.get("half") ?? ""),
+    String(formData.get("periodDay") ?? formData.get("day") ?? ""),
   );
   const markPaid = formData.get("markPaid") === "on";
 
@@ -64,11 +75,15 @@ export async function generatePayrollPayout(
     return { error: "Invalid payroll request." };
   }
 
-  if (isSemiMonthlyEnabled(year, month) && half === 0) {
+  if (
+    !isDailyPayPeriod(periodDay) &&
+    isSemiMonthlyEnabled(year, month) &&
+    half === 0
+  ) {
     return { error: "Invalid payroll period." };
   }
 
-  if (!canLockPayrollPeriod({ year, month, half })) {
+  if (!canLockPayrollPeriod({ year, month, half, periodDay })) {
     return { error: "Wait until the payroll period ends before locking payroll." };
   }
 
@@ -81,19 +96,22 @@ export async function generatePayrollPayout(
         eq(payrollPayouts.periodYear, year),
         eq(payrollPayouts.periodMonth, month),
         eq(payrollPayouts.periodHalf, half),
+        eq(payrollPayouts.periodDay, periodDay),
       ),
     )
     .limit(1);
 
-  if (existing) return { error: "Payroll for this month is already locked." };
+  if (existing) return { error: "Payroll for this period is already locked." };
 
-  const { rows } = await getPayrollDashboard();
-  const row = rows.find(
+  const { semiMonthlyRows, dailyRows } = await getPayrollDashboard();
+  const allRows = [...semiMonthlyRows, ...dailyRows];
+  const row = allRows.find(
     (r) =>
       r.userId === userId &&
       r.year === year &&
       r.month === month &&
-      r.half === half,
+      r.half === half &&
+      r.periodDay === periodDay,
   );
   if (!row) return { error: "Payroll row not found." };
   if (row.minutesWorked <= 0) return { error: "No hours recorded for this period." };
@@ -109,6 +127,7 @@ export async function generatePayrollPayout(
     periodYear: year,
     periodMonth: month,
     periodHalf: half,
+    periodDay,
     minutesWorked: row.minutesWorked,
     hourlyRateCents: row.hourlyRateCents,
     grossPayCents,
@@ -118,7 +137,7 @@ export async function generatePayrollPayout(
 
   revalidatePayroll();
 
-  const monthLabel = payrollPeriodLabel(year, month, half);
+  const monthLabel = payrollPeriodLabel(year, month, half, periodDay);
   const peso = (grossPayCents / 100).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
   });

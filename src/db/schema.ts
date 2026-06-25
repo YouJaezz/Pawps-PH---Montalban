@@ -453,6 +453,10 @@ export const users = sqliteTable("users", {
   role: text("role", { enum: USER_ROLES }).notNull().default("cashier"),
   /** Hourly wage in centavos for payroll. */
   hourlyRateCents: integer("hourly_rate_cents").notNull().default(0),
+  /** semi_monthly = paid every 15th & end of month; daily = paid per shift day */
+  paySchedule: text("pay_schedule", { enum: ["semi_monthly", "daily"] })
+    .notNull()
+    .default("semi_monthly"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
@@ -508,8 +512,10 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
   userId: integer("user_id").notNull(),
   periodYear: integer("period_year").notNull(),
   periodMonth: integer("period_month").notNull(),
-  /** 0 = legacy monthly, 1 = 1st-15th, 2 = 16th-end */
+  /** 0 = legacy monthly / daily uses periodDay, 1 = 1st-15th, 2 = 16th-end */
   periodHalf: integer("period_half").notNull().default(0),
+  /** 1-31 when daily pay; 0 for semi-monthly periods */
+  periodDay: integer("period_day").notNull().default(0),
   minutesWorked: integer("minutes_worked").notNull(),
   hourlyRateCents: integer("hourly_rate_cents").notNull(),
   grossPayCents: integer("gross_pay_cents").notNull(),

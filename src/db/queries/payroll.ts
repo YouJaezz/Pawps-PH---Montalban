@@ -7,89 +7,144 @@ import { employeeCode } from "@/db/queries/payroll-attendance";
 import { entryMinutes } from "@/db/queries/time-attendance";
 import type { PayrollSlipData } from "@/lib/payroll-slip";
 import { buildPayrollSlipDaySummaries } from "@/lib/payroll-slip-format";
-import {
-  phNow,
-} from "@/lib/ph-time";
+import { phDayBounds, phNow } from "@/lib/ph-time";
 import {
   canLockPayrollPeriod,
+  clockInPeriodForDate,
+  dailyPayPeriods,
   isCurrentPayrollPeriod,
-  isSemiMonthlyEnabled,
+  normalizePaySchedule,
   payrollPeriodBounds,
   payrollPeriodKey,
   payrollPeriodLabel,
-  type PayrollPeriod,
+  semiMonthlyPeriods,
+  type PaySchedule,
 } from "@/lib/payroll-period";
-
-function shiftMonth(year: number, month: number, delta: number) {
-  let y = year;
-  let m = month + delta;
-  while (m <= 0) {
-    m += 12;
-    y -= 1;
-  }
-  while (m > 12) {
-    m -= 12;
-    y += 1;
-  }
-  return { year: y, month: m };
-}
-
-function currentPayrollPeriod(): PayrollPeriod {
-  const now = phNow();
-  if (!isSemiMonthlyEnabled(now.year, now.month)) {
-    return { year: now.year, month: now.month, half: 0, label: payrollPeriodLabel(now.year, now.month, 0) };
-  }
-  const half: 1 | 2 = now.day <= 15 ? 1 : 2;
-  return { year: now.year, month: now.month, half, label: payrollPeriodLabel(now.year, now.month, half) };
-}
-
-function payrollPeriods(count: number): PayrollPeriod[] {
-  const start = currentPayrollPeriod();
-  const periods: PayrollPeriod[] = [start];
-  while (periods.length < count) {
-    const cur = periods[periods.length - 1]!;
-    if (cur.half === 2) {
-      periods.push({
-        year: cur.year,
-        month: cur.month,
-        half: 1,
-        label: payrollPeriodLabel(cur.year, cur.month, 1),
-      });
-      continue;
-    }
-    if (cur.half === 1) {
-      const prevMonth = shiftMonth(cur.year, cur.month, -1);
-      const prevHalf: 0 | 2 = isSemiMonthlyEnabled(prevMonth.year, prevMonth.month) ? 2 : 0;
-      periods.push({
-        year: prevMonth.year,
-        month: prevMonth.month,
-        half: prevHalf,
-        label: payrollPeriodLabel(prevMonth.year, prevMonth.month, prevHalf),
-      });
-      continue;
-    }
-    // legacy monthly
-    const prevMonth = shiftMonth(cur.year, cur.month, -1);
-    periods.push({
-      year: prevMonth.year,
-      month: prevMonth.month,
-      half: 0,
-      label: payrollPeriodLabel(prevMonth.year, prevMonth.month, 0),
-    });
-  }
-  return periods;
-}
 
 export function grossPayFromMinutes(minutes: number, hourlyRateCents: number) {
   return Math.round((minutes * hourlyRateCents) / 60);
 }
 
+type PayrollRow = {
+  userId: number;
+  employeeName: string;
+  year: number;
+  month: number;
+  half: 0 | 1 | 2;
+  periodDay: number;
+  paySchedule: PaySchedule;
+  label: string;
+  minutesWorked: number;
+  hourlyRateCents: number;
+  grossPayCents: number;
+  payoutId: number | null;
+  status: "Open" | "Projected" | "Accrued" | "Paid";
+  canGenerate: boolean;
+};
+
+function findPayout(
+  payouts: Array<typeof payrollPayouts.$inferSelect>,
+  userId: number,
+  year: number,
+  month: number,
+  half: 0 | 1 | 2,
+  periodDay: number,
+) {
+  return payouts.find(
+    (p) =>
+      p.userId === userId &&
+      p.periodYear === year &&
+      p.periodMonth === month &&
+      (p.periodHalf ?? 0) === half &&
+      (p.periodDay ?? 0) === periodDay,
+  );
+}
+
+function buildPayrollRow(
+  emp: {
+    id: number;
+    name: string | null;
+    email: string;
+    hourlyRateCents: number;
+    paySchedule: string | null;
+  },
+  period: {
+    year: number;
+    month: number;
+    half: 0 | 1 | 2;
+    periodDay: number;
+    label: string;
+  },
+  paySchedule: PaySchedule,
+  minutesWorked: number,
+  existing: typeof payrollPayouts.$inferSelect | undefined,
+): PayrollRow {
+  const { year, month, half, periodDay, label } = period;
+
+  if (existing) {
+    return {
+      userId: emp.id,
+      employeeName: emp.name ?? emp.email,
+      year,
+      month,
+      half,
+      periodDay,
+      paySchedule,
+      label,
+      minutesWorked: existing.minutesWorked,
+      hourlyRateCents: existing.hourlyRateCents,
+      grossPayCents: existing.grossPayCents,
+      payoutId: existing.id,
+      status: existing.status as "Accrued" | "Paid",
+      canGenerate: false,
+    };
+  }
+
+  const periodRef = { year, month, half, periodDay };
+  return {
+    userId: emp.id,
+    employeeName: emp.name ?? emp.email,
+    year,
+    month,
+    half,
+    periodDay,
+    paySchedule,
+    label,
+    minutesWorked,
+    hourlyRateCents: emp.hourlyRateCents,
+    grossPayCents: grossPayFromMinutes(minutesWorked, emp.hourlyRateCents),
+    payoutId: null,
+    status: isCurrentPayrollPeriod(periodRef)
+      ? "Projected"
+      : "Open",
+    canGenerate:
+      !isCurrentPayrollPeriod(periodRef) &&
+      canLockPayrollPeriod(periodRef) &&
+      minutesWorked > 0 &&
+      emp.hourlyRateCents > 0,
+  };
+}
+
 export const getPayrollDashboard = cache(async () => {
-  const periods = payrollPeriods(12);
-  const oldest = periods[periods.length - 1]!;
-  const newest = periods[0]!;
-  const rangeStart = payrollPeriodBounds(oldest.year, oldest.month, oldest.half).start;
-  const rangeEnd = payrollPeriodBounds(newest.year, newest.month, newest.half).end;
+  const semiPeriods = semiMonthlyPeriods(12);
+  const dailyPeriods = dailyPayPeriods(30);
+
+  const semiOldest = semiPeriods[semiPeriods.length - 1]!;
+  const dailyOldest = dailyPeriods[dailyPeriods.length - 1]!;
+  const semiStart = payrollPeriodBounds(
+    semiOldest.year,
+    semiOldest.month,
+    semiOldest.half,
+  ).start;
+  const dailyStart = payrollPeriodBounds(
+    dailyOldest.year,
+    dailyOldest.month,
+    0,
+    dailyOldest.periodDay,
+  ).start;
+  const rangeStart = semiStart < dailyStart ? semiStart : dailyStart;
+  const now = phNow();
+  const rangeEnd = phDayBounds(now.year, now.month, now.day).end;
 
   const [employees, payouts, allEntries] = await Promise.all([
     db
@@ -98,6 +153,7 @@ export const getPayrollDashboard = cache(async () => {
         name: users.name,
         email: users.email,
         hourlyRateCents: users.hourlyRateCents,
+        paySchedule: users.paySchedule,
         role: users.role,
       })
       .from(users)
@@ -122,23 +178,16 @@ export const getPayrollDashboard = cache(async () => {
       ),
   ]);
 
+  const scheduleByUser = new Map(
+    employees.map((e) => [e.id, normalizePaySchedule(e.paySchedule)]),
+  );
+
   const minutesByUserPeriod = new Map<string, number>();
   for (const e of allEntries) {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Manila",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    }).formatToParts(e.clockInAt);
-    const pick = (type: Intl.DateTimeFormatPartTypes) =>
-      Number(parts.find((p) => p.type === type)?.value ?? 0);
-    const year = pick("year");
-    const month = pick("month");
-    const day = pick("day");
-    const half: 0 | 1 | 2 = isSemiMonthlyEnabled(year, month)
-      ? (day <= 15 ? 1 : 2)
-      : 0;
-    const key = `${e.userId}-${payrollPeriodKey({ year, month, half })}`;
+    const schedule = scheduleByUser.get(e.userId);
+    if (!schedule) continue;
+    const period = clockInPeriodForDate(e.clockInAt, schedule);
+    const key = `${e.userId}-${payrollPeriodKey(period)}`;
     minutesByUserPeriod.set(
       key,
       (minutesByUserPeriod.get(key) ?? 0) +
@@ -146,64 +195,67 @@ export const getPayrollDashboard = cache(async () => {
     );
   }
 
-  const rows = [];
+  const semiMonthlyRows: PayrollRow[] = [];
+  const dailyRows: PayrollRow[] = [];
+
   for (const emp of employees) {
-    for (const p of periods) {
-      const { year, month, half } = p;
-      const label = p.label;
-      const existing = payouts.find(
-        (p) =>
-          p.userId === emp.id &&
-          p.periodYear === year &&
-          p.periodMonth === month &&
-          (p.periodHalf ?? 0) === half,
-      );
+    const paySchedule = normalizePaySchedule(emp.paySchedule);
 
-      const minutesWorked =
-        minutesByUserPeriod.get(`${emp.id}-${payrollPeriodKey({ year, month, half })}`) ?? 0;
-
-      if (existing) {
-        rows.push({
-          userId: emp.id,
-          employeeName: emp.name ?? emp.email,
+    if (paySchedule === "daily") {
+      for (const p of dailyPeriods) {
+        const { year, month, half, periodDay, label } = p;
+        const existing = findPayout(
+          payouts,
+          emp.id,
           year,
           month,
           half,
-          label,
-          minutesWorked: existing.minutesWorked,
-          hourlyRateCents: existing.hourlyRateCents,
-          grossPayCents: existing.grossPayCents,
-          payoutId: existing.id,
-          status: existing.status as "Accrued" | "Paid",
-          canGenerate: false,
-        });
-        continue;
+          periodDay,
+        );
+        const minutesWorked =
+          minutesByUserPeriod.get(
+            `${emp.id}-${payrollPeriodKey({ year, month, half, periodDay })}`,
+          ) ?? 0;
+        dailyRows.push(
+          buildPayrollRow(
+            emp,
+            { year, month, half, periodDay, label },
+            paySchedule,
+            minutesWorked,
+            existing,
+          ),
+        );
       }
+      continue;
+    }
 
-      rows.push({
-        userId: emp.id,
-        employeeName: emp.name ?? emp.email,
+    for (const p of semiPeriods) {
+      const { year, month, half, periodDay, label } = p;
+      const existing = findPayout(
+        payouts,
+        emp.id,
         year,
         month,
         half,
-        label,
-        minutesWorked,
-        hourlyRateCents: emp.hourlyRateCents,
-        grossPayCents: grossPayFromMinutes(minutesWorked, emp.hourlyRateCents),
-        payoutId: null as number | null,
-        status: isCurrentPayrollPeriod({ year, month, half })
-          ? ("Projected" as const)
-          : ("Open" as const),
-        canGenerate:
-          !isCurrentPayrollPeriod({ year, month, half }) &&
-          canLockPayrollPeriod({ year, month, half }) &&
-          minutesWorked > 0 &&
-          emp.hourlyRateCents > 0,
-      });
+        periodDay,
+      );
+      const minutesWorked =
+        minutesByUserPeriod.get(
+          `${emp.id}-${payrollPeriodKey({ year, month, half, periodDay })}`,
+        ) ?? 0;
+      semiMonthlyRows.push(
+        buildPayrollRow(
+          emp,
+          { year, month, half, periodDay, label },
+          paySchedule,
+          minutesWorked,
+          existing,
+        ),
+      );
     }
   }
 
-  return { employees, rows };
+  return { employees, semiMonthlyRows, dailyRows };
 });
 
 export async function getPayrollSlipData(
@@ -211,9 +263,10 @@ export async function getPayrollSlipData(
   year: number,
   month: number,
   half: 0 | 1 | 2,
+  periodDay = 0,
 ): Promise<PayrollSlipData | null> {
-  const { start, end } = payrollPeriodBounds(year, month, half);
-  const periodLabel = payrollPeriodLabel(year, month, half);
+  const { start, end } = payrollPeriodBounds(year, month, half, periodDay);
+  const periodLabel = payrollPeriodLabel(year, month, half, periodDay);
 
   const [user, payout, entries] = await Promise.all([
     db
@@ -236,6 +289,7 @@ export async function getPayrollSlipData(
           eq(payrollPayouts.periodYear, year),
           eq(payrollPayouts.periodMonth, month),
           eq(payrollPayouts.periodHalf, half),
+          eq(payrollPayouts.periodDay, periodDay),
         ),
       )
       .limit(1)
@@ -281,9 +335,11 @@ export async function getPayrollSlipData(
     }),
   ).size;
 
+  const periodRef = { year, month, half, periodDay };
   let status: string =
-    payout?.status ?? (isCurrentPayrollPeriod({ year, month, half }) ? "Projected" : "Open");
-  if (!payout && liveMinutes > 0 && !isCurrentPayrollPeriod({ year, month, half })) {
+    payout?.status ??
+    (isCurrentPayrollPeriod(periodRef) ? "Projected" : "Open");
+  if (!payout && liveMinutes > 0 && !isCurrentPayrollPeriod(periodRef)) {
     status = "Open";
   }
 
@@ -311,6 +367,7 @@ export async function getPayrollSlipData(
     year,
     month,
     half,
+    periodDay,
     minutesWorked,
     hourlyRateCents,
     grossPayCents,
@@ -321,4 +378,4 @@ export async function getPayrollSlipData(
     punches,
     daySummaries: buildPayrollSlipDaySummaries(punches, hourlyRateCents),
   };
-}
+};

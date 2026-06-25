@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PayrollSlipPage(props: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ year?: string; month?: string; half?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; half?: string; day?: string }>;
 }) {
   await requireAdmin();
   const { userId: userIdRaw } = await props.params;
@@ -19,8 +19,13 @@ export default async function PayrollSlipPage(props: {
   const userId = Number(userIdRaw);
   if (!Number.isFinite(userId) || userId <= 0) notFound();
 
-  const { year, month, half } = resolvePayrollPayoutPeriod(sp.year, sp.month, sp.half);
-  const slip = await getPayrollSlipData(userId, year, month, half);
+  const { year, month, half, periodDay } = resolvePayrollPayoutPeriod(
+    sp.year,
+    sp.month,
+    sp.half,
+    sp.day,
+  );
+  const slip = await getPayrollSlipData(userId, year, month, half, periodDay);
   if (!slip) notFound();
 
   return (
