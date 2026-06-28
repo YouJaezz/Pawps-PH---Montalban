@@ -72,6 +72,12 @@ export default async function ReportsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/shop-cash"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
+            >
+              Shop cash
+            </Link>
+            <Link
               href="/orders?tab=daily-sales"
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
             >
@@ -91,13 +97,19 @@ export default async function ReportsPage() {
           <p className="mt-1 text-[11px] text-zinc-500">
             All orders except cancelled · full database, not the orders table limit
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               accent
               compact
               title="Cash in hand"
               value={formatPhpFromCents(report.cash.cashInHandCents)}
               subtitle="Total payments recorded from customers"
+            />
+            <StatCard
+              compact
+              title="Available shop cash"
+              value={formatPhpFromCents(report.cash.availableShopCashCents)}
+              subtitle="Sales cash minus expenses & restock paid"
             />
             <StatCard
               compact
@@ -113,6 +125,16 @@ export default async function ReportsPage() {
             />
           </div>
           <p className="mt-3 text-[10px] text-zinc-600">
+            Available shop cash = cash in hand − all recorded shop outflows (
+            {formatPhpFromCents(report.cash.shopOutflowsAllTimeCents)} total).
+            This month: {formatPhpFromCents(report.cash.shopOutflowsThisMonthCents)} out
+            ({formatPhpFromCents(report.cash.shopExpensesThisMonthCents)} expenses,{" "}
+            {formatPhpFromCents(report.cash.shopRestockThisMonthCents)} restock).{" "}
+            <Link href="/shop-cash" className="underline hover:text-zinc-400">
+              Record expenses &amp; restock →
+            </Link>
+          </p>
+          <p className="mt-1 text-[10px] text-zinc-600">
             Cash in hand + still to collect = total billed. Use Daily sales for
             payments on a specific date.
           </p>

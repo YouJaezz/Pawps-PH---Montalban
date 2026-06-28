@@ -534,3 +534,41 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const SHOP_CASH_OUTFLOW_KINDS = ["expense", "restock"] as const;
+export type ShopCashOutflowKind = (typeof SHOP_CASH_OUTFLOW_KINDS)[number];
+
+export const SHOP_EXPENSE_CATEGORIES = [
+  "utilities_electric",
+  "utilities_water",
+  "utilities_internet",
+  "rent",
+  "supplies",
+  "maintenance",
+  "transport",
+  "taxes_fees",
+  "other",
+] as const;
+export type ShopExpenseCategory = (typeof SHOP_EXPENSE_CATEGORIES)[number];
+
+/** Shop money spent — operating expenses and inventory restock payments. */
+export const shopCashOutflows = sqliteTable("shop_cash_outflows", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kind: text("kind", { enum: SHOP_CASH_OUTFLOW_KINDS }).notNull(),
+  expenseCategory: text("expense_category", { enum: SHOP_EXPENSE_CATEGORIES }),
+  amountCents: integer("amount_cents").notNull(),
+  description: text("description").notNull(),
+  vendor: text("vendor"),
+  reference: text("reference"),
+  productId: integer("product_id"),
+  branchId: integer("branch_id"),
+  supplierId: integer("supplier_id"),
+  /** Raw stock units added when restock also updates inventory. */
+  stockQtyAdded: integer("stock_qty_added"),
+  paidAt: integer("paid_at", { mode: "timestamp" }).notNull(),
+  notes: text("notes"),
+  recordedByUserId: integer("recorded_by_user_id"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+

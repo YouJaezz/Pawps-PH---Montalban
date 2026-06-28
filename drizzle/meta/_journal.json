@@ -232,6 +232,13 @@
       "when": 1781800000000,
       "tag": "0033_payroll_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0034_shop_cash",
+      "breakpoints": true
     }
   ]
 }

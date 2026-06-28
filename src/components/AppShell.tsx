@@ -46,6 +46,7 @@ function ShellBody(props: {
                 <>
                   <NavItem href="/" label="Dashboard" />
                   <NavItem href="/reports" label="Reports" hint="insights" />
+                  <NavItem href="/shop-cash" label="Shop cash" hint="expenses" />
                   <NavItem href="/payroll" label="Payroll" hint="employees" />
                   <NavItem href="/investors" label="Investors" hint="confidential" />
                 </>

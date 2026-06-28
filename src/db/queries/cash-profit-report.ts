@@ -7,6 +7,7 @@ import {
   getActiveInventoryProducts,
   inventoryValuationFromRows,
 } from "@/db/queries/inventory-products";
+import { getShopCashOutflowTotals } from "@/db/queries/shop-cash";
 import {
   computeMonthlyNetIncomeBatch,
   computeProfitForDateRange,
@@ -14,7 +15,7 @@ import {
   type MonthlyNetIncome,
 } from "@/lib/investor-income";
 import { orderCreatedMsColumn } from "@/lib/order-timestamp";
-import { phMonthLabel, phNow, phStartOfToday } from "@/lib/ph-time";
+import { phMonthBounds, phMonthLabel, phNow, phStartOfToday } from "@/lib/ph-time";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -41,7 +42,7 @@ export const getCashProfitReport = cache(async () => {
   const createdMs = orderCreatedMsColumn();
   const activeOrders = ne(orders.orderStatus, "Cancelled");
 
-  const [cashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch] =
+  const [cashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch, shopOutflows, shopOutflowsThisMonth] =
     await Promise.all([
       db
         .select({
@@ -58,12 +59,20 @@ export const getCashProfitReport = cache(async () => {
       computeProfitForDateRange(last7Ms, todayMs + MS_PER_DAY),
       computeProfitForDateRange(last30Ms, todayMs + MS_PER_DAY),
       computeMonthlyNetIncomeBatch([{ year: now.year, month: now.month }]),
+      getShopCashOutflowTotals(),
+      (() => {
+        const { start, end } = phMonthBounds(now.year, now.month);
+        return getShopCashOutflowTotals(start.getTime(), end.getTime());
+      })(),
     ]);
 
   const inventory = inventoryValuationFromRows(inventoryProducts);
   const thisMonth =
     monthBatch.get(monthKey(now.year, now.month)) ?? emptyPeriod("This month");
   const monthLabel = phMonthLabel(now.year, now.month);
+  const cashInHandCents = Number(cashRow?.cashInHandCents ?? 0);
+  const shopOutflowsAllTimeCents = shopOutflows.totalCents;
+  const availableShopCashCents = cashInHandCents - shopOutflowsAllTimeCents;
 
   const periods: PeriodSnapshot[] = [
     { label: "Today", ...todayProfit },
@@ -75,10 +84,15 @@ export const getCashProfitReport = cache(async () => {
   return {
     monthLabel,
     cash: {
-      cashInHandCents: Number(cashRow?.cashInHandCents ?? 0),
+      cashInHandCents,
       receivablesCents: Number(cashRow?.receivablesCents ?? 0),
       totalBilledCents: Number(cashRow?.totalBilledCents ?? 0),
       activeOrderCount: Number(cashRow?.orderCount ?? 0),
+      shopOutflowsAllTimeCents,
+      shopOutflowsThisMonthCents: shopOutflowsThisMonth.totalCents,
+      shopExpensesThisMonthCents: shopOutflowsThisMonth.expenseCents,
+      shopRestockThisMonthCents: shopOutflowsThisMonth.restockCents,
+      availableShopCashCents,
     },
     thisMonth: {
       ...thisMonth,
