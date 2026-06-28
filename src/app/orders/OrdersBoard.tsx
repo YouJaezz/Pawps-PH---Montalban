@@ -91,18 +91,14 @@ export function OrdersBoard(props: {
   const stats = useMemo(() => {
     let open = 0;
     let awaitingPayment = 0;
-    let paidTotal = 0;
     for (const o of filtered) {
       const status = normalizeOrderStatus(o.orderStatus);
       if (status !== "Completed" && status !== "Cancelled") open += 1;
       if (o.paymentStatus !== "Paid" && status !== "Cancelled") {
         awaitingPayment += 1;
       }
-      if (status !== "Cancelled") {
-        paidTotal += o.amountPaid;
-      }
     }
-    return { open, awaitingPayment, paidTotal, visibleCount: filtered.length };
+    return { open, awaitingPayment };
   }, [filtered]);
 
   const editingOrder =
@@ -114,7 +110,7 @@ export function OrdersBoard(props: {
         order={editingOrder}
         onClose={() => setEditingOrderId(null)}
       />
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
         <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
           <div className="text-[10px] text-zinc-500">Open orders</div>
           <div className="text-lg font-semibold text-zinc-100">{stats.open}</div>
@@ -123,16 +119,6 @@ export function OrdersBoard(props: {
           <div className="text-[10px] text-zinc-500">Awaiting payment</div>
           <div className="text-lg font-semibold text-amber-200">
             {stats.awaitingPayment}
-          </div>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-          <div className="text-[10px] text-zinc-500">Collected (shown)</div>
-          <div className="text-lg font-semibold text-brand-cyan/70">
-            {formatPhpFromCents(stats.paidTotal)}
-          </div>
-          <div className="text-[9px] text-zinc-600">
-            Sum of paid column · {stats.visibleCount} visible order
-            {stats.visibleCount === 1 ? "" : "s"}
           </div>
         </div>
       </div>
@@ -169,8 +155,11 @@ export function OrdersBoard(props: {
           <option value="Paid">Paid</option>
         </select>
         <span className="text-[10px] text-zinc-600">
-          {filtered.length} / {props.rows.length} shown · last {props.rows.length}{" "}
-          orders loaded
+          {filtered.length} / {props.rows.length} shown ·{" "}
+          <Link href="/reports" className="text-brand-blue underline">
+            Cash &amp; profit report
+          </Link>{" "}
+          for totals
         </span>
       </div>
 

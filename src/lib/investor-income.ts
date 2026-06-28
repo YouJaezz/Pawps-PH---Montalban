@@ -169,6 +169,51 @@ export async function computeMonthlyNetIncomeBatch(months: MonthPeriod[]) {
   return result;
 }
 
+/** Cash collected minus COGS for orders created in [startMs, endMs). */
+export async function computeProfitForDateRange(startMs: number, endMs: number) {
+  const createdMs = orderCreatedMsColumn();
+  const periodOrders = await db
+    .select({
+      id: orders.id,
+      totalAmount: orders.totalAmount,
+      amountPaid: orders.amountPaid,
+    })
+    .from(orders)
+    .where(
+      and(
+        sql`${createdMs} >= ${startMs}`,
+        sql`${createdMs} < ${endMs}`,
+        ne(orders.orderStatus, "Cancelled"),
+      ),
+    );
+
+  const paidOrders = periodOrders.filter((o) => o.amountPaid > 0);
+  if (paidOrders.length === 0) return { ...EMPTY_MONTH };
+
+  const orderIds = paidOrders.map((o) => o.id);
+  const lines = await db
+    .select({
+      orderId: orderItems.orderId,
+      quantity: orderItems.quantity,
+      quantityTenths: orderItems.quantityTenths,
+      saleUnit: orderItems.saleUnit,
+      unitCost: orderItems.unitCost,
+      isExcessSale: orderItems.isExcessSale,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const cogsByOrder = new Map<number, number>();
+  for (const line of lines) {
+    cogsByOrder.set(
+      line.orderId,
+      (cogsByOrder.get(line.orderId) ?? 0) + lineCogs(line),
+    );
+  }
+
+  return metricsForPaidOrders(paidOrders, cogsByOrder);
+}
+
 /** Net income for one month — uses cash collected minus prorated COGS. */
 export async function computeMonthlyNetIncome(year: number, month: number) {
   const batch = await computeMonthlyNetIncomeBatch([{ year, month }]);

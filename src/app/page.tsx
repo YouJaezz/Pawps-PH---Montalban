@@ -162,7 +162,7 @@ export default async function Home() {
             href="/reports"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
           >
-            View Business Insights
+            Cash &amp; profit report
           </Link>
         </div>
 
