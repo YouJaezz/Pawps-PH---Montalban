@@ -59,19 +59,6 @@ export function OrdersBoard(props: {
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
-  const stats = useMemo(() => {
-    let open = 0;
-    let awaitingPayment = 0;
-    let paidTotal = 0;
-    for (const o of props.rows) {
-      const status = normalizeOrderStatus(o.orderStatus);
-      if (status !== "Completed" && status !== "Cancelled") open += 1;
-      if (o.paymentStatus !== "Paid" && status !== "Cancelled") awaitingPayment += 1;
-      paidTotal += o.amountPaid;
-    }
-    return { open, awaitingPayment, paidTotal };
-  }, [props.rows]);
-
   const filtered = useMemo(() => {
     let list = props.rows;
     const q = query.trim().toLowerCase();
@@ -101,6 +88,23 @@ export function OrdersBoard(props: {
     return list;
   }, [props.rows, query, statusFilter, paymentFilter]);
 
+  const stats = useMemo(() => {
+    let open = 0;
+    let awaitingPayment = 0;
+    let paidTotal = 0;
+    for (const o of filtered) {
+      const status = normalizeOrderStatus(o.orderStatus);
+      if (status !== "Completed" && status !== "Cancelled") open += 1;
+      if (o.paymentStatus !== "Paid" && status !== "Cancelled") {
+        awaitingPayment += 1;
+      }
+      if (status !== "Cancelled") {
+        paidTotal += o.amountPaid;
+      }
+    }
+    return { open, awaitingPayment, paidTotal, visibleCount: filtered.length };
+  }, [filtered]);
+
   const editingOrder =
     editingOrderId != null ? props.editableByOrderId[editingOrderId] ?? null : null;
 
@@ -126,6 +130,10 @@ export function OrdersBoard(props: {
           <div className="text-lg font-semibold text-brand-cyan/70">
             {formatPhpFromCents(stats.paidTotal)}
           </div>
+          <div className="text-[9px] text-zinc-600">
+            Sum of paid column · {stats.visibleCount} visible order
+            {stats.visibleCount === 1 ? "" : "s"}
+          </div>
         </div>
       </div>
 
@@ -140,6 +148,7 @@ export function OrdersBoard(props: {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="app-select rounded-md border border-white/10 px-2 py-1.5 text-[10px] outline-none"
+          title="Stats above update with this filter"
         >
           <option value="open">Open only</option>
           <option value="all">All statuses</option>
@@ -160,7 +169,8 @@ export function OrdersBoard(props: {
           <option value="Paid">Paid</option>
         </select>
         <span className="text-[10px] text-zinc-600">
-          {filtered.length} / {props.rows.length}
+          {filtered.length} / {props.rows.length} shown · last {props.rows.length}{" "}
+          orders loaded
         </span>
       </div>
 
