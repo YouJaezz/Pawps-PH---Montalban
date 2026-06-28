@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import Link from "next/link";
+import { useActionState, useMemo, useState } from "react";
 
 import {
   deleteShopCashOutflow,
@@ -8,6 +9,10 @@ import {
   recordShopRestock,
   type ShopCashActionResult,
 } from "@/app/shop-cash/actions";
+import {
+  ProductSelectField,
+  type ProductSelectOption,
+} from "@/components/ProductSelectField";
 import { formatPhpFromCents } from "@/lib/money";
 import {
   expenseCategoryLabel,
@@ -16,6 +21,8 @@ import {
 } from "@/lib/shop-cash";
 import type { ShopCashLedgerRow } from "@/db/queries/shop-cash";
 import { SHOP_EXPENSE_CATEGORIES } from "@/db/schema";
+import type { StockUnit } from "@/db/schema";
+import { stockQtyLabel } from "@/lib/product-stock";
 
 function ActionMessage(props: { result: ShopCashActionResult | null }) {
   if (!props.result) return null;
@@ -184,12 +191,22 @@ function ExpenseForm() {
 }
 
 function RestockForm(props: {
-  products: Array<{ id: number; label: string }>;
+  restockProducts: Array<ProductSelectOption & { stockUnit: StockUnit }>;
   branches: Array<{ id: number; name: string }>;
   suppliers: Array<{ id: number; name: string }>;
 }) {
   const [state, action, pending] = useActionState(recordShopRestock, null);
   const [addStock, setAddStock] = useState(true);
+  const [productId, setProductId] = useState(props.restockProducts[0]?.id ?? 0);
+
+  const selectedProduct = useMemo(
+    () => props.restockProducts.find((p) => p.id === productId) ?? null,
+    [props.restockProducts, productId],
+  );
+
+  const qtyLabel = selectedProduct
+    ? stockQtyLabel(selectedProduct.stockUnit).replace(/^Stock /, "Units ")
+    : "Units to add";
 
   return (
     <form action={action} className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -197,6 +214,16 @@ function RestockForm(props: {
       <p className="mt-1 text-[11px] text-zinc-500">
         When you buy inventory using shop cash, record the payment here. Optionally add
         stock in the same step so inventory stays in sync.
+        {props.restockProducts.length > 0 ? (
+          <>
+            {" "}
+            <span className="text-zinc-400">
+              {props.restockProducts.length} product
+              {props.restockProducts.length === 1 ? "" : "s"} in inventory — search by
+              name, brand, or supplier.
+            </span>
+          </>
+        ) : null}
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-xs text-zinc-400">
@@ -232,52 +259,54 @@ function RestockForm(props: {
           Also add units to inventory now
         </label>
         {addStock ? (
-          <>
-            <label className="block text-xs text-zinc-400 sm:col-span-2">
-              Product
-              <select
-                name="productId"
-                required={addStock}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Select product…
-                </option>
-                {props.products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs text-zinc-400">
-              Branch
-              <select
-                name="branchId"
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                defaultValue={props.branches[0]?.id ?? ""}
-              >
-                {props.branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs text-zinc-400">
-              Units to add
-              <input
-                name="stockQty"
-                type="number"
-                min="1"
-                step="1"
-                required={addStock}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                placeholder="e.g. 24"
-              />
-            </label>
-          </>
+          props.restockProducts.length === 0 ? (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-3 text-xs text-amber-100/90 sm:col-span-2">
+              No inventory products yet.{" "}
+              <Link href="/products" className="underline hover:text-amber-50">
+                Add products in Inventory
+              </Link>{" "}
+              first, or uncheck &quot;Also add units&quot; to record payment only.
+            </div>
+          ) : (
+            <>
+              <div className="sm:col-span-2">
+                <ProductSelectField
+                  label="Product"
+                  products={props.restockProducts}
+                  value={productId}
+                  onChange={setProductId}
+                  placeholder="Search and select product…"
+                />
+                <input type="hidden" name="productId" value={productId || ""} />
+              </div>
+              <label className="block text-xs text-zinc-400">
+                Branch
+                <select
+                  name="branchId"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                  defaultValue={props.branches[0]?.id ?? ""}
+                >
+                  {props.branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-xs text-zinc-400">
+                {qtyLabel}
+                <input
+                  name="stockQty"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required={addStock}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                  placeholder="e.g. 24"
+                />
+              </label>
+            </>
+          )
         ) : (
           <label className="block text-xs text-zinc-400 sm:col-span-2">
             Description
@@ -321,7 +350,7 @@ function RestockForm(props: {
       </div>
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || (addStock && props.restockProducts.length === 0)}
         className="mt-4 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
       >
         {pending ? "Saving…" : "Record restock payment"}
@@ -420,7 +449,7 @@ export function ShopCashPanel(props: {
   thisMonthExpenseCents: number;
   thisMonthRestockCents: number;
   entries: ShopCashLedgerRow[];
-  products: Array<{ id: number; label: string }>;
+  restockProducts: Array<ProductSelectOption & { stockUnit: StockUnit }>;
   branches: Array<{ id: number; name: string }>;
   suppliers: Array<{ id: number; name: string }>;
 }) {
@@ -436,7 +465,7 @@ export function ShopCashPanel(props: {
       <div className="grid gap-6 lg:grid-cols-2">
         <ExpenseForm />
         <RestockForm
-          products={props.products}
+          restockProducts={props.restockProducts}
           branches={props.branches}
           suppliers={props.suppliers}
         />

@@ -119,7 +119,7 @@ export function ProductSelectField(props: {
               className="w-full rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-xs text-zinc-50 outline-none focus:border-white/20"
             />
           </div>
-          <ul className="max-h-56 overflow-y-auto py-1">
+          <ul className="max-h-72 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-center text-[11px] text-zinc-500">
                 No products match your search.

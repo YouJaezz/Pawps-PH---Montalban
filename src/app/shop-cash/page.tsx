@@ -1,26 +1,40 @@
 import Link from "next/link";
+import { eq } from "drizzle-orm";
 
 import { ShopCashPanel } from "@/app/shop-cash/ShopCashPanel";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
+import type { ProductSelectOption } from "@/components/ProductSelectField";
+import { db } from "@/db";
 import { getCashProfitReport } from "@/db/queries/cash-profit-report";
-import { getActiveInventoryProducts } from "@/db/queries/inventory-products";
 import { getShopCashDashboard } from "@/db/queries/shop-cash";
+import { products, suppliers } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getActiveBranches } from "@/lib/branch-stock";
-import { db } from "@/db";
-import { suppliers } from "@/db/schema";
+import type { StockUnit } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopCashPage() {
   await requireAdmin();
 
-  const [dashboard, cashReport, inventoryProducts, branchRows, supplierRows] =
+  const [dashboard, cashReport, productRows, branchRows, supplierRows] =
     await Promise.all([
       getShopCashDashboard(),
       getCashProfitReport(),
-      getActiveInventoryProducts(),
+      db
+        .select({
+          id: products.id,
+          name: products.name,
+          brand: products.brand,
+          variant: products.variant,
+          itemType: products.itemType,
+          stockUnit: products.stockUnit,
+          supplierId: products.supplierId,
+        })
+        .from(products)
+        .where(eq(products.archived, false))
+        .orderBy(products.brand, products.name),
       getActiveBranches(),
       db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).orderBy(suppliers.name),
     ]);
@@ -29,12 +43,26 @@ export default async function ShopCashPage() {
   const allTimeOutflowsCents = dashboard.allTime.totalCents;
   const availableShopCashCents = cashCollectedCents - allTimeOutflowsCents;
 
-  const products = inventoryProducts
-    .map((p) => ({
+  const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
+
+  const restockProducts: Array<
+    ProductSelectOption & { stockUnit: StockUnit }
+  > = productRows.map((p) => {
+    const supplierName = p.supplierId ? supplierById.get(p.supplierId) : null;
+    const metaParts = [
+      supplierName,
+      p.stockUnit !== "Piece" ? p.stockUnit : null,
+    ].filter(Boolean);
+    return {
       id: p.id,
-      label: `${p.name}${p.variant ? ` (${p.variant})` : ""}`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+      name: p.name,
+      brand: p.brand,
+      variant: p.variant,
+      itemType: p.itemType,
+      meta: metaParts.length ? metaParts.join(" · ") : undefined,
+      stockUnit: p.stockUnit as StockUnit,
+    };
+  });
 
   return (
     <AppShell>
@@ -60,7 +88,7 @@ export default async function ShopCashPage() {
             thisMonthExpenseCents={dashboard.thisMonth.expenseCents}
             thisMonthRestockCents={dashboard.thisMonth.restockCents}
             entries={dashboard.entries}
-            products={products}
+            restockProducts={restockProducts}
             branches={branchRows.map((b) => ({ id: b.id, name: b.name }))}
             suppliers={supplierRows}
           />
