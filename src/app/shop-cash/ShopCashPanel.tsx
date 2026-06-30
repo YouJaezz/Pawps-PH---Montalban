@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
 import {
+  deleteInvestorContribution,
   deleteShopCashOutflow,
   recordInvestorContribution,
   recordShopExpense,
@@ -682,6 +683,8 @@ function InvestorContributionForm(props: {
 }
 
 function ContributionsTable(props: { rows: InvestorCapitalContributionRow[] }) {
+  const [, deleteAction, deletePending] = useActionState(deleteInvestorContribution, null);
+
   if (!props.rows.length) {
     return (
       <p className="mt-3 text-xs text-zinc-500">
@@ -699,6 +702,7 @@ function ContributionsTable(props: { rows: InvestorCapitalContributionRow[] }) {
             <th className="px-3 py-2">Date</th>
             <th className="px-3 py-2">Description</th>
             <th className="px-3 py-2 text-right">Amount</th>
+            <th className="px-3 py-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -720,6 +724,27 @@ function ContributionsTable(props: { rows: InvestorCapitalContributionRow[] }) {
               </td>
               <td className="px-3 py-2 text-right font-semibold text-emerald-300/90">
                 +{formatPhpFromCents(row.amountCents)}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <form action={deleteAction}>
+                  <input type="hidden" name="id" value={row.id} />
+                  <button
+                    type="submit"
+                    disabled={deletePending}
+                    onClick={(e) => {
+                      if (
+                        !confirm(
+                          "Remove this investor contribution? The pool balance will update.",
+                        )
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    className="text-[10px] text-zinc-600 underline hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </form>
               </td>
             </tr>
           ))}
@@ -802,8 +827,8 @@ function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
                     −{formatPhpFromCents(e.amountCents)}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    {e.stockQtyAdded == null ? (
-                      <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-col items-end gap-1">
+                      {e.stockQtyAdded == null ? (
                         <button
                           type="button"
                           onClick={() =>
@@ -813,22 +838,35 @@ function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
                         >
                           {editingId === e.id ? "Cancel" : "Edit"}
                         </button>
-                        <form action={deleteAction}>
-                          <input type="hidden" name="id" value={e.id} />
-                          <button
-                            type="submit"
-                            disabled={deletePending}
-                            className="text-[10px] text-zinc-600 underline hover:text-red-300"
-                          >
-                            Remove
-                          </button>
-                        </form>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-zinc-700" title="Stock was added">
-                        —
-                      </span>
-                    )}
+                      ) : null}
+                      <form action={deleteAction}>
+                        <input type="hidden" name="id" value={e.id} />
+                        <button
+                          type="submit"
+                          disabled={deletePending}
+                          onClick={(ev) => {
+                            if (e.stockQtyAdded != null && e.stockQtyAdded > 0) {
+                              const qty =
+                                e.stockQtyDisplay ?? `+${e.stockQtyAdded} units`;
+                              if (
+                                !confirm(
+                                  `Remove this entry and reverse ${qty} from inventory?`,
+                                )
+                              ) {
+                                ev.preventDefault();
+                              }
+                            } else if (
+                              !confirm("Remove this ledger entry? Shop cash will update.")
+                            ) {
+                              ev.preventDefault();
+                            }
+                          }}
+                          className="text-[10px] text-zinc-600 underline hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
                 {editingId === e.id && e.stockQtyAdded == null ? (
@@ -995,8 +1033,8 @@ export function ShopCashPanel(props: {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h2 className="text-sm font-semibold text-zinc-100">Money out ledger</h2>
         <p className="mt-1 text-[11px] text-zinc-500">
-          Recent expenses and restock payments · {props.entries.length} shown · use
-          Edit on payment-only rows to fix description or mark as expense (not inventory)
+          Recent expenses and restock payments · {props.entries.length} shown ·
+          Remove reverses stock when a restock added inventory
         </p>
         <LedgerTable entries={props.entries} />
       </section>

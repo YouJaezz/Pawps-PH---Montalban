@@ -9,6 +9,7 @@ import {
   investorCapitalLedger,
   products,
   shopCashOutflows,
+  supplierPriceChanges,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
 import { adjustBranchStock, getDefaultBranchId } from "@/lib/branch-stock";
@@ -101,6 +102,34 @@ export async function recordInvestorContribution(
   revalidateShopCash();
   revalidatePath("/investors");
   return { ok: true, message: "Investor contribution recorded." };
+}
+
+export async function deleteInvestorContribution(
+  _prev: ShopCashActionResult | null,
+  formData: FormData,
+): Promise<ShopCashActionResult> {
+  await requireAdmin();
+
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isFinite(id) || id <= 0) {
+    return { error: "Invalid entry." };
+  }
+
+  const [row] = await db
+    .select({ id: investorCapitalLedger.id })
+    .from(investorCapitalLedger)
+    .where(eq(investorCapitalLedger.id, id))
+    .limit(1);
+
+  if (!row) {
+    return { error: "Contribution not found." };
+  }
+
+  await db.delete(investorCapitalLedger).where(eq(investorCapitalLedger.id, id));
+
+  revalidateShopCash();
+  revalidatePath("/investors");
+  return { ok: true, message: "Contribution removed." };
 }
 
 export async function recordShopExpense(
@@ -356,7 +385,13 @@ export async function deleteShopCashOutflow(
   }
 
   const [row] = await db
-    .select({ id: shopCashOutflows.id, stockQtyAdded: shopCashOutflows.stockQtyAdded })
+    .select({
+      id: shopCashOutflows.id,
+      stockQtyAdded: shopCashOutflows.stockQtyAdded,
+      productId: shopCashOutflows.productId,
+      branchId: shopCashOutflows.branchId,
+      description: shopCashOutflows.description,
+    })
     .from(shopCashOutflows)
     .where(eq(shopCashOutflows.id, id))
     .limit(1);
@@ -365,16 +400,55 @@ export async function deleteShopCashOutflow(
     return { error: "Entry not found." };
   }
 
-  if (row.stockQtyAdded != null && row.stockQtyAdded > 0) {
-    return {
-      error:
-        "Cannot delete a restock that already added stock. Adjust inventory manually if needed.",
-    };
+  const stockToReverse =
+    row.stockQtyAdded != null && row.stockQtyAdded > 0 ? row.stockQtyAdded : 0;
+
+  if (stockToReverse > 0) {
+    if (!row.productId || !row.branchId) {
+      return {
+        error:
+          "This restock added stock but branch/product links are missing. Adjust inventory manually, then remove.",
+      };
+    }
+
+    const [product] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.id, row.productId), eq(products.archived, false)))
+      .limit(1);
+
+    if (!product) {
+      return { error: "Linked product no longer exists. Adjust inventory manually first." };
+    }
+
+    await adjustBranchStock({
+      branchId: row.branchId,
+      productId: row.productId,
+      delta: -stockToReverse,
+      movementType: "Adjustment",
+      note: `Reversed mistaken restock — ${row.description}`,
+    });
   }
+
+  await db
+    .delete(supplierPriceChanges)
+    .where(eq(supplierPriceChanges.shopCashOutflowId, id));
 
   await db.delete(shopCashOutflows).where(eq(shopCashOutflows.id, id));
 
   revalidateShopCash();
+  revalidatePath("/products");
+  revalidatePath("/branches");
+  revalidatePath("/suppliers");
+
+  if (stockToReverse > 0) {
+    return {
+      ok: true,
+      message:
+        "Entry removed and stock reversed. Unit cost was not auto-reverted — check the product if a price changed.",
+    };
+  }
+
   return { ok: true, message: "Entry removed." };
 }
 
