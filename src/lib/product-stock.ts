@@ -130,3 +130,71 @@ export function stockQtyLabel(
   if (stockUnit === "Pack") return "Stock (packs)";
   return "Stock (pcs)";
 }
+
+export function isWeightStockUnit(stockUnit: StockUnit) {
+  return stockUnit === "Kilogram" || stockUnit === "Sack";
+}
+
+export function defaultRestockEntryMode(
+  stockUnit: StockUnit,
+  opts?: { unitsPerCase?: number | null; itemType?: string | null },
+): "sacks" | "kg" | "cases" | "pcs" {
+  if (isWeightStockUnit(stockUnit)) return "kg";
+  if (
+    stockUnit === "Piece" &&
+    opts?.unitsPerCase != null &&
+    opts.unitsPerCase > 1 &&
+    !isCatLitterItemType(opts.itemType)
+  ) {
+    return "pcs";
+  }
+  return "pcs";
+}
+
+/** Convert restock form input to stored branch-stock units + divisor for unit-cost math. */
+export function parseRestockStockInput(
+  raw: string,
+  stockUnit: StockUnit,
+  opts: {
+    stockEntryMode: "sacks" | "kg" | "cases" | "pcs";
+    kgPerSack?: number | null;
+    unitsPerCase?: number | null;
+  },
+): { rawDelta: number; costDivisor: number } | null {
+  const unitForParse = isWeightStockUnit(stockUnit) ? "Kilogram" : stockUnit;
+  const rawDelta = parseStockQuantityInput(raw, unitForParse, opts);
+  if (rawDelta == null || rawDelta <= 0) return null;
+
+  const costDivisor = isWeightStockUnit(stockUnit)
+    ? displayStockQuantity("Kilogram", rawDelta)
+    : rawDelta;
+
+  return { rawDelta, costDivisor };
+}
+
+export function restockQtyFieldLabel(
+  stockUnit: StockUnit,
+  stockEntryMode: "sacks" | "kg" | "cases" | "pcs",
+  itemType?: string | null,
+) {
+  if (isWeightStockUnit(stockUnit)) {
+    return stockEntryMode === "sacks" ? "Quantity (sacks)" : "Quantity (kg)";
+  }
+  if (stockEntryMode === "cases") return "Quantity (cases)";
+  if (stockUnit === "Pack") return "Quantity (packs)";
+  if (isCatLitterItemType(itemType)) return "Quantity (sacks)";
+  return "Quantity (pcs)";
+}
+
+export function formatRestockQtyDelta(
+  stockUnit: StockUnit,
+  rawDelta: number,
+  opts?: {
+    kgPerSack?: number | null;
+    unitsPerCase?: number | null;
+    itemType?: string | null;
+  },
+): string {
+  const dual = formatDualStock(stockUnit, rawDelta, opts);
+  return dual.secondary !== "—" ? `${dual.primary} · ${dual.secondary}` : dual.primary;
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
 import {
   deleteShopCashOutflow,
@@ -19,7 +19,15 @@ import type { ShopCashLedgerRow } from "@/db/queries/shop-cash";
 import { SHOP_EXPENSE_CATEGORIES } from "@/db/schema";
 import type { StockUnit } from "@/db/schema";
 import { formatPhpFromCents } from "@/lib/money";
-import { stockQtyLabel } from "@/lib/product-stock";
+import {
+  defaultRestockEntryMode,
+  formatRestockQtyDelta,
+  isWeightStockUnit,
+  parseRestockStockInput,
+  restockQtyFieldLabel,
+} from "@/lib/product-stock";
+import { isCatLitterItemType } from "@/lib/catalog-item-types";
+import { displayKgPerSack } from "@/lib/order-line-math";
 import {
   expenseCategoryLabel,
   fundingSourceLabel,
@@ -260,7 +268,15 @@ function ExpenseForm() {
 }
 
 function RestockForm(props: {
-  restockProducts: Array<ProductSelectOption & { stockUnit: StockUnit; costPriceCents: number }>;
+  restockProducts: Array<
+    ProductSelectOption & {
+      stockUnit: StockUnit;
+      costPriceCents: number;
+      kgPerSack: number | null;
+      unitsPerCase: number | null;
+      itemType: string | null;
+    }
+  >;
   branches: Array<{ id: number; name: string }>;
   suppliers: Array<{ id: number; name: string }>;
 }) {
@@ -269,27 +285,78 @@ function RestockForm(props: {
   const [productId, setProductId] = useState(props.restockProducts[0]?.id ?? 0);
   const [amount, setAmount] = useState("");
   const [stockQty, setStockQty] = useState("");
+  const [stockEntryMode, setStockEntryMode] = useState<"sacks" | "kg" | "cases" | "pcs">(
+    "pcs",
+  );
 
   const selectedProduct = useMemo(
     () => props.restockProducts.find((p) => p.id === productId) ?? null,
     [props.restockProducts, productId],
   );
 
+  const isWeight = selectedProduct
+    ? isWeightStockUnit(selectedProduct.stockUnit)
+    : false;
+  const isLitter = selectedProduct
+    ? isCatLitterItemType(selectedProduct.itemType)
+    : false;
+  const showCaseMode =
+    selectedProduct != null &&
+    !isWeight &&
+    !isLitter &&
+    selectedProduct.stockUnit === "Piece" &&
+    (selectedProduct.unitsPerCase ?? 24) > 1;
+
+  const handleProductChange = (id: number) => {
+    setProductId(id);
+    const product = props.restockProducts.find((p) => p.id === id);
+    if (product) {
+      setStockEntryMode(
+        defaultRestockEntryMode(product.stockUnit, {
+          unitsPerCase: product.unitsPerCase,
+          itemType: product.itemType,
+        }),
+      );
+    }
+  };
+
   const qtyLabel = selectedProduct
-    ? stockQtyLabel(selectedProduct.stockUnit).replace(/^Stock /, "Units ")
-    : "Units to add";
+    ? restockQtyFieldLabel(selectedProduct.stockUnit, stockEntryMode, selectedProduct.itemType)
+    : "Quantity";
+
+  const parsedQty = useMemo(() => {
+    if (!selectedProduct || !stockQty.trim()) return null;
+    return parseRestockStockInput(stockQty, selectedProduct.stockUnit, {
+      stockEntryMode,
+      kgPerSack: selectedProduct.kgPerSack,
+      unitsPerCase: selectedProduct.unitsPerCase,
+    });
+  }, [selectedProduct, stockQty, stockEntryMode]);
 
   const amountCents = Math.round(Number.parseFloat(amount || "0") * 100);
-  const qtyNum = Number.parseInt(stockQty, 10);
   const impliedUnitCost =
-    amountCents > 0 && Number.isFinite(qtyNum) && qtyNum > 0
-      ? Math.round(amountCents / qtyNum)
+    parsedQty && amountCents > 0
+      ? Math.round(amountCents / parsedQty.costDivisor)
       : null;
 
   const costChanged =
     impliedUnitCost != null &&
     selectedProduct != null &&
     impliedUnitCost !== selectedProduct.costPriceCents;
+
+  const kgPerSackDisplay = selectedProduct?.kgPerSack
+    ? displayKgPerSack(selectedProduct.kgPerSack)
+    : null;
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    setStockEntryMode(
+      defaultRestockEntryMode(selectedProduct.stockUnit, {
+        unitsPerCase: selectedProduct.unitsPerCase,
+        itemType: selectedProduct.itemType,
+      }),
+    );
+  }, [selectedProduct?.id]);
 
   return (
     <form action={action} className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -350,12 +417,61 @@ function RestockForm(props: {
                   label="Product"
                   products={props.restockProducts}
                   value={productId}
-                  onChange={setProductId}
+                  onChange={handleProductChange}
                   placeholder="Search and select product…"
                 />
                 <input type="hidden" name="productId" value={productId || ""} />
+                <input type="hidden" name="stockEntryMode" value={stockEntryMode} />
+                {selectedProduct?.kgPerSack ? (
+                  <input
+                    type="hidden"
+                    name="kgPerSack"
+                    value={kgPerSackDisplay ?? ""}
+                  />
+                ) : null}
               </div>
-              {selectedProduct && impliedUnitCost != null ? (
+              {selectedProduct ? (
+                <div className="text-[10px] text-zinc-500 sm:col-span-2">
+                  Stock unit:{" "}
+                  <span className="text-zinc-300">{selectedProduct.stockUnit}</span>
+                  {kgPerSackDisplay ? (
+                    <>
+                      {" "}
+                      · {kgPerSackDisplay} kg/sack
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {isWeight ? (
+                <label className="block text-xs text-zinc-400">
+                  Enter quantity as
+                  <select
+                    value={stockEntryMode}
+                    onChange={(e) =>
+                      setStockEntryMode(e.target.value as "sacks" | "kg")
+                    }
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                  >
+                    <option value="kg">Kilograms (kg)</option>
+                    <option value="sacks">Sacks</option>
+                  </select>
+                </label>
+              ) : showCaseMode ? (
+                <label className="block text-xs text-zinc-400">
+                  Enter quantity as
+                  <select
+                    value={stockEntryMode}
+                    onChange={(e) =>
+                      setStockEntryMode(e.target.value as "cases" | "pcs")
+                    }
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                  >
+                    <option value="pcs">Pieces (pcs)</option>
+                    <option value="cases">Cases</option>
+                  </select>
+                </label>
+              ) : null}
+              {selectedProduct && parsedQty ? (
                 <div
                   className={`rounded-lg border px-3 py-2 text-[11px] sm:col-span-2 ${
                     costChanged
@@ -365,15 +481,30 @@ function RestockForm(props: {
                 >
                   Current unit cost: {formatPhpFromCents(selectedProduct.costPriceCents)}
                   {" · "}
-                  From this payment: {formatPhpFromCents(impliedUnitCost)}
+                  Adding:{" "}
+                  {formatRestockQtyDelta(
+                    selectedProduct.stockUnit,
+                    parsedQty.rawDelta,
+                    {
+                      kgPerSack: selectedProduct.kgPerSack,
+                      unitsPerCase: selectedProduct.unitsPerCase,
+                      itemType: selectedProduct.itemType,
+                    },
+                  )}
+                  {impliedUnitCost != null ? (
+                    <>
+                      {" "}
+                      · Unit cost from payment: {formatPhpFromCents(impliedUnitCost)}
+                    </>
+                  ) : null}
                   {costChanged ? (
                     <span className="text-amber-200">
                       {" "}
                       — will update product &amp; supplier on save
                     </span>
-                  ) : (
+                  ) : impliedUnitCost != null ? (
                     <span> — no cost change</span>
-                  )}
+                  ) : null}
                 </div>
               ) : null}
               <label className="block text-xs text-zinc-400">
@@ -394,14 +525,21 @@ function RestockForm(props: {
                 {qtyLabel}
                 <input
                   name="stockQty"
-                  type="number"
-                  min="1"
-                  step="1"
+                  type="text"
+                  inputMode="decimal"
                   required={addStock}
                   value={stockQty}
                   onChange={(e) => setStockQty(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                  placeholder="e.g. 24"
+                  placeholder={
+                    isWeight
+                      ? stockEntryMode === "sacks"
+                        ? "e.g. 2"
+                        : "e.g. 40 or 2.5"
+                      : stockEntryMode === "cases"
+                        ? "e.g. 1"
+                        : "e.g. 24"
+                  }
                 />
               </label>
             </>
@@ -630,7 +768,8 @@ function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
             if (e.vendor) detailParts.push(e.vendor);
             if (e.productLabel) detailParts.push(e.productLabel);
             if (e.branchName) detailParts.push(e.branchName);
-            if (e.stockQtyAdded != null) detailParts.push(`+${e.stockQtyAdded} units`);
+            if (e.stockQtyDisplay) detailParts.push(e.stockQtyDisplay);
+            else if (e.stockQtyAdded != null) detailParts.push(`+${e.stockQtyAdded} units`);
 
             return (
               <tr key={e.id} className="border-t border-white/5">
@@ -697,7 +836,15 @@ export function ShopCashPanel(props: {
     contributions: InvestorCapitalContributionRow[];
   };
   entries: ShopCashLedgerRow[];
-  restockProducts: Array<ProductSelectOption & { stockUnit: StockUnit; costPriceCents: number }>;
+  restockProducts: Array<
+    ProductSelectOption & {
+      stockUnit: StockUnit;
+      costPriceCents: number;
+      kgPerSack: number | null;
+      unitsPerCase: number | null;
+      itemType: string | null;
+    }
+  >;
   branches: Array<{ id: number; name: string }>;
   suppliers: Array<{ id: number; name: string }>;
   investors: Array<{ id: number; fullName: string }>;

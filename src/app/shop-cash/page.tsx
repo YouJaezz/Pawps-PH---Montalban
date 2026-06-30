@@ -34,6 +34,8 @@ export default async function ShopCashPage() {
           stockUnit: products.stockUnit,
           supplierId: products.supplierId,
           costPrice: products.costPrice,
+          kgPerSack: products.kgPerSack,
+          unitsPerCase: products.unitsPerCase,
         })
         .from(products)
         .where(eq(products.archived, false))
@@ -53,7 +55,13 @@ export default async function ShopCashPage() {
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
 
   const restockProducts: Array<
-    ProductSelectOption & { stockUnit: StockUnit; costPriceCents: number }
+    ProductSelectOption & {
+      stockUnit: StockUnit;
+      costPriceCents: number;
+      kgPerSack: number | null;
+      unitsPerCase: number | null;
+      itemType: string | null;
+    }
   > = productRows.map((p) => {
     const supplierName = p.supplierId ? supplierById.get(p.supplierId) : null;
     const metaParts = [
@@ -69,6 +77,8 @@ export default async function ShopCashPage() {
       meta: metaParts.length ? metaParts.join(" · ") : undefined,
       stockUnit: p.stockUnit as StockUnit,
       costPriceCents: p.costPrice,
+      kgPerSack: p.kgPerSack,
+      unitsPerCase: p.unitsPerCase,
     };
   });
 

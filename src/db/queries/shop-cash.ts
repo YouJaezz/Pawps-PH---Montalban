@@ -3,7 +3,8 @@ import { desc, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { branches, products, shopCashOutflows, suppliers } from "@/db/schema";
-import type { ShopFundingSource } from "@/db/schema";
+import type { ShopFundingSource, StockUnit } from "@/db/schema";
+import { formatRestockQtyDelta } from "@/lib/product-stock";
 import { phMonthBounds, phNow } from "@/lib/ph-time";
 
 export type ShopCashLedgerRow = {
@@ -22,6 +23,7 @@ export type ShopCashLedgerRow = {
   supplierId: number | null;
   supplierName: string | null;
   stockQtyAdded: number | null;
+  stockQtyDisplay: string | null;
   paidAt: string;
   notes: string | null;
 };
@@ -101,6 +103,10 @@ export const getShopCashDashboard = cache(async () => {
             id: products.id,
             name: products.name,
             variant: products.variant,
+            stockUnit: products.stockUnit,
+            kgPerSack: products.kgPerSack,
+            unitsPerCase: products.unitsPerCase,
+            itemType: products.itemType,
           })
           .from(products)
           .where(inArray(products.id, productIds))
@@ -125,6 +131,7 @@ export const getShopCashDashboard = cache(async () => {
       `${p.name}${p.variant ? ` (${p.variant})` : ""}`,
     ]),
   );
+  const productMeta = new Map(productRows.map((p) => [p.id, p]));
   const branchName = new Map(branchRows.map((b) => [b.id, b.name]));
   const supplierName = new Map(supplierRows.map((s) => [s.id, s.name]));
 
@@ -144,6 +151,18 @@ export const getShopCashDashboard = cache(async () => {
     supplierId: e.supplierId,
     supplierName: e.supplierId ? (supplierName.get(e.supplierId) ?? null) : null,
     stockQtyAdded: e.stockQtyAdded,
+    stockQtyDisplay:
+      e.stockQtyAdded != null && e.productId
+        ? (() => {
+            const meta = productMeta.get(e.productId);
+            if (!meta) return `+${e.stockQtyAdded} units`;
+            return `+${formatRestockQtyDelta(meta.stockUnit as StockUnit, e.stockQtyAdded, {
+              kgPerSack: meta.kgPerSack,
+              unitsPerCase: meta.unitsPerCase,
+              itemType: meta.itemType,
+            })}`;
+          })()
+        : null,
     paidAt: e.paidAt.toISOString(),
     notes: e.notes,
   }));

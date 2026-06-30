@@ -20,6 +20,13 @@ import {
   normalizeExpenseCategory,
   normalizeFundingSource,
 } from "@/lib/shop-cash";
+import {
+  formatRestockQtyDelta,
+  parseKgPerSackFromInput,
+  parseRestockStockInput,
+  parseStockEntryMode,
+} from "@/lib/product-stock";
+import type { StockUnit } from "@/db/schema";
 import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
 
 export type ShopCashActionResult = {
@@ -171,7 +178,8 @@ export async function recordShopRestock(
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
   const branchIdRaw = Number.parseInt(String(formData.get("branchId") ?? ""), 10);
   const supplierIdRaw = Number.parseInt(String(formData.get("supplierId") ?? ""), 10);
-  const stockQty = Number.parseInt(String(formData.get("stockQty") ?? ""), 10);
+  const stockQtyRaw = String(formData.get("stockQty") ?? "").trim();
+  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
 
   if (amountCents <= 0) {
     return { error: "Enter how much you paid." };
@@ -191,24 +199,52 @@ export async function recordShopRestock(
   let resolvedBranchId: number | null = null;
   let resolvedSupplierId: number | null = null;
   let stockQtyAdded: number | null = null;
+  let restockCostDivisor: number | null = null;
+  let restockQtyLabel: string | null = null;
   let resolvedDescription = description;
 
   if (addStock) {
     if (!Number.isFinite(productId) || productId <= 0) {
       return { error: "Select a product to restock." };
     }
-    if (!Number.isFinite(stockQty) || stockQty <= 0) {
-      return { error: "Enter how many units to add to stock." };
+    if (!stockQtyRaw) {
+      return { error: "Enter how much stock to add." };
     }
 
     const [product] = await db
-      .select({ id: products.id, name: products.name, variant: products.variant })
+      .select({
+        id: products.id,
+        name: products.name,
+        variant: products.variant,
+        stockUnit: products.stockUnit,
+        kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
+        itemType: products.itemType,
+      })
       .from(products)
       .where(and(eq(products.id, productId), eq(products.archived, false)))
       .limit(1);
 
     if (!product) {
       return { error: "Product not found." };
+    }
+
+    const kgPerSack =
+      parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? "")) ??
+      product.kgPerSack;
+
+    const parsed = parseRestockStockInput(
+      stockQtyRaw,
+      product.stockUnit as StockUnit,
+      {
+        stockEntryMode,
+        kgPerSack,
+        unitsPerCase: product.unitsPerCase,
+      },
+    );
+
+    if (!parsed) {
+      return { error: "Enter a valid stock quantity for this product's unit type." };
     }
 
     const branchId =
@@ -222,7 +258,7 @@ export async function recordShopRestock(
     await adjustBranchStock({
       branchId,
       productId,
-      delta: stockQty,
+      delta: parsed.rawDelta,
       movementType: "Restock",
       note: notes?.length
         ? `Restock paid from ${fundingNote} — ${notes}`
@@ -233,7 +269,13 @@ export async function recordShopRestock(
 
     resolvedProductId = productId;
     resolvedBranchId = branchId;
-    stockQtyAdded = stockQty;
+    stockQtyAdded = parsed.rawDelta;
+    restockCostDivisor = parsed.costDivisor;
+    restockQtyLabel = formatRestockQtyDelta(product.stockUnit as StockUnit, parsed.rawDelta, {
+      kgPerSack,
+      unitsPerCase: product.unitsPerCase,
+      itemType: product.itemType,
+    });
     if (!resolvedDescription) {
       resolvedDescription = `Restock — ${product.name}${product.variant ? ` (${product.variant})` : ""}`;
     }
@@ -265,14 +307,21 @@ export async function recordShopRestock(
     .returning({ id: shopCashOutflows.id });
 
   let costMessage: string | null = null;
-  if (addStock && resolvedProductId && stockQtyAdded && inserted?.id) {
+  if (
+    addStock &&
+    resolvedProductId &&
+    stockQtyAdded &&
+    restockCostDivisor &&
+    inserted?.id
+  ) {
     const costResult = await applyRestockUnitCostUpdate({
       productId: resolvedProductId,
       amountCents,
-      stockQty: stockQtyAdded,
+      costDivisor: restockCostDivisor,
       supplierId: resolvedSupplierId,
       outflowId: inserted.id,
       userId: session?.userId ?? null,
+      stockQtyLabel: restockQtyLabel ?? undefined,
     });
     costMessage = costResult.message;
   }

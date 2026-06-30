@@ -22,14 +22,23 @@ export type RestockCostUpdateResult = {
 export async function applyRestockUnitCostUpdate(params: {
   productId: number;
   amountCents: number;
-  stockQty: number;
+  costDivisor: number;
   supplierId: number | null;
   outflowId: number;
   userId: number | null;
+  stockQtyLabel?: string;
 }): Promise<RestockCostUpdateResult> {
-  const { productId, amountCents, stockQty, supplierId, outflowId, userId } = params;
+  const {
+    productId,
+    amountCents,
+    costDivisor,
+    supplierId,
+    outflowId,
+    userId,
+    stockQtyLabel,
+  } = params;
 
-  if (stockQty <= 0 || amountCents <= 0) {
+  if (costDivisor <= 0 || amountCents <= 0) {
     return {
       updated: false,
       oldCostCents: 0,
@@ -63,7 +72,7 @@ export async function applyRestockUnitCostUpdate(params: {
     };
   }
 
-  const newCostCents = Math.round(amountCents / stockQty);
+  const newCostCents = Math.round(amountCents / costDivisor);
   const oldCostCents = product.costPrice;
 
   if (newCostCents === oldCostCents) {
@@ -77,7 +86,8 @@ export async function applyRestockUnitCostUpdate(params: {
   }
 
   const changePct = percentChange(oldCostCents, newCostCents);
-  const reason = `Restock payment #${outflowId} — ${formatPhpFromCents(amountCents)} ÷ ${stockQty} units`;
+  const qtyNote = stockQtyLabel ?? `${costDivisor} units`;
+  const reason = `Restock payment #${outflowId} — ${formatPhpFromCents(amountCents)} ÷ ${qtyNote}`;
 
   await db.insert(priceHistory).values({
     productId,
