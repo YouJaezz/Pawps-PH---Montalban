@@ -1,5 +1,21 @@
-import type { ShopExpenseCategory } from "@/db/schema";
+import type { ShopExpenseCategory, ShopFundingSource } from "@/db/schema";
 import { phDateInputValue } from "@/lib/payroll-payment";
+
+export function fundingSourceLabel(source: ShopFundingSource | string | null | undefined) {
+  switch (source) {
+    case "investor_capital":
+      return "Investor capital";
+    case "shop_cash":
+    default:
+      return "Shop cash (sales)";
+  }
+}
+
+export function normalizeFundingSource(
+  raw: string | null | undefined,
+): ShopFundingSource {
+  return raw === "investor_capital" ? "investor_capital" : "shop_cash";
+}
 
 export function expenseCategoryLabel(category: string | null | undefined) {
   switch (category) {
@@ -13,6 +29,8 @@ export function expenseCategoryLabel(category: string | null | undefined) {
       return "Rent";
     case "supplies":
       return "Shop supplies";
+    case "equipment":
+      return "Equipment & assets";
     case "maintenance":
       return "Maintenance & repairs";
     case "transport":
@@ -39,6 +57,7 @@ export function normalizeExpenseCategory(
     "utilities_internet",
     "rent",
     "supplies",
+    "equipment",
     "maintenance",
     "transport",
     "taxes_fees",

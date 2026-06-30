@@ -8,6 +8,7 @@ import {
   inventoryValuationFromRows,
 } from "@/db/queries/inventory-products";
 import { getShopCashOutflowTotals } from "@/db/queries/shop-cash";
+import { getInvestorCapitalDashboard } from "@/db/queries/investor-capital";
 import {
   computeMonthlyNetIncomeBatch,
   computeProfitForDateRange,
@@ -42,7 +43,7 @@ export const getCashProfitReport = cache(async () => {
   const createdMs = orderCreatedMsColumn();
   const activeOrders = ne(orders.orderStatus, "Cancelled");
 
-  const [cashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch, shopOutflows, shopOutflowsThisMonth] =
+  const [cashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch, shopOutflows, shopOutflowsThisMonth, investorCapital] =
     await Promise.all([
       db
         .select({
@@ -59,11 +60,16 @@ export const getCashProfitReport = cache(async () => {
       computeProfitForDateRange(last7Ms, todayMs + MS_PER_DAY),
       computeProfitForDateRange(last30Ms, todayMs + MS_PER_DAY),
       computeMonthlyNetIncomeBatch([{ year: now.year, month: now.month }]),
-      getShopCashOutflowTotals(),
+      getShopCashOutflowTotals({ fundingSource: "shop_cash" }),
       (() => {
         const { start, end } = phMonthBounds(now.year, now.month);
-        return getShopCashOutflowTotals(start.getTime(), end.getTime());
+        return getShopCashOutflowTotals({
+          monthStartMs: start.getTime(),
+          monthEndMs: end.getTime(),
+          fundingSource: "shop_cash",
+        });
       })(),
+      getInvestorCapitalDashboard(),
     ]);
 
   const inventory = inventoryValuationFromRows(inventoryProducts);
@@ -93,6 +99,9 @@ export const getCashProfitReport = cache(async () => {
       shopExpensesThisMonthCents: shopOutflowsThisMonth.expenseCents,
       shopRestockThisMonthCents: shopOutflowsThisMonth.restockCents,
       availableShopCashCents,
+      investorCapitalBalanceCents: investorCapital.balanceCents,
+      investorCapitalSpentCents: investorCapital.spentCents,
+      investorCapitalContributedCents: investorCapital.contributedCents,
     },
     thisMonth: {
       ...thisMonth,

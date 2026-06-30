@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import { TopProductsTable } from "@/app/reports/TopProductsTable";
 import { AppShell } from "@/components/AppShell";
+import { CostChangeAlertsPanel } from "@/components/CostChangeAlertsPanel";
 import { StatCard } from "@/components/StatCard";
 import { getCashProfitReport } from "@/db/queries/cash-profit-report";
 import { getBusinessInsights } from "@/db/queries/business";
+import { getRecentCostChangeAlerts } from "@/db/queries/price-alerts";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
@@ -40,10 +42,11 @@ function PeriodProfitRow(props: {
 
 export default async function ReportsPage() {
   await requireAdmin();
-  const [report, insights, investor] = await Promise.all([
+  const [report, insights, investor, priceAlerts] = await Promise.all([
     getCashProfitReport(),
     getBusinessInsights(),
     getInvestorSummary(),
+    getRecentCostChangeAlerts(15),
   ]);
 
   const topProductRows = insights.topProductsLast30Days.map((p) => ({
@@ -109,7 +112,13 @@ export default async function ReportsPage() {
               compact
               title="Available shop cash"
               value={formatPhpFromCents(report.cash.availableShopCashCents)}
-              subtitle="Sales cash minus expenses & restock paid"
+              subtitle="Sales cash minus shop-cash outflows only"
+            />
+            <StatCard
+              compact
+              title="Investor capital"
+              value={formatPhpFromCents(report.cash.investorCapitalBalanceCents)}
+              subtitle="Pool for equipment & non-sales expenses"
             />
             <StatCard
               compact
@@ -125,10 +134,14 @@ export default async function ReportsPage() {
             />
           </div>
           <p className="mt-3 text-[10px] text-zinc-600">
-            Available shop cash = cash in hand − all recorded shop outflows (
+            Available shop cash = cash in hand − shop-cash outflows only (
             {formatPhpFromCents(report.cash.shopOutflowsAllTimeCents)} total).
-            This month: {formatPhpFromCents(report.cash.shopOutflowsThisMonthCents)} out
-            ({formatPhpFromCents(report.cash.shopExpensesThisMonthCents)} expenses,{" "}
+            Investor pool: {formatPhpFromCents(report.cash.investorCapitalBalanceCents)}{" "}
+            available ({formatPhpFromCents(report.cash.investorCapitalContributedCents)}{" "}
+            contributed, {formatPhpFromCents(report.cash.investorCapitalSpentCents)} spent).
+            This month shop outflows:{" "}
+            {formatPhpFromCents(report.cash.shopOutflowsThisMonthCents)} (
+            {formatPhpFromCents(report.cash.shopExpensesThisMonthCents)} expenses,{" "}
             {formatPhpFromCents(report.cash.shopRestockThisMonthCents)} restock).{" "}
             <Link href="/shop-cash" className="underline hover:text-zinc-400">
               Record expenses &amp; restock →
@@ -194,6 +207,17 @@ export default async function ReportsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <h2 className="text-sm font-semibold text-zinc-100">Cost price changes</h2>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            Detected from restock payments and supplier pricelist uploads. Updated unit
+            costs flow into COGS on future sales.
+          </p>
+          <div className="mt-4">
+            <CostChangeAlertsPanel alerts={priceAlerts.alerts} />
           </div>
         </section>
 

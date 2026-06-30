@@ -7,8 +7,9 @@ import { PageHeader } from "@/components/PageHeader";
 import type { ProductSelectOption } from "@/components/ProductSelectField";
 import { db } from "@/db";
 import { getCashProfitReport } from "@/db/queries/cash-profit-report";
+import { getInvestorCapitalDashboard } from "@/db/queries/investor-capital";
 import { getShopCashDashboard } from "@/db/queries/shop-cash";
-import { products, suppliers } from "@/db/schema";
+import { investors, products, suppliers } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getActiveBranches } from "@/lib/branch-stock";
 import type { StockUnit } from "@/db/schema";
@@ -18,10 +19,11 @@ export const dynamic = "force-dynamic";
 export default async function ShopCashPage() {
   await requireAdmin();
 
-  const [dashboard, cashReport, productRows, branchRows, supplierRows] =
+  const [dashboard, cashReport, investorCapital, productRows, branchRows, supplierRows, investorRows] =
     await Promise.all([
       getShopCashDashboard(),
       getCashProfitReport(),
+      getInvestorCapitalDashboard(),
       db
         .select({
           id: products.id,
@@ -31,22 +33,27 @@ export default async function ShopCashPage() {
           itemType: products.itemType,
           stockUnit: products.stockUnit,
           supplierId: products.supplierId,
+          costPrice: products.costPrice,
         })
         .from(products)
         .where(eq(products.archived, false))
         .orderBy(products.brand, products.name),
       getActiveBranches(),
       db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).orderBy(suppliers.name),
+      db
+        .select({ id: investors.id, fullName: investors.fullName })
+        .from(investors)
+        .where(eq(investors.active, true))
+        .orderBy(investors.fullName),
     ]);
 
   const cashCollectedCents = cashReport.cash.cashInHandCents;
-  const allTimeOutflowsCents = dashboard.allTime.totalCents;
-  const availableShopCashCents = cashCollectedCents - allTimeOutflowsCents;
+  const availableShopCashCents = cashCollectedCents - dashboard.shopCashAllTime.totalCents;
 
   const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
 
   const restockProducts: Array<
-    ProductSelectOption & { stockUnit: StockUnit }
+    ProductSelectOption & { stockUnit: StockUnit; costPriceCents: number }
   > = productRows.map((p) => {
     const supplierName = p.supplierId ? supplierById.get(p.supplierId) : null;
     const metaParts = [
@@ -61,6 +68,7 @@ export default async function ShopCashPage() {
       itemType: p.itemType,
       meta: metaParts.length ? metaParts.join(" · ") : undefined,
       stockUnit: p.stockUnit as StockUnit,
+      costPriceCents: p.costPrice,
     };
   });
 
@@ -70,7 +78,7 @@ export default async function ShopCashPage() {
         <PageHeader
           eyebrow="Admin"
           title="Shop cash"
-          description="Track money leaving the shop — bills, rent, and inventory restocks paid from on-hand sales cash. Available shop cash updates automatically in Reports."
+          description="Track money leaving the shop — from sales cash or investor capital. Restock payments auto-update unit costs when prices change."
           actions={
             <Link
               href="/reports"
@@ -85,12 +93,14 @@ export default async function ShopCashPage() {
           <ShopCashPanel
             cashCollectedCents={cashCollectedCents}
             availableShopCashCents={availableShopCashCents}
-            thisMonthExpenseCents={dashboard.thisMonth.expenseCents}
-            thisMonthRestockCents={dashboard.thisMonth.restockCents}
+            thisMonthExpenseCents={dashboard.thisMonthShopCash.expenseCents}
+            thisMonthRestockCents={dashboard.thisMonthShopCash.restockCents}
+            investorCapital={investorCapital}
             entries={dashboard.entries}
             restockProducts={restockProducts}
             branches={branchRows.map((b) => ({ id: b.id, name: b.name }))}
             suppliers={supplierRows}
+            investors={investorRows}
           />
         </div>
       </div>

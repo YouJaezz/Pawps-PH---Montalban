@@ -3,12 +3,15 @@ import { AppShell } from "@/components/AppShell";
 import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
 import { getInventoryAtAGlance, getStockAlerts } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
+import { getInvestorCapitalDashboard } from "@/db/queries/investor-capital";
+import { getRecentCostChangeAlerts } from "@/db/queries/price-alerts";
 import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
 import { formatStockLabel } from "@/lib/product-stock";
 import type { StockUnit } from "@/db/schema";
 import { StockAlertsTable } from "@/components/StockAlertsTable";
+import { CostChangeAlertsPanel } from "@/components/CostChangeAlertsPanel";
 import Link from "next/link";
 
 function formatDateShort(d: Date) {
@@ -22,11 +25,14 @@ function formatDateShort(d: Date) {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [glance, insights, investor, stockAlerts] = await Promise.all([
+  const [glance, insights, investor, stockAlerts, investorCapital, priceAlerts] =
+    await Promise.all([
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),
     getBusinessInsights(),
     getInvestorSummary(),
     getStockAlerts(),
+    getInvestorCapitalDashboard(),
+    getRecentCostChangeAlerts(8),
   ]);
 
   const expiringRows = glance.expiringSoon.map((p) => ({
@@ -127,6 +133,15 @@ export default async function Home() {
               }
             />
           )}
+          <StatCard
+            title="Investor capital"
+            value={formatPhpFromCents(investorCapital.balanceCents)}
+            subtitle={
+              <Link href="/shop-cash" className="text-zinc-400 underline">
+                Pool for non-sales expenses →
+              </Link>
+            }
+          />
         </div>
 
         {investor?.hasSetup ? (
@@ -164,7 +179,29 @@ export default async function Home() {
           >
             Cash &amp; profit report
           </Link>
+          <Link
+            href="/shop-cash"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
+          >
+            Shop cash
+          </Link>
         </div>
+
+        {priceAlerts.alerts.length > 0 ? (
+          <section className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <div className="text-sm text-amber-100/90">Recent cost changes</div>
+                <div className="mt-1 text-xs text-zinc-400">
+                  From restock payments and supplier updates — affects COGS on future sales.
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <CostChangeAlertsPanel alerts={priceAlerts.alerts} compact />
+            </div>
+          </section>
+        ) : null}
 
         {stockAlerts.all.length > 0 ? (
           <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">

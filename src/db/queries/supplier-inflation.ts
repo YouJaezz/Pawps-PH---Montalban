@@ -32,6 +32,7 @@ export type PriceChangeRow = {
   changePercent: number | null;
   recordedAt: Date;
   fileName: string | null;
+  changeSource: string;
 };
 
 function roundPercent(value: number | null) {
@@ -66,6 +67,7 @@ export async function getSupplierInflationInsights() {
       previousUnitCost: supplierPriceChanges.previousUnitCost,
       newUnitCost: supplierPriceChanges.newUnitCost,
       changePercent: supplierPriceChanges.changePercent,
+      changeSource: supplierPriceChanges.changeSource,
       newDocumentId: supplierPriceChanges.newDocumentId,
       recordedAt: supplierPriceChanges.recordedAt,
     })
@@ -119,7 +121,13 @@ export async function getSupplierInflationInsights() {
     newUnitCost: c.newUnitCost,
     changePercent: c.changePercent,
     recordedAt: c.recordedAt,
-    fileName: docById.get(c.newDocumentId) ?? null,
+    fileName:
+      c.changeSource === "restock"
+        ? "Restock payment"
+        : c.newDocumentId != null
+          ? (docById.get(c.newDocumentId) ?? null)
+          : null,
+    changeSource: c.changeSource ?? "catalog_upload",
   }));
 
   const topIncreases = [...latestChanges]

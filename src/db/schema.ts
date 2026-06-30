@@ -388,7 +388,14 @@ export const supplierPriceHistory = sqliteTable("supplier_price_history", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-/** Price deltas detected when a supplier uploads a new list. */
+export const SUPPLIER_PRICE_CHANGE_SOURCES = [
+  "catalog_upload",
+  "restock",
+] as const;
+export type SupplierPriceChangeSource =
+  (typeof SUPPLIER_PRICE_CHANGE_SOURCES)[number];
+
+/** Price deltas detected when a supplier uploads a new list or restock payment. */
 export const supplierPriceChanges = sqliteTable("supplier_price_changes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   supplierId: integer("supplier_id").notNull(),
@@ -400,7 +407,11 @@ export const supplierPriceChanges = sqliteTable("supplier_price_changes", {
   newUnitCost: integer("new_unit_cost"),
   changePercent: integer("change_percent"),
   previousDocumentId: integer("previous_document_id"),
-  newDocumentId: integer("new_document_id").notNull(),
+  newDocumentId: integer("new_document_id"),
+  changeSource: text("change_source", { enum: SUPPLIER_PRICE_CHANGE_SOURCES })
+    .notNull()
+    .default("catalog_upload"),
+  shopCashOutflowId: integer("shop_cash_outflow_id"),
   recordedAt: integer("recorded_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -553,12 +564,16 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
 export const SHOP_CASH_OUTFLOW_KINDS = ["expense", "restock"] as const;
 export type ShopCashOutflowKind = (typeof SHOP_CASH_OUTFLOW_KINDS)[number];
 
+export const SHOP_FUNDING_SOURCES = ["shop_cash", "investor_capital"] as const;
+export type ShopFundingSource = (typeof SHOP_FUNDING_SOURCES)[number];
+
 export const SHOP_EXPENSE_CATEGORIES = [
   "utilities_electric",
   "utilities_water",
   "utilities_internet",
   "rent",
   "supplies",
+  "equipment",
   "maintenance",
   "transport",
   "taxes_fees",
@@ -566,10 +581,27 @@ export const SHOP_EXPENSE_CATEGORIES = [
 ] as const;
 export type ShopExpenseCategory = (typeof SHOP_EXPENSE_CATEGORIES)[number];
 
+/** Investor money added to the business pool (separate from sales cash). */
+export const investorCapitalLedger = sqliteTable("investor_capital_ledger", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  amountCents: integer("amount_cents").notNull(),
+  description: text("description").notNull(),
+  contributedAt: integer("contributed_at", { mode: "timestamp" }).notNull(),
+  investorId: integer("investor_id"),
+  notes: text("notes"),
+  recordedByUserId: integer("recorded_by_user_id"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 /** Shop money spent — operating expenses and inventory restock payments. */
 export const shopCashOutflows = sqliteTable("shop_cash_outflows", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   kind: text("kind", { enum: SHOP_CASH_OUTFLOW_KINDS }).notNull(),
+  fundingSource: text("funding_source", { enum: SHOP_FUNDING_SOURCES })
+    .notNull()
+    .default("shop_cash"),
   expenseCategory: text("expense_category", { enum: SHOP_EXPENSE_CATEGORIES }),
   amountCents: integer("amount_cents").notNull(),
   description: text("description").notNull(),

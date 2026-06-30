@@ -3,11 +3,13 @@ import { desc, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { branches, products, shopCashOutflows, suppliers } from "@/db/schema";
+import type { ShopFundingSource } from "@/db/schema";
 import { phMonthBounds, phNow } from "@/lib/ph-time";
 
 export type ShopCashLedgerRow = {
   id: number;
   kind: "expense" | "restock";
+  fundingSource: ShopFundingSource;
   expenseCategory: string | null;
   amountCents: number;
   description: string;
@@ -24,11 +26,26 @@ export type ShopCashLedgerRow = {
   notes: string | null;
 };
 
-export async function getShopCashOutflowTotals(monthStartMs?: number, monthEndMs?: number) {
-  const monthFilter =
-    monthStartMs != null && monthEndMs != null
-      ? sql`${shopCashOutflows.paidAt} >= ${new Date(monthStartMs)} AND ${shopCashOutflows.paidAt} < ${new Date(monthEndMs)}`
-      : sql`1=1`;
+type OutflowTotalsOptions = {
+  monthStartMs?: number;
+  monthEndMs?: number;
+  fundingSource?: ShopFundingSource | "all";
+};
+
+export async function getShopCashOutflowTotals(options: OutflowTotalsOptions = {}) {
+  const { monthStartMs, monthEndMs, fundingSource = "all" } = options;
+
+  const filters = [sql`1=1`];
+  if (monthStartMs != null && monthEndMs != null) {
+    filters.push(
+      sql`${shopCashOutflows.paidAt} >= ${new Date(monthStartMs)} AND ${shopCashOutflows.paidAt} < ${new Date(monthEndMs)}`,
+    );
+  }
+  if (fundingSource !== "all") {
+    filters.push(sql`${shopCashOutflows.fundingSource} = ${fundingSource}`);
+  }
+
+  const whereClause = sql.join(filters, sql` AND `);
 
   const [row] = await db
     .select({
@@ -38,7 +55,7 @@ export async function getShopCashOutflowTotals(monthStartMs?: number, monthEndMs
       entryCount: sql<number>`count(*)`,
     })
     .from(shopCashOutflows)
-    .where(monthFilter);
+    .where(whereClause);
 
   return {
     totalCents: Number(row?.totalCents ?? 0),
@@ -54,15 +71,18 @@ export const getShopCashDashboard = cache(async () => {
   const monthStartMs = monthStart.getTime();
   const monthEndMs = monthEnd.getTime();
 
-  const [allTime, thisMonth, rawEntries] = await Promise.all([
-    getShopCashOutflowTotals(),
-    getShopCashOutflowTotals(monthStartMs, monthEndMs),
-    db
-      .select()
-      .from(shopCashOutflows)
-      .orderBy(desc(shopCashOutflows.paidAt), desc(shopCashOutflows.id))
-      .limit(80),
-  ]);
+  const [allTime, shopCashAllTime, thisMonth, thisMonthShopCash, rawEntries] =
+    await Promise.all([
+      getShopCashOutflowTotals(),
+      getShopCashOutflowTotals({ fundingSource: "shop_cash" }),
+      getShopCashOutflowTotals({ monthStartMs, monthEndMs }),
+      getShopCashOutflowTotals({ monthStartMs, monthEndMs, fundingSource: "shop_cash" }),
+      db
+        .select()
+        .from(shopCashOutflows)
+        .orderBy(desc(shopCashOutflows.paidAt), desc(shopCashOutflows.id))
+        .limit(80),
+    ]);
 
   const productIds = [
     ...new Set(rawEntries.map((e) => e.productId).filter((id): id is number => id != null)),
@@ -111,6 +131,7 @@ export const getShopCashDashboard = cache(async () => {
   const entries: ShopCashLedgerRow[] = rawEntries.map((e) => ({
     id: e.id,
     kind: e.kind as "expense" | "restock",
+    fundingSource: (e.fundingSource ?? "shop_cash") as ShopFundingSource,
     expenseCategory: e.expenseCategory,
     amountCents: e.amountCents,
     description: e.description,
@@ -127,5 +148,11 @@ export const getShopCashDashboard = cache(async () => {
     notes: e.notes,
   }));
 
-  return { allTime, thisMonth, entries };
+  return {
+    allTime,
+    shopCashAllTime,
+    thisMonth,
+    thisMonthShopCash,
+    entries,
+  };
 });
