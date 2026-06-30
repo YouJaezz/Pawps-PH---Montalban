@@ -47,6 +47,7 @@ export function MobileNav(props: { admin: boolean }) {
     { href: "/orders", label: "Sales" },
     { href: "/products", label: "Stock" },
     { href: "/payroll", label: "Payroll" },
+    { href: "/investor-funds", label: "Funds" },
     { href: "/team-chat", label: "Chat", badge: unread },
   ];
 

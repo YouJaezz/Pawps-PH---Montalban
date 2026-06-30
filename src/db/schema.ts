@@ -41,6 +41,22 @@ export const products = sqliteTable("products", {
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
 });
 
+export const PRICE_HISTORY_KINDS = ["retail", "bulk", "cost"] as const;
+export type PriceHistoryKind = (typeof PRICE_HISTORY_KINDS)[number];
+
+export const priceHistory = sqliteTable("price_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("product_id").notNull(),
+  priceKind: text("price_kind", { enum: PRICE_HISTORY_KINDS }).notNull(),
+  oldPrice: integer("old_price").notNull(),
+  newPrice: integer("new_price").notNull(),
+  changedByUserId: integer("changed_by_user_id"),
+  changedAt: integer("changed_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  reason: text("reason"),
+});
+
 export const customers = sqliteTable("customers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -440,6 +456,22 @@ export const investorPayouts = sqliteTable("investor_payouts", {
     .default("Accrued"),
   paidAt: integer("paid_at", { mode: "timestamp" }),
   notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+export const INVESTOR_FUND_TYPES = ["contribution", "leftover", "return"] as const;
+export type InvestorFundType = (typeof INVESTOR_FUND_TYPES)[number];
+
+export const investorFunds = sqliteTable("investor_funds", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  investorName: text("investor_name").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  type: text("type", { enum: INVESTOR_FUND_TYPES }).notNull(),
+  date: integer("date", { mode: "timestamp" }).notNull(),
+  notes: text("notes"),
+  recordedByUserId: integer("recorded_by_user_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

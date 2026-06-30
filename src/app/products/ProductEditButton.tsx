@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { updateProduct, transferBranchStock } from "@/app/products/actions";
 import { ItemTypePicker } from "@/components/ItemTypePicker";
@@ -28,7 +28,17 @@ export type ProductEditRow = {
   branchStock: ProductBranchStock[];
 };
 
-type EditTab = "details" | "transfer";
+type EditTab = "details" | "transfer" | "price-history";
+
+type PriceHistoryRow = {
+  id: number;
+  priceKind: "retail" | "bulk" | "cost" | string;
+  oldPrice: number;
+  newPrice: number;
+  changedByUserId: number | null;
+  changedAt: string | null;
+  reason: string | null;
+};
 
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-sm text-zinc-50 outline-none focus:border-white/20";
@@ -100,6 +110,8 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<EditTab>("details");
   const [pending, startTransition] = useTransition();
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[] | null>(null);
+  const [priceHistoryError, setPriceHistoryError] = useState<string | null>(null);
   const [branchStock, setBranchStock] = useState<ProductBranchStock[]>(
     props.product.branchStock,
   );
@@ -184,6 +196,10 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
         ? "Quantity (cases)"
         : "Quantity (pcs)";
   const canTransfer = branchStock.length > 1;
+  const showPriceHistory = useMemo(
+    () => open && tab === "price-history",
+    [open, tab],
+  );
 
   function refreshBranchStockInputs(
     rows: ProductBranchStock[],
@@ -247,8 +263,38 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
     setTransferNote("");
     setTransferMessage(null);
     setTab("details");
+    setPriceHistory(null);
+    setPriceHistoryError(null);
     setOpen(true);
   }
+
+  useEffect(() => {
+    if (!showPriceHistory) return;
+    let cancelled = false;
+    setPriceHistoryError(null);
+
+    fetch(`/api/products/${p.id}/price-history`)
+      .then(async (res) => {
+        const json = (await res.json()) as { rows?: PriceHistoryRow[]; error?: string };
+        if (!res.ok) throw new Error(json.error || "Failed to load price history.");
+        return json.rows ?? [];
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        setPriceHistory(rows);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPriceHistory([]);
+        setPriceHistoryError(
+          err instanceof Error ? err.message : "Failed to load price history.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showPriceHistory, p.id]);
 
   return (
     <>
@@ -302,6 +348,17 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 }`}
               >
                 Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("price-history")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  tab === "price-history"
+                    ? "bg-white/10 text-zinc-50"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Price history
               </button>
               <button
                 type="button"
@@ -535,6 +592,15 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   </label>
                 </div>
 
+                <label className="block space-y-1">
+                  <span className="text-xs text-zinc-400">Price change reason (optional)</span>
+                  <input
+                    name="priceChangeReason"
+                    placeholder="e.g. supplier cost increase"
+                    className={inputClass}
+                  />
+                </label>
+
                 <p className="text-[10px] text-zinc-600">
                   Purchase cost and supplier link stay as-is — change those from
                   the supplier catalog if needed.
@@ -557,6 +623,75 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                   </button>
                 </div>
               </form>
+            ) : tab === "price-history" ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-medium text-zinc-200">Price changes</div>
+                  <p className="mt-1 text-[10px] text-zinc-500">
+                    Shows non-destructive changes recorded when you save a product price.
+                    Existing orders keep their original `unit_price` on the invoice.
+                  </p>
+                </div>
+
+                {priceHistoryError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                    {priceHistoryError}
+                  </div>
+                ) : null}
+
+                {priceHistory == null ? (
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
+                    Loading price history…
+                  </div>
+                ) : priceHistory.length === 0 ? (
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
+                    No price changes recorded yet.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-white/10">
+                    <table className="w-full min-w-[420px] text-xs">
+                      <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
+                        <tr>
+                          <th className="px-3 py-2">When</th>
+                          <th className="px-3 py-2">Kind</th>
+                          <th className="px-3 py-2 text-right">Old</th>
+                          <th className="px-3 py-2 text-right">New</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {priceHistory.map((row) => {
+                          const whenLabel = row.changedAt
+                            ? new Date(row.changedAt).toLocaleString("en-PH", {
+                                timeZone: "Asia/Manila",
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "—";
+                          return (
+                            <tr key={row.id} className="border-t border-white/5">
+                              <td className="px-3 py-2.5 text-zinc-400">{whenLabel}</td>
+                              <td className="px-3 py-2.5 text-zinc-300">
+                                {row.priceKind === "bulk"
+                                  ? "Wholesale"
+                                  : row.priceKind === "retail"
+                                    ? "Retail"
+                                    : row.priceKind}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-zinc-400">
+                                {formatPhpFromCents(row.oldPrice)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-medium text-zinc-100">
+                                {formatPhpFromCents(row.newPrice)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="mt-4 space-y-3">
                 {branchStock.length > 0 ? (

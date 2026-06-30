@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
   products,
+  priceHistory,
   supplierCatalogItems,
   STOCK_UNITS,
   type StockUnit,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/branch-stock";
 import { catalogItemKey } from "@/lib/supplier-item-key";
 import { and, eq } from "drizzle-orm";
+import { getSession } from "@/lib/session";
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const str = typeof value === "string" ? value.trim() : "";
@@ -373,6 +375,7 @@ export async function restockProduct(formData: FormData) {
 
 export async function updateProduct(formData: FormData) {
   await requireAuth();
+  const session = await getSession();
 
   const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
   if (!Number.isFinite(productId) || productId <= 0) {
@@ -400,6 +403,7 @@ export async function updateProduct(formData: FormData) {
 
   const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
   const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
+  const priceChangeReason = String(formData.get("priceChangeReason") ?? "").trim() || null;
 
   if (retailPrice <= 0) throw new Error("Retail sell price is required.");
 
@@ -408,6 +412,8 @@ export async function updateProduct(formData: FormData) {
       id: products.id,
       stockUnit: products.stockUnit,
       unitsPerCase: products.unitsPerCase,
+      retailPrice: products.retailPrice,
+      bulkPrice: products.bulkPrice,
     })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.archived, false)))
@@ -419,6 +425,31 @@ export async function updateProduct(formData: FormData) {
     stockUnit === "Sack" ? ("Kilogram" as const) : stockUnit;
   const unitForParse =
     resolvedStockUnit === "Kilogram" ? "Kilogram" : resolvedStockUnit;
+
+  const historyRows: Array<typeof priceHistory.$inferInsert> = [];
+  if (existing.retailPrice !== retailPrice) {
+    historyRows.push({
+      productId,
+      priceKind: "retail",
+      oldPrice: existing.retailPrice,
+      newPrice: retailPrice,
+      changedByUserId: session?.userId ?? null,
+      reason: priceChangeReason,
+    });
+  }
+  if (existing.bulkPrice !== bulkPrice) {
+    historyRows.push({
+      productId,
+      priceKind: "bulk",
+      oldPrice: existing.bulkPrice,
+      newPrice: bulkPrice,
+      changedByUserId: session?.userId ?? null,
+      reason: priceChangeReason,
+    });
+  }
+  if (historyRows.length) {
+    await db.insert(priceHistory).values(historyRows);
+  }
 
   await db
     .update(products)
