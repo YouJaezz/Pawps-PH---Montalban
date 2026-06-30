@@ -377,3 +377,70 @@ export async function deleteShopCashOutflow(
   revalidateShopCash();
   return { ok: true, message: "Entry removed." };
 }
+
+export async function updateShopCashOutflow(
+  _prev: ShopCashActionResult | null,
+  formData: FormData,
+): Promise<ShopCashActionResult> {
+  await requireAdmin();
+
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isFinite(id) || id <= 0) {
+    return { error: "Invalid entry." };
+  }
+
+  const description = String(formData.get("description") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  const recordAs = String(formData.get("recordAs") ?? "restock").trim();
+  const expenseCategory = normalizeExpenseCategory(
+    String(formData.get("expenseCategory") ?? ""),
+  );
+
+  if (!description) {
+    return { error: "Description is required." };
+  }
+
+  const [row] = await db
+    .select({
+      id: shopCashOutflows.id,
+      stockQtyAdded: shopCashOutflows.stockQtyAdded,
+    })
+    .from(shopCashOutflows)
+    .where(eq(shopCashOutflows.id, id))
+    .limit(1);
+
+  if (!row) {
+    return { error: "Entry not found." };
+  }
+
+  if (row.stockQtyAdded != null && row.stockQtyAdded > 0) {
+    return {
+      error:
+        "Cannot edit a restock that already added stock. Adjust inventory manually if needed.",
+    };
+  }
+
+  const asExpense = recordAs === "expense";
+
+  await db
+    .update(shopCashOutflows)
+    .set({
+      kind: asExpense ? "expense" : "restock",
+      description,
+      notes,
+      expenseCategory: asExpense ? expenseCategory : null,
+      productId: null,
+      branchId: null,
+      supplierId: null,
+      stockQtyAdded: null,
+    })
+    .where(eq(shopCashOutflows.id, id));
+
+  revalidateShopCash();
+  return {
+    ok: true,
+    message: asExpense
+      ? "Updated — now recorded as an operating expense (not inventory)."
+      : "Entry updated.",
+  };
+}

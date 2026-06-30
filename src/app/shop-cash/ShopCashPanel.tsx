@@ -8,6 +8,7 @@ import {
   recordInvestorContribution,
   recordShopExpense,
   recordShopRestock,
+  updateShopCashOutflow,
   type ShopCashActionResult,
 } from "@/app/shop-cash/actions";
 import {
@@ -730,6 +731,8 @@ function ContributionsTable(props: { rows: InvestorCapitalContributionRow[] }) {
 
 function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
   const [, deleteAction, deletePending] = useActionState(deleteShopCashOutflow, null);
+  const [editState, editAction, editPending] = useActionState(updateShopCashOutflow, null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   if (!props.entries.length) {
     return (
@@ -772,50 +775,150 @@ function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
             else if (e.stockQtyAdded != null) detailParts.push(`+${e.stockQtyAdded} units`);
 
             return (
-              <tr key={e.id} className="border-t border-white/5">
-                <td className="px-3 py-2.5 text-zinc-400">{dateLabel}</td>
-                <td className="px-3 py-2.5">
-                  <span
-                    className={
-                      e.fundingSource === "investor_capital"
-                        ? "text-emerald-300/90"
-                        : "text-zinc-400"
-                    }
-                  >
-                    {fundingSourceLabel(e.fundingSource)}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-zinc-300">{outflowKindLabel(e.kind)}</td>
-                <td className="px-3 py-2.5">
-                  <div className="font-medium text-zinc-200">{e.description}</div>
-                  {detailParts.length ? (
-                    <div className="mt-0.5 text-[10px] text-zinc-600">
-                      {detailParts.join(" · ")}
-                    </div>
-                  ) : null}
-                </td>
-                <td className="px-3 py-2.5 text-right font-semibold text-red-300/90">
-                  −{formatPhpFromCents(e.amountCents)}
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  {e.stockQtyAdded == null ? (
-                    <form action={deleteAction}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <button
-                        type="submit"
-                        disabled={deletePending}
-                        className="text-[10px] text-zinc-600 underline hover:text-red-300"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  ) : (
-                    <span className="text-[10px] text-zinc-700" title="Stock was added">
-                      —
+              <>
+                <tr key={e.id} className="border-t border-white/5">
+                  <td className="px-3 py-2.5 text-zinc-400">{dateLabel}</td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={
+                        e.fundingSource === "investor_capital"
+                          ? "text-emerald-300/90"
+                          : "text-zinc-400"
+                      }
+                    >
+                      {fundingSourceLabel(e.fundingSource)}
                     </span>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                  <td className="px-3 py-2.5 text-zinc-300">{outflowKindLabel(e.kind)}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="font-medium text-zinc-200">{e.description}</div>
+                    {detailParts.length ? (
+                      <div className="mt-0.5 text-[10px] text-zinc-600">
+                        {detailParts.join(" · ")}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-red-300/90">
+                    −{formatPhpFromCents(e.amountCents)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    {e.stockQtyAdded == null ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingId((cur) => (cur === e.id ? null : e.id))
+                          }
+                          className="text-[10px] text-zinc-500 underline hover:text-zinc-300"
+                        >
+                          {editingId === e.id ? "Cancel" : "Edit"}
+                        </button>
+                        <form action={deleteAction}>
+                          <input type="hidden" name="id" value={e.id} />
+                          <button
+                            type="submit"
+                            disabled={deletePending}
+                            className="text-[10px] text-zinc-600 underline hover:text-red-300"
+                          >
+                            Remove
+                          </button>
+                        </form>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-zinc-700" title="Stock was added">
+                        —
+                      </span>
+                    )}
+                  </td>
+                </tr>
+                {editingId === e.id && e.stockQtyAdded == null ? (
+                  <tr key={`${e.id}-edit`} className="border-t border-white/5 bg-black/20">
+                    <td colSpan={6} className="px-3 py-3">
+                      <form action={editAction} className="space-y-3">
+                        <input type="hidden" name="id" value={e.id} />
+                        <div className="text-[11px] font-medium text-zinc-300">
+                          Fix this entry
+                        </div>
+                        <p className="text-[10px] text-zinc-500">
+                          Change the description or reclassify as an operating expense if
+                          this was not an inventory restock.
+                        </p>
+                        <label className="block text-xs text-zinc-400">
+                          Description
+                          <input
+                            name="description"
+                            required
+                            defaultValue={e.description}
+                            className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                          />
+                        </label>
+                        <fieldset className="text-xs text-zinc-400">
+                          <legend className="mb-1.5">Record as</legend>
+                          <div className="flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2 text-zinc-300">
+                              <input
+                                type="radio"
+                                name="recordAs"
+                                value="restock"
+                                defaultChecked={e.kind === "restock"}
+                              />
+                              Restock payment (no stock added)
+                            </label>
+                            <label className="flex items-center gap-2 text-zinc-300">
+                              <input
+                                type="radio"
+                                name="recordAs"
+                                value="expense"
+                                defaultChecked={e.kind === "expense"}
+                              />
+                              Operating expense (not inventory)
+                            </label>
+                          </div>
+                        </fieldset>
+                        <label className="block text-xs text-zinc-400">
+                          Expense category (if operating expense)
+                          <select
+                            name="expenseCategory"
+                            className="mt-1 w-full max-w-xs rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                            defaultValue={e.expenseCategory ?? "supplies"}
+                          >
+                            {SHOP_EXPENSE_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>
+                                {expenseCategoryLabel(c)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block text-xs text-zinc-400">
+                          Notes (optional)
+                          <input
+                            name="notes"
+                            defaultValue={e.notes ?? ""}
+                            className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                          />
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="submit"
+                            disabled={editPending}
+                            className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-blue/90 disabled:opacity-50"
+                          >
+                            {editPending ? "Saving…" : "Save changes"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="text-xs text-zinc-500 underline hover:text-zinc-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <ActionMessage result={editState} />
+                      </form>
+                    </td>
+                  </tr>
+                ) : null}
+              </>
             );
           })}
         </tbody>
@@ -892,7 +995,8 @@ export function ShopCashPanel(props: {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h2 className="text-sm font-semibold text-zinc-100">Money out ledger</h2>
         <p className="mt-1 text-[11px] text-zinc-500">
-          Recent expenses and restock payments · {props.entries.length} shown
+          Recent expenses and restock payments · {props.entries.length} shown · use
+          Edit on payment-only rows to fix description or mark as expense (not inventory)
         </p>
         <LedgerTable entries={props.entries} />
       </section>
