@@ -3,7 +3,6 @@ import { AppShell } from "@/components/AppShell";
 import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
 import { getInventoryAtAGlance, getStockAlerts } from "@/db/queries/inventory";
 import { getBusinessInsights } from "@/db/queries/business";
-import { getInvestorFundsDashboard } from "@/db/queries/investor-funds";
 import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
 import { rowSearchText } from "@/lib/table-filter";
@@ -23,11 +22,10 @@ function formatDateShort(d: Date) {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [glance, insights, investor, investorFunds, stockAlerts] = await Promise.all([
+  const [glance, insights, investor, stockAlerts] = await Promise.all([
     getInventoryAtAGlance({ daysUntilExpiry: 30 }),
     getBusinessInsights(),
     getInvestorSummary(),
-    getInvestorFundsDashboard(),
     getStockAlerts(),
   ]);
 
@@ -108,17 +106,7 @@ export default async function Home() {
               value={formatPhpFromCents(investor.currentShareCents)}
               subtitle={`${investor.investorName} · ${investor.currentMonthLabel} (projected)`}
             />
-          ) : null}
-          <StatCard
-            title="Investor funds balance"
-            value={formatPhpFromCents(investorFunds.allTime.balanceCents)}
-            subtitle={
-              <Link href="/investor-funds" className="text-zinc-400 underline">
-                View ledger →
-              </Link>
-            }
-          />
-          {investor && !investor.hasSetup ? (
+          ) : investor ? (
             <StatCard
               title="Investor share"
               value="Setup needed"
@@ -128,7 +116,7 @@ export default async function Home() {
                 </Link>
               }
             />
-          ) : !investor ? (
+          ) : (
             <StatCard
               title="Investor share"
               value="—"
@@ -138,7 +126,7 @@ export default async function Home() {
                 </Link>
               }
             />
-          ) : null}
+          )}
         </div>
 
         {investor?.hasSetup ? (

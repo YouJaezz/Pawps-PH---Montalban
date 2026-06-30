@@ -253,6 +253,13 @@
       "when": 1782100000000,
       "tag": "0036_investor_funds",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0037_drop_investor_funds",
+      "breakpoints": true
     }
   ]
 }

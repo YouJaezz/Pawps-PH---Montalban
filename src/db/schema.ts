@@ -461,22 +461,6 @@ export const investorPayouts = sqliteTable("investor_payouts", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-export const INVESTOR_FUND_TYPES = ["contribution", "leftover", "return"] as const;
-export type InvestorFundType = (typeof INVESTOR_FUND_TYPES)[number];
-
-export const investorFunds = sqliteTable("investor_funds", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  investorName: text("investor_name").notNull(),
-  amountCents: integer("amount_cents").notNull(),
-  type: text("type", { enum: INVESTOR_FUND_TYPES }).notNull(),
-  date: integer("date", { mode: "timestamp" }).notNull(),
-  notes: text("notes"),
-  recordedByUserId: integer("recorded_by_user_id"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`),
-});
-
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
