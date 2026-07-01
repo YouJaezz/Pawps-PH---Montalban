@@ -11,7 +11,15 @@ import {
   type OwnerPayrollPlanScope,
   type OwnerProfitSplitSettings,
 } from "@/lib/owner-profit-split";
+import {
+  buildUnpaidPayrollSplitBreakdown,
+  VOLUNTEER_WEEKDAYS,
+  volunteerWeekdayLabel,
+  type UnpaidPayrollItem,
+  type UnpaidPayrollSplitBreakdown,
+} from "@/lib/owner-volunteer-payroll";
 import { formatPhpFromCents } from "@/lib/money";
+import { formatDuration } from "@/lib/time-duration";
 
 const SPLIT_PRESETS: Array<{
   label: string;
@@ -215,6 +223,124 @@ function PlanScopeCard(props: {
   );
 }
 
+function parseVolunteerWeekday(value: string): number | null {
+  if (value === "") return null;
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) && n >= 0 && n <= 6 ? n : null;
+}
+
+function UnpaidPayrollBreakdownCard(props: {
+  breakdown: UnpaidPayrollSplitBreakdown;
+  owner1Name: string;
+  owner2Name: string;
+  owner1Percent: number;
+  owner2Percent: number;
+  payrollPoolPercent: number;
+}) {
+  const { breakdown: b } = props;
+
+  return (
+    <div className="mt-3 rounded-xl border border-brand-cyan/25 bg-brand-cyan/[0.04] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="text-xs font-semibold text-zinc-100">{b.employeeName}</div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">
+            {b.label} · {formatDuration(b.minutesWorked)} ·{" "}
+            {b.status === "ready" ? "Ready to pay" : "Locked — awaiting payment"}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-zinc-500">Total owed</div>
+          <div className="text-lg font-semibold text-brand-cyan/90">
+            {formatPhpFromCents(b.grossPayCents)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
+          <div className="text-[10px] text-violet-200/70">
+            {props.owner1Name} pays
+          </div>
+          <div className="text-sm font-semibold text-violet-100">
+            {formatPhpFromCents(b.owner1TotalCents)}
+          </div>
+          {b.owner1VolunteerCents > 0 ? (
+            <div className="mt-0.5 text-[10px] text-violet-200/50">
+              incl. {formatPhpFromCents(b.owner1VolunteerCents)} volunteer day(s)
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
+          <div className="text-[10px] text-violet-200/70">
+            {props.owner2Name} pays
+          </div>
+          <div className="text-sm font-semibold text-violet-100">
+            {formatPhpFromCents(b.owner2TotalCents)}
+          </div>
+          {b.owner2VolunteerCents > 0 ? (
+            <div className="mt-0.5 text-[10px] text-violet-200/50">
+              incl. {formatPhpFromCents(b.owner2VolunteerCents)} volunteer day(s)
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+          <div className="text-[10px] text-emerald-200/70">
+            Staff pool ({props.payrollPoolPercent}% of shared days)
+          </div>
+          <div className="text-sm font-semibold text-emerald-100">
+            {formatPhpFromCents(b.staffPoolCents)}
+          </div>
+          {b.sharedCents > 0 ? (
+            <div className="mt-0.5 text-[10px] text-emerald-200/50">
+              from {formatPhpFromCents(b.sharedCents)} on other days
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {b.dayLines.length > 0 ? (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead className="text-left text-[10px] text-zinc-500">
+              <tr>
+                <th className="px-2 py-1">Day worked</th>
+                <th className="px-2 py-1">Who pays</th>
+                <th className="px-2 py-1 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {b.dayLines.map((line) => (
+                <tr key={line.dateKey}>
+                  <td className="px-2 py-1.5 text-zinc-200">
+                    {line.dateKey} ({line.weekdayLabel})
+                  </td>
+                  <td
+                    className={`px-2 py-1.5 ${
+                      line.responsibility === "shared"
+                        ? "text-zinc-400"
+                        : "text-violet-200/90"
+                    }`}
+                  >
+                    {line.responsibilityLabel}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-medium text-zinc-200">
+                    {formatPhpFromCents(line.dayPayCents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="mt-3 text-[10px] text-zinc-600">
+          No day-by-day punches found — split uses the period total above.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function parsePercentInput(value: string): number {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
@@ -228,6 +354,7 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
 
   const saved = props.dashboard.settings;
   const [draft, setDraft] = useState<OwnerProfitSplitSettings>(() => ({ ...saved }));
+  const [selectedUnpaidKey, setSelectedUnpaidKey] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft({ ...saved });
@@ -237,7 +364,37 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
     saved.owner1Percent,
     saved.owner2Percent,
     saved.payrollPoolPercent,
+    saved.owner1VolunteerWeekday,
+    saved.owner2VolunteerWeekday,
   ]);
+
+  const unpaidPayroll = props.dashboard.unpaidPayroll;
+
+  useEffect(() => {
+    if (unpaidPayroll.length === 0) {
+      setSelectedUnpaidKey(null);
+      return;
+    }
+    setSelectedUnpaidKey((current) => {
+      if (current && unpaidPayroll.some((item) => item.rowKey === current)) {
+        return current;
+      }
+      return unpaidPayroll[0]?.rowKey ?? null;
+    });
+  }, [unpaidPayroll]);
+
+  const selectedUnpaid = useMemo(
+    () => unpaidPayroll.find((item) => item.rowKey === selectedUnpaidKey) ?? null,
+    [unpaidPayroll, selectedUnpaidKey],
+  );
+
+  const selectedBreakdown = useMemo(
+    () =>
+      selectedUnpaid
+        ? buildUnpaidPayrollSplitBreakdown(selectedUnpaid, draft)
+        : null,
+    [selectedUnpaid, draft],
+  );
 
   const staffLinesFrom = (plan: OwnerPayrollPlanScope) =>
     plan.staffLines.map((line) => ({
@@ -305,9 +462,9 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
           Owner &amp; staff profit split
         </h2>
         <p className="mt-1 max-w-2xl text-[11px] text-zinc-400">
-          Set how gross profit is divided anytime — lower an owner to 0% if they
-          step back, or raise the staff pool when you want more pay going to the
-          shop team. Changes apply to the breakdown below after you save.
+          Set how gross profit is divided, pick each owner&apos;s weekly volunteer
+          day (you pay staff in full from your own wallet that day), and plan
+          unpaid salaries below.
         </p>
       </div>
 
@@ -420,6 +577,77 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
           </label>
         </div>
 
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <p className="text-xs font-medium text-zinc-300">
+            Weekly volunteer days (pay full from your wallet)
+          </p>
+          <p className="mt-1 text-[10px] text-zinc-500">
+            One day per week each owner covers all staff hours personally — no
+            split with your partner or the staff pool on that weekday.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs text-zinc-400">
+              {draft.owner1Name} volunteer day
+              <select
+                name="owner1VolunteerWeekday"
+                value={
+                  draft.owner1VolunteerWeekday == null
+                    ? ""
+                    : String(draft.owner1VolunteerWeekday)
+                }
+                onChange={(e) =>
+                  updateDraft(
+                    "owner1VolunteerWeekday",
+                    parseVolunteerWeekday(e.target.value),
+                  )
+                }
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              >
+                <option value="">Not set</option>
+                {VOLUNTEER_WEEKDAYS.map((day) => (
+                  <option key={day.value} value={day.value}>
+                    {day.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs text-zinc-400">
+              {draft.owner2Name} volunteer day
+              <select
+                name="owner2VolunteerWeekday"
+                value={
+                  draft.owner2VolunteerWeekday == null
+                    ? ""
+                    : String(draft.owner2VolunteerWeekday)
+                }
+                onChange={(e) =>
+                  updateDraft(
+                    "owner2VolunteerWeekday",
+                    parseVolunteerWeekday(e.target.value),
+                  )
+                }
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              >
+                <option value="">Not set</option>
+                {VOLUNTEER_WEEKDAYS.map((day) => (
+                  <option key={day.value} value={day.value}>
+                    {day.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {draft.owner1VolunteerWeekday != null ||
+          draft.owner2VolunteerWeekday != null ? (
+            <p className="mt-2 text-[10px] text-zinc-500">
+              {draft.owner1Name}:{" "}
+              {volunteerWeekdayLabel(draft.owner1VolunteerWeekday)} ·{" "}
+              {draft.owner2Name}:{" "}
+              {volunteerWeekdayLabel(draft.owner2VolunteerWeekday)}
+            </p>
+          ) : null}
+        </div>
+
         {previewProfitCents > 0 ? (
           <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px]">
             <p className="text-zinc-500">
@@ -477,6 +705,83 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
         ) : null}
       </form>
 
+      <div className="mt-4 rounded-xl border border-brand-cyan/20 bg-brand-cyan/[0.03] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-semibold text-brand-cyan/90">
+              Unpaid salaries
+            </h3>
+            <p className="mt-1 max-w-2xl text-[10px] text-zinc-500">
+              Select a pending payroll (like Ready to pay below) to see how much
+              each owner and the staff pool should cover — volunteer days are paid
+              in full by that owner only.
+            </p>
+          </div>
+          {unpaidPayroll.length > 0 ? (
+            <span className="rounded-full border border-brand-cyan/30 px-2 py-0.5 text-[10px] text-brand-cyan/80">
+              {unpaidPayroll.length} pending
+            </span>
+          ) : null}
+        </div>
+
+        {unpaidPayroll.length === 0 ? (
+          <p className="mt-3 text-[11px] text-zinc-600">
+            No unpaid staff payroll right now — locked or ready rows will appear
+            here.
+          </p>
+        ) : (
+          <>
+            <div className="mt-3 space-y-2">
+              {unpaidPayroll.map((item: UnpaidPayrollItem) => {
+                const selected = item.rowKey === selectedUnpaidKey;
+                const preview = buildUnpaidPayrollSplitBreakdown(item, draft);
+                return (
+                  <button
+                    key={item.rowKey}
+                    type="button"
+                    onClick={() => setSelectedUnpaidKey(item.rowKey)}
+                    className={`flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                      selected
+                        ? "border-brand-cyan/40 bg-brand-cyan/10"
+                        : "border-white/10 bg-white/5 hover:border-white/20"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-zinc-100">
+                        {item.employeeName}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">
+                        {item.label} · {formatDuration(item.minutesWorked)} ·{" "}
+                        {item.status === "ready" ? "Ready to pay" : "Awaiting payment"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-brand-cyan/90">
+                        {formatPhpFromCents(item.grossPayCents)}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">
+                        You: {formatPhpFromCents(preview.owner1TotalCents)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedBreakdown ? (
+              <UnpaidPayrollBreakdownCard
+                breakdown={selectedBreakdown}
+                owner1Name={draft.owner1Name}
+                owner2Name={draft.owner2Name}
+                owner1Percent={draft.owner1Percent}
+                owner2Percent={draft.owner2Percent}
+                payrollPoolPercent={draft.payrollPoolPercent}
+              />
+            ) : null}
+          </>
+        )}
+      </div>
+
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <PlanScopeCard
           plan={currentPeriodPlan}
@@ -500,12 +805,15 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
         <p className="font-medium text-zinc-400">How to use this</p>
         <ul className="mt-1.5 list-inside list-disc space-y-1">
           <li>
-            Any owner can be set to 0% — their share can go to the other owner or
-            staff pool.
+            Volunteer day = that owner pays 100% of staff hours that weekday from
+            their own wallet (your free help day for the shop).
           </li>
-          <li>Pay staff from the green pool first (use suggested amounts if profit is tight).</li>
-          <li>Owner draws come from the violet shares — only take them after staff is covered.</li>
-          <li>Gross profit does not subtract rent, utilities, or investor share — check Reports for full picture.</li>
+          <li>
+            Other weekdays split by your % — owners share their portion, staff
+            pool covers its %.
+          </li>
+          <li>Pick an unpaid salary above to see the exact split before you pay.</li>
+          <li>Pay staff from the green pool first when using profit-based planning.</li>
           <li>Left column = current pay period. Right = whole month overview.</li>
         </ul>
       </div>

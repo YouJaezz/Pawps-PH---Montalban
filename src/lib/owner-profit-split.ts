@@ -6,6 +6,9 @@ export type OwnerProfitSplitSettings = {
   owner1Percent: number;
   owner2Percent: number;
   payrollPoolPercent: number;
+  /** 0=Sunday … 6=Saturday; null = no volunteer day */
+  owner1VolunteerWeekday: number | null;
+  owner2VolunteerWeekday: number | null;
 };
 
 export const DEFAULT_OWNER_PROFIT_SPLIT: OwnerProfitSplitSettings = {
@@ -14,6 +17,8 @@ export const DEFAULT_OWNER_PROFIT_SPLIT: OwnerProfitSplitSettings = {
   owner1Percent: 40,
   owner2Percent: 40,
   payrollPoolPercent: 20,
+  owner1VolunteerWeekday: 0,
+  owner2VolunteerWeekday: null,
 };
 
 export function validateOwnerProfitSplit(settings: OwnerProfitSplitSettings) {

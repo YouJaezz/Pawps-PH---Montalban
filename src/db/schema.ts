@@ -628,6 +628,9 @@ export const ownerProfitSplitSettings = sqliteTable("owner_profit_split_settings
   owner1Percent: integer("owner1_percent").notNull().default(40),
   owner2Percent: integer("owner2_percent").notNull().default(40),
   payrollPoolPercent: integer("payroll_pool_percent").notNull().default(20),
+  /** 0=Sun … 6=Sat — owner pays staff in full from personal wallet on this weekday */
+  owner1VolunteerWeekday: integer("owner1_volunteer_weekday"),
+  owner2VolunteerWeekday: integer("owner2_volunteer_weekday"),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

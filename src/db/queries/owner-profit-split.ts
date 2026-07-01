@@ -1,9 +1,11 @@
 import { cache } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, inArray, lt } from "drizzle-orm";
 
 import { db } from "@/db";
-import { ownerProfitSplitSettings } from "@/db/schema";
+import { ownerProfitSplitSettings, timeEntries } from "@/db/schema";
 import type { PayrollRow } from "@/db/queries/payroll";
+import { grossPayFromMinutes } from "@/db/queries/payroll";
+import { entryMinutes } from "@/db/queries/time-attendance";
 import { computeProfitForDateRange, computeMonthlyNetIncome } from "@/lib/investor-income";
 import {
   buildOwnerPayrollPlan,
@@ -12,10 +14,15 @@ import {
   type OwnerProfitSplitSettings,
 } from "@/lib/owner-profit-split";
 import {
+  payrollRowKey,
+  type UnpaidPayrollItem,
+} from "@/lib/owner-volunteer-payroll";
+import {
   payrollPeriodBounds,
   semiMonthlyPeriods,
 } from "@/lib/payroll-period";
 import { phMonthLabel, phNow } from "@/lib/ph-time";
+import { buildPayrollSlipDaySummaries } from "@/lib/payroll-slip-format";
 
 function rowFromDb(
   row: typeof ownerProfitSplitSettings.$inferSelect | undefined,
@@ -27,6 +34,8 @@ function rowFromDb(
     owner1Percent: row.owner1Percent,
     owner2Percent: row.owner2Percent,
     payrollPoolPercent: row.payrollPoolPercent,
+    owner1VolunteerWeekday: row.owner1VolunteerWeekday ?? null,
+    owner2VolunteerWeekday: row.owner2VolunteerWeekday ?? null,
   };
 }
 
@@ -53,6 +62,13 @@ function isStaffPayrollRow(
 ) {
   const role = employeeRoleById.get(row.userId);
   return role !== "admin";
+}
+
+function isUnpaidPayrollRow(row: PayrollRow) {
+  if (row.grossPayCents <= 0) return false;
+  if (row.status === "Accrued") return true;
+  if (row.canGenerate) return true;
+  return false;
 }
 
 function staffLinesForPeriod(
@@ -85,10 +101,115 @@ function staffLinesForPeriod(
   }));
 }
 
+function clockInDateKey(clockInAt: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(clockInAt);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${pick("year")}-${pick("month")}-${pick("day")}`;
+}
+
+async function buildUnpaidPayrollItems(
+  unpaidRows: PayrollRow[],
+): Promise<UnpaidPayrollItem[]> {
+  if (unpaidRows.length === 0) return [];
+
+  const userIds = [...new Set(unpaidRows.map((row) => row.userId))];
+  let rangeStartMs = Number.POSITIVE_INFINITY;
+  let rangeEndMs = Number.NEGATIVE_INFINITY;
+
+  for (const row of unpaidRows) {
+    const { start, end } = payrollPeriodBounds(
+      row.year,
+      row.month,
+      row.half,
+      row.periodDay,
+    );
+    rangeStartMs = Math.min(rangeStartMs, start.getTime());
+    rangeEndMs = Math.max(rangeEndMs, end.getTime());
+  }
+
+  const entries = await db
+    .select({
+      userId: timeEntries.userId,
+      clockInAt: timeEntries.clockInAt,
+      clockOutAt: timeEntries.clockOutAt,
+    })
+    .from(timeEntries)
+    .where(
+      and(
+        inArray(timeEntries.userId, userIds),
+        gte(timeEntries.clockInAt, new Date(rangeStartMs)),
+        lt(timeEntries.clockInAt, new Date(rangeEndMs)),
+      ),
+    );
+
+  const entriesByUser = new Map<number, typeof entries>();
+  for (const entry of entries) {
+    const list = entriesByUser.get(entry.userId) ?? [];
+    list.push(entry);
+    entriesByUser.set(entry.userId, list);
+  }
+
+  return unpaidRows.map((row) => {
+    const { start, end } = payrollPeriodBounds(
+      row.year,
+      row.month,
+      row.half,
+      row.periodDay,
+    );
+    const rowEntries = (entriesByUser.get(row.userId) ?? []).filter(
+      (entry) => entry.clockInAt >= start && entry.clockInAt < end,
+    );
+
+    const punches = rowEntries.map((entry) => ({
+      dateKey: clockInDateKey(entry.clockInAt),
+      clockIn: entry.clockInAt.toISOString(),
+      clockOut: entry.clockOutAt?.toISOString() ?? null,
+      minutes: entryMinutes(entry.clockInAt, entry.clockOutAt),
+    }));
+
+    const daySummaries = buildPayrollSlipDaySummaries(
+      punches,
+      row.hourlyRateCents,
+    );
+
+    const dayPayLines = daySummaries.map((day) => ({
+      dateKey: day.dateKey,
+      dayPayCents: day.dayPayCents,
+    }));
+
+    const minutesFromDays = daySummaries.reduce(
+      (sum, day) => sum + day.totalMinutes,
+      0,
+    );
+    const grossFromDays = grossPayFromMinutes(
+      minutesFromDays,
+      row.hourlyRateCents,
+    );
+
+    return {
+      rowKey: payrollRowKey(row),
+      userId: row.userId,
+      employeeName: row.employeeName,
+      label: row.label,
+      status: row.status === "Accrued" ? "accrued" : "ready",
+      grossPayCents: grossFromDays > 0 ? grossFromDays : row.grossPayCents,
+      minutesWorked: minutesFromDays > 0 ? minutesFromDays : row.minutesWorked,
+      dayPayLines,
+    } satisfies UnpaidPayrollItem;
+  });
+}
+
 export type OwnerProfitSplitDashboard = {
   settings: OwnerProfitSplitSettings;
   currentPeriod: OwnerPayrollPlanScope;
   currentMonth: OwnerPayrollPlanScope;
+  unpaidPayroll: UnpaidPayrollItem[];
 };
 
 export async function getOwnerProfitSplitDashboard(input: {
@@ -99,6 +220,16 @@ export async function getOwnerProfitSplitDashboard(input: {
   const settings = await getOwnerProfitSplitSettings();
   const allRows = [...input.semiMonthlyRows, ...input.dailyRows];
   const roleById = new Map(input.employees.map((e) => [e.id, e.role]));
+
+  const unpaidRows = allRows
+    .filter((row) => isStaffPayrollRow(row, roleById) && isUnpaidPayrollRow(row))
+    .sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      if (a.month !== b.month) return b.month - a.month;
+      if (a.half !== b.half) return b.half - a.half;
+      if (a.periodDay !== b.periodDay) return b.periodDay - a.periodDay;
+      return b.grossPayCents - a.grossPayCents;
+    });
 
   const period = semiMonthlyPeriods(1)[0]!;
   const { start, end } = payrollPeriodBounds(
@@ -111,9 +242,10 @@ export async function getOwnerProfitSplitDashboard(input: {
   const now = phNow();
   const monthLabel = phMonthLabel(now.year, now.month);
 
-  const [periodProfit, monthProfit] = await Promise.all([
+  const [periodProfit, monthProfit, unpaidPayroll] = await Promise.all([
     computeProfitForDateRange(start.getTime(), end.getTime()),
     computeMonthlyNetIncome(now.year, now.month),
+    buildUnpaidPayrollItems(unpaidRows),
   ]);
 
   const periodMatch = (row: PayrollRow) =>
@@ -143,5 +275,6 @@ export async function getOwnerProfitSplitDashboard(input: {
     settings,
     currentPeriod,
     currentMonth,
+    unpaidPayroll,
   };
 }

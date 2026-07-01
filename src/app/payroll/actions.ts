@@ -25,6 +25,7 @@ import {
   resolvePayrollPayoutPeriod,
 } from "@/lib/payroll-period";
 import { validateOwnerProfitSplit } from "@/lib/owner-profit-split";
+import { validateVolunteerWeekdays } from "@/lib/owner-volunteer-payroll";
 
 export type PayrollActionResult = {
   ok?: boolean;
@@ -374,6 +375,20 @@ export async function updateOwnerProfitSplitSettings(
     String(formData.get("payrollPoolPercent") ?? ""),
     10,
   );
+  const owner1VolunteerRaw = String(
+    formData.get("owner1VolunteerWeekday") ?? "",
+  ).trim();
+  const owner2VolunteerRaw = String(
+    formData.get("owner2VolunteerWeekday") ?? "",
+  ).trim();
+  const owner1VolunteerWeekday =
+    owner1VolunteerRaw === ""
+      ? null
+      : Number.parseInt(owner1VolunteerRaw, 10);
+  const owner2VolunteerWeekday =
+    owner2VolunteerRaw === ""
+      ? null
+      : Number.parseInt(owner2VolunteerRaw, 10);
 
   const settings = {
     owner1Name,
@@ -381,6 +396,8 @@ export async function updateOwnerProfitSplitSettings(
     owner1Percent,
     owner2Percent,
     payrollPoolPercent,
+    owner1VolunteerWeekday,
+    owner2VolunteerWeekday,
   };
 
   if (
@@ -396,6 +413,11 @@ export async function updateOwnerProfitSplitSettings(
     return { error: validationError };
   }
 
+  const volunteerError = validateVolunteerWeekdays(settings);
+  if (volunteerError) {
+    return { error: volunteerError };
+  }
+
   await db
     .insert(ownerProfitSplitSettings)
     .values({
@@ -405,6 +427,8 @@ export async function updateOwnerProfitSplitSettings(
       owner1Percent,
       owner2Percent,
       payrollPoolPercent,
+      owner1VolunteerWeekday,
+      owner2VolunteerWeekday,
     })
     .onConflictDoUpdate({
       target: ownerProfitSplitSettings.id,
@@ -414,6 +438,8 @@ export async function updateOwnerProfitSplitSettings(
         owner1Percent,
         owner2Percent,
         payrollPoolPercent,
+        owner1VolunteerWeekday,
+        owner2VolunteerWeekday,
         updatedAt: new Date(),
       },
     });
