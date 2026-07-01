@@ -620,3 +620,16 @@ export const shopCashOutflows = sqliteTable("shop_cash_outflows", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/** Singleton — how shop gross profit is split between owners and staff payroll. */
+export const ownerProfitSplitSettings = sqliteTable("owner_profit_split_settings", {
+  id: integer("id").primaryKey(),
+  owner1Name: text("owner1_name").notNull().default("Owner 1"),
+  owner2Name: text("owner2_name").notNull().default("Owner 2"),
+  owner1Percent: integer("owner1_percent").notNull().default(40),
+  owner2Percent: integer("owner2_percent").notNull().default(40),
+  payrollPoolPercent: integer("payroll_pool_percent").notNull().default(20),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+

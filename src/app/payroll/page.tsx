@@ -1,9 +1,11 @@
 import { PayrollAttendanceReport } from "@/app/payroll/PayrollAttendanceReport";
+import { OwnerProfitSplitPanel } from "@/app/payroll/OwnerProfitSplitPanel";
 import { PayrollWorkspace } from "@/app/payroll/PayrollWorkspace";
 import { InvestorsPanel } from "@/app/investors/InvestorsPanel";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionTabs } from "@/components/SectionTabs";
+import { getOwnerProfitSplitDashboard } from "@/db/queries/owner-profit-split";
 import {
   getPayrollAttendanceReport,
   resolvePayrollReportPeriod,
@@ -23,12 +25,26 @@ export default async function PayrollPage(props: {
   const activeTab = sp.tab === "investors" ? "investors" : "payroll";
   const { year, month } = resolvePayrollReportPeriod(sp.year, sp.month);
 
-  const [data, attendanceReport] = await Promise.all([
-    activeTab === "payroll" ? getPayrollDashboard() : Promise.resolve(null),
-    activeTab === "payroll"
-      ? getPayrollAttendanceReport(year, month)
-      : Promise.resolve(null),
-  ]);
+  let data = null;
+  let attendanceReport = null;
+  let profitSplit = null;
+
+  if (activeTab === "payroll") {
+    const [dashboard, report] = await Promise.all([
+      getPayrollDashboard(),
+      getPayrollAttendanceReport(year, month),
+    ]);
+    data = dashboard;
+    attendanceReport = report;
+    profitSplit = await getOwnerProfitSplitDashboard({
+      semiMonthlyRows: dashboard.semiMonthlyRows,
+      dailyRows: dashboard.dailyRows,
+      employees: dashboard.employees.map((e) => ({
+        id: e.id,
+        role: e.role,
+      })),
+    });
+  }
 
   return (
     <AppShell>
@@ -39,7 +55,7 @@ export default async function PayrollPage(props: {
           description={
             activeTab === "investors"
               ? "Confidential investor share of net income and agreements."
-              : "Pay employees, track hours from Time In/Out, and print payroll slips."
+              : "Pay employees, plan owner draws from profit, and print payroll slips."
           }
         />
 
@@ -61,8 +77,9 @@ export default async function PayrollPage(props: {
         <div className="mt-6 space-y-6">
           {activeTab === "investors" ? (
             <InvestorsPanel highlightAgreement={sp.step === "agreement"} />
-          ) : data && attendanceReport ? (
+          ) : data && attendanceReport && profitSplit ? (
             <>
+              <OwnerProfitSplitPanel dashboard={profitSplit} />
               <PayrollWorkspace
                 employees={data.employees.map((e) => ({
                   id: e.id,

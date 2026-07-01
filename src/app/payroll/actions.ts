@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { payrollPayouts, users } from "@/db/schema";
+import { ownerProfitSplitSettings, payrollPayouts, users } from "@/db/schema";
 import {
   getPayrollDashboard,
   grossPayFromMinutes,
@@ -24,6 +24,7 @@ import {
   payrollPeriodLabel,
   resolvePayrollPayoutPeriod,
 } from "@/lib/payroll-period";
+import { validateOwnerProfitSplit } from "@/lib/owner-profit-split";
 
 export type PayrollActionResult = {
   ok?: boolean;
@@ -357,4 +358,66 @@ export async function resetPayrollPayout(
   await db.delete(payrollPayouts).where(eq(payrollPayouts.id, payoutId));
   revalidatePayroll();
   return { ok: true, message: "Payroll entry reset." };
+}
+
+export async function updateOwnerProfitSplitSettings(
+  _prev: PayrollActionResult | null,
+  formData: FormData,
+): Promise<PayrollActionResult> {
+  await requireAdmin();
+
+  const owner1Name = String(formData.get("owner1Name") ?? "").trim() || "Owner 1";
+  const owner2Name = String(formData.get("owner2Name") ?? "").trim() || "Owner 2";
+  const owner1Percent = Number.parseInt(String(formData.get("owner1Percent") ?? ""), 10);
+  const owner2Percent = Number.parseInt(String(formData.get("owner2Percent") ?? ""), 10);
+  const payrollPoolPercent = Number.parseInt(
+    String(formData.get("payrollPoolPercent") ?? ""),
+    10,
+  );
+
+  const settings = {
+    owner1Name,
+    owner2Name,
+    owner1Percent,
+    owner2Percent,
+    payrollPoolPercent,
+  };
+
+  if (
+    !Number.isFinite(owner1Percent) ||
+    !Number.isFinite(owner2Percent) ||
+    !Number.isFinite(payrollPoolPercent)
+  ) {
+    return { error: "Enter whole-number percentages." };
+  }
+
+  const validationError = validateOwnerProfitSplit(settings);
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  await db
+    .insert(ownerProfitSplitSettings)
+    .values({
+      id: 1,
+      owner1Name,
+      owner2Name,
+      owner1Percent,
+      owner2Percent,
+      payrollPoolPercent,
+    })
+    .onConflictDoUpdate({
+      target: ownerProfitSplitSettings.id,
+      set: {
+        owner1Name,
+        owner2Name,
+        owner1Percent,
+        owner2Percent,
+        payrollPoolPercent,
+        updatedAt: new Date(),
+      },
+    });
+
+  revalidatePayroll();
+  return { ok: true, message: "Profit split saved." };
 }
