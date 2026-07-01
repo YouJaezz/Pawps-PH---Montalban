@@ -8,9 +8,16 @@ import { ownerProfitSplitSettings, payrollPayouts, users } from "@/db/schema";
 import {
   getPayrollDashboard,
   grossPayFromMinutes,
+  type PayrollRow,
 } from "@/db/queries/payroll";
+import { getOwnerProfitSplitSettings } from "@/db/queries/owner-profit-split";
 import { requireAdmin } from "@/lib/auth-guard";
 import { parseMoneyToCents } from "@/lib/money";
+import {
+  buildPayrollWalletSplitForRow,
+  deletePayrollShopPoolExpense,
+  recordPayrollShopPoolExpense,
+} from "@/lib/payroll-shop-split";
 import {
   normalizePaymentMethod,
   parsePhDateInput,
@@ -36,6 +43,45 @@ export type PayrollActionResult = {
 function revalidatePayroll() {
   revalidatePath("/payroll");
   revalidatePath("/attendance");
+  revalidatePath("/shop-cash");
+  revalidatePath("/products");
+  revalidatePath("/reports");
+}
+
+async function logShopPoolExpenseForPayout(input: {
+  payoutId: number;
+  row: PayrollRow;
+  paidAt: Date;
+  recordedByUserId: number;
+}) {
+  const breakdown = await buildPayrollWalletSplitForRow(input.row);
+  const settings = await getOwnerProfitSplitSettings();
+
+  let shopCashOutflowId: number | null = null;
+  if (breakdown.staffPoolCents > 0) {
+    shopCashOutflowId = await recordPayrollShopPoolExpense({
+      shopPoolCents: breakdown.staffPoolCents,
+      employeeName: input.row.employeeName,
+      periodLabel: input.row.label,
+      payoutId: input.payoutId,
+      paidAt: input.paidAt,
+      recordedByUserId: input.recordedByUserId,
+      owner1Name: settings.owner1Name,
+      owner2Name: settings.owner2Name,
+      owner1WalletCents: breakdown.owner1TotalCents,
+      owner2WalletCents: breakdown.owner2TotalCents,
+    });
+  }
+
+  await db
+    .update(payrollPayouts)
+    .set({
+      shopCashOutflowId,
+      shopPoolCents: breakdown.staffPoolCents,
+    })
+    .where(eq(payrollPayouts.id, input.payoutId));
+
+  return breakdown;
 }
 
 export async function updateEmployeeHourlyRate(
@@ -174,6 +220,13 @@ export async function markPayrollPaid(
       status: payrollPayouts.status,
       grossPayCents: payrollPayouts.grossPayCents,
       userId: payrollPayouts.userId,
+      periodYear: payrollPayouts.periodYear,
+      periodMonth: payrollPayouts.periodMonth,
+      periodHalf: payrollPayouts.periodHalf,
+      periodDay: payrollPayouts.periodDay,
+      minutesWorked: payrollPayouts.minutesWorked,
+      hourlyRateCents: payrollPayouts.hourlyRateCents,
+      shopCashOutflowId: payrollPayouts.shopCashOutflowId,
     })
     .from(payrollPayouts)
     .where(eq(payrollPayouts.id, payoutId))
@@ -183,12 +236,25 @@ export async function markPayrollPaid(
   if (payout.status === "Paid") {
     return { error: "This payout is already recorded as paid." };
   }
+  if (payout.shopCashOutflowId) {
+    return { error: "Shop cash already logged for this payout." };
+  }
 
   const [employee] = await db
     .select({ name: users.name, email: users.email })
     .from(users)
     .where(eq(users.id, payout.userId))
     .limit(1);
+
+  const { semiMonthlyRows, dailyRows } = await getPayrollDashboard();
+  const payrollRow = [...semiMonthlyRows, ...dailyRows].find(
+    (r) =>
+      r.userId === payout.userId &&
+      r.year === payout.periodYear &&
+      r.month === payout.periodMonth &&
+      r.half === (payout.periodHalf as 0 | 1 | 2) &&
+      r.periodDay === payout.periodDay,
+  );
 
   await db
     .update(payrollPayouts)
@@ -202,6 +268,22 @@ export async function markPayrollPaid(
     })
     .where(eq(payrollPayouts.id, payoutId));
 
+  let shopPoolNote = "";
+  if (payrollRow) {
+    const breakdown = await logShopPoolExpenseForPayout({
+      payoutId,
+      row: payrollRow,
+      paidAt: payment.paidAt,
+      recordedByUserId: admin.userId,
+    });
+    if (breakdown.staffPoolCents > 0) {
+      const poolPeso = (breakdown.staffPoolCents / 100).toLocaleString("en-PH", {
+        minimumFractionDigits: 2,
+      });
+      shopPoolNote = ` Shop cash expense logged: ₱${poolPeso}.`;
+    }
+  }
+
   revalidatePayroll();
 
   const peso = (payout.grossPayCents / 100).toLocaleString("en-PH", {
@@ -211,7 +293,7 @@ export async function markPayrollPaid(
 
   return {
     ok: true,
-    message: `Recorded ₱${peso} paid to ${employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.`,
+    message: `Recorded ₱${peso} paid to ${employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.${shopPoolNote}`,
   };
 }
 
@@ -303,22 +385,41 @@ export async function lockAndRecordPayrollPayment(
     row.hourlyRateCents,
   );
 
-  await db.insert(payrollPayouts).values({
-    userId,
-    periodYear: year,
-    periodMonth: month,
-    periodHalf: half,
-    periodDay,
-    minutesWorked: row.minutesWorked,
-    hourlyRateCents: row.hourlyRateCents,
-    grossPayCents,
-    status: "Paid",
-    paidAt: payment.paidAt,
-    paymentMethod: payment.paymentMethod,
-    paymentReference: payment.paymentReference || null,
-    notes: payment.notes || null,
-    paidByUserId: admin.userId,
-  });
+  const [inserted] = await db
+    .insert(payrollPayouts)
+    .values({
+      userId,
+      periodYear: year,
+      periodMonth: month,
+      periodHalf: half,
+      periodDay,
+      minutesWorked: row.minutesWorked,
+      hourlyRateCents: row.hourlyRateCents,
+      grossPayCents,
+      status: "Paid",
+      paidAt: payment.paidAt,
+      paymentMethod: payment.paymentMethod,
+      paymentReference: payment.paymentReference || null,
+      notes: payment.notes || null,
+      paidByUserId: admin.userId,
+    })
+    .returning({ id: payrollPayouts.id });
+
+  let shopPoolNote = "";
+  if (inserted) {
+    const breakdown = await logShopPoolExpenseForPayout({
+      payoutId: inserted.id,
+      row,
+      paidAt: payment.paidAt,
+      recordedByUserId: admin.userId,
+    });
+    if (breakdown.staffPoolCents > 0) {
+      const poolPeso = (breakdown.staffPoolCents / 100).toLocaleString("en-PH", {
+        minimumFractionDigits: 2,
+      });
+      shopPoolNote = ` Shop cash expense logged: ₱${poolPeso}.`;
+    }
+  }
 
   revalidatePayroll();
 
@@ -329,7 +430,7 @@ export async function lockAndRecordPayrollPayment(
 
   return {
     ok: true,
-    message: `${monthLabel}: recorded ₱${peso} paid to ${row.employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.`,
+    message: `${monthLabel}: recorded ₱${peso} paid to ${row.employeeName} via ${paymentMethodLabel(payment.paymentMethod)}.${shopPoolNote}`,
   };
 }
 
@@ -356,9 +457,10 @@ export async function resetPayrollPayout(
     return { error: "Invalid payout." };
   }
 
+  await deletePayrollShopPoolExpense(payoutId);
   await db.delete(payrollPayouts).where(eq(payrollPayouts.id, payoutId));
   revalidatePayroll();
-  return { ok: true, message: "Payroll entry reset." };
+  return { ok: true, message: "Payroll entry reset (shop cash expense removed if any)." };
 }
 
 export async function updateOwnerProfitSplitSettings(
@@ -445,5 +547,5 @@ export async function updateOwnerProfitSplitSettings(
     });
 
   revalidatePayroll();
-  return { ok: true, message: "Profit split saved." };
+  return { ok: true, message: "Payroll split saved." };
 }

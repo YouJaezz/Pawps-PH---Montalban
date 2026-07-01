@@ -19,6 +19,8 @@ export function normalizeFundingSource(
 
 export function expenseCategoryLabel(category: string | null | undefined) {
   switch (category) {
+    case "payroll":
+      return "Staff payroll";
     case "utilities_electric":
       return "Electric bill";
     case "utilities_water":
@@ -52,6 +54,7 @@ export function normalizeExpenseCategory(
   raw: string | null | undefined,
 ): ShopExpenseCategory {
   const allowed = [
+    "payroll",
     "utilities_electric",
     "utilities_water",
     "utilities_internet",

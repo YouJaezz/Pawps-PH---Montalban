@@ -1,5 +1,5 @@
 import {
-  allocateGrossProfit,
+  allocateAmountBySplit,
   type OwnerProfitSplitSettings,
 } from "@/lib/owner-profit-split";
 import { PH_TIMEZONE } from "@/lib/ph-time";
@@ -171,11 +171,11 @@ export function buildUnpaidPayrollSplitBreakdown(
       weekdayLabel,
       dayPayCents: day.dayPayCents,
       responsibility: "shared",
-      responsibilityLabel: "Split by % (owners + staff pool)",
+      responsibilityLabel: "Split — owner wallets + shop cash %",
     });
   }
 
-  const alloc = allocateGrossProfit(sharedCents, settings);
+  const alloc = allocateAmountBySplit(sharedCents, settings);
 
   return {
     rowKey: item.rowKey,

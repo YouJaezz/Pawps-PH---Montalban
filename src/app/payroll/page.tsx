@@ -59,7 +59,7 @@ export default async function PayrollPage(props: {
           description={
             activeTab === "investors"
               ? "Confidential investor share of net income and agreements."
-              : "Pay employees, plan owner draws from profit, and print payroll slips."
+              : "Pay employees, split wages between owner wallets and shop cash, and print payroll slips."
           }
         />
 

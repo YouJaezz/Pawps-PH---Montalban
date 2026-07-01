@@ -5,10 +5,8 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { updateOwnerProfitSplitSettings } from "@/app/payroll/actions";
 import type { OwnerProfitSplitDashboard } from "@/db/queries/owner-profit-split";
 import {
-  allocateGrossProfit,
-  buildOwnerPayrollPlan,
+  allocateAmountBySplit,
   validateOwnerProfitSplit,
-  type OwnerPayrollPlanScope,
   type OwnerProfitSplitSettings,
 } from "@/lib/owner-profit-split";
 import {
@@ -58,7 +56,7 @@ const SPLIT_PRESETS: Array<{
   },
   {
     label: "0 / 0 / 100",
-    hint: "All profit to staff pool",
+    hint: "Shop pays all shared days (shop cash)",
     owner1Percent: 0,
     owner2Percent: 0,
     payrollPoolPercent: 100,
@@ -99,126 +97,105 @@ function SplitBar(props: {
         <div
           className="bg-emerald-500/80"
           style={{ width: `${payrollPoolPercent}%` }}
-          title={`Staff pool ${payrollPoolPercent}%`}
+          title={`Shop cash ${payrollPoolPercent}%`}
         />
       ) : null}
     </div>
   );
 }
 
-function PlanScopeCard(props: {
-  plan: OwnerPayrollPlanScope;
+function WalletObligationsCard(props: {
   owner1Name: string;
   owner2Name: string;
-  owner1Percent: number;
-  owner2Percent: number;
-  payrollPoolPercent: number;
+  obligations: {
+    owner1TotalCents: number;
+    owner2TotalCents: number;
+    shopPoolTotalCents: number;
+    grossUnpaidCents: number;
+    unpaidCount: number;
+  };
 }) {
-  const { plan } = props;
-  const shortfall = plan.staffOwedCents > plan.allocation.payrollPoolCents;
-
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <div className="text-xs font-semibold text-zinc-200">{plan.label}</div>
-          <div className="mt-0.5 text-[10px] text-zinc-500">
-            {plan.profit.orderCount} paid order
-            {plan.profit.orderCount === 1 ? "" : "s"} · gross profit basis
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] text-zinc-500">Gross profit</div>
-          <div className="text-lg font-semibold text-brand-cyan/90">
-            {formatPhpFromCents(plan.profit.netIncomeCents)}
-          </div>
-        </div>
+      <div className="text-xs font-semibold text-zinc-200">
+        Pending payroll — who pays what
       </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
-          <div className="text-[10px] text-violet-200/70">
-            {props.owner1Name} ({props.owner1Percent}%)
-          </div>
-          <div className="text-sm font-semibold text-violet-100">
-            {formatPhpFromCents(plan.allocation.owner1Cents)}
-          </div>
-        </div>
-        <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
-          <div className="text-[10px] text-violet-200/70">
-            {props.owner2Name} ({props.owner2Percent}%)
-          </div>
-          <div className="text-sm font-semibold text-violet-100">
-            {formatPhpFromCents(plan.allocation.owner2Cents)}
-          </div>
-        </div>
-        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-          <div className="text-[10px] text-emerald-200/70">
-            Staff pool ({props.payrollPoolPercent}%)
-          </div>
-          <div className="text-sm font-semibold text-emerald-100">
-            {formatPhpFromCents(plan.allocation.payrollPoolCents)}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-[11px]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-zinc-400">Staff owed (hours × rate)</span>
-          <span className="font-medium text-zinc-200">
-            {formatPhpFromCents(plan.staffOwedCents)}
-          </span>
-        </div>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-zinc-400">Suggested pay from pool</span>
-          <span className="font-medium text-emerald-200">
-            {formatPhpFromCents(plan.staffSuggestedTotalCents)}
-          </span>
-        </div>
-        {shortfall && plan.staffOwedCents > 0 ? (
-          <p className="mt-2 text-amber-200/90">
-            Pool covers{" "}
-            {plan.staffLines[0]?.coveredPercent ?? 0}% of hours-based pay — scale
-            down or owners take less this period.
-          </p>
-        ) : plan.poolSurplusCents > 0 && plan.staffOwedCents > 0 ? (
-          <p className="mt-2 text-emerald-200/80">
-            {formatPhpFromCents(plan.poolSurplusCents)} left in staff pool after
-            full hours-based pay.
-          </p>
-        ) : null}
-      </div>
-
-      {plan.staffLines.length > 0 ? (
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-[11px]">
-            <thead className="text-left text-[10px] text-zinc-500">
-              <tr>
-                <th className="px-2 py-1">Employee</th>
-                <th className="px-2 py-1 text-right">Hours owed</th>
-                <th className="px-2 py-1 text-right">Suggested pay</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {plan.staffLines.map((line) => (
-                <tr key={line.userId}>
-                  <td className="px-2 py-1.5 text-zinc-200">{line.employeeName}</td>
-                  <td className="px-2 py-1.5 text-right text-zinc-400">
-                    {formatPhpFromCents(line.hoursOwedCents)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-medium text-emerald-200/90">
-                    {formatPhpFromCents(line.suggestedPayCents)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <p className="mt-1 text-[10px] text-zinc-500">
+        Owner shares come from your personal wallets. Shop pool comes from shop
+        cash when you pay.
+      </p>
+      {props.obligations.unpaidCount === 0 ? (
+        <p className="mt-3 text-[11px] text-zinc-600">No unpaid staff payroll.</p>
       ) : (
-        <p className="mt-3 text-[10px] text-zinc-600">
-          No cashier hours in this window yet — staff pool still accrues from profit.
-        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
+            <div className="text-[10px] text-violet-200/70">
+              {props.owner1Name} wallet
+            </div>
+            <div className="text-sm font-semibold text-violet-100">
+              {formatPhpFromCents(props.obligations.owner1TotalCents)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
+            <div className="text-[10px] text-violet-200/70">
+              {props.owner2Name} wallet
+            </div>
+            <div className="text-sm font-semibold text-violet-100">
+              {formatPhpFromCents(props.obligations.owner2TotalCents)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+            <div className="text-[10px] text-emerald-200/70">Shop cash (pool)</div>
+            <div className="text-sm font-semibold text-emerald-100">
+              {formatPhpFromCents(props.obligations.shopPoolTotalCents)}
+            </div>
+          </div>
+        </div>
       )}
+    </div>
+  );
+}
+
+function ShopCashStatusCard(props: {
+  cashInHandCents: number;
+  availableShopCashCents: number;
+  pendingShopPoolCents: number;
+}) {
+  const shortfall = props.pendingShopPoolCents > props.availableShopCashCents;
+
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+      <div className="text-xs font-semibold text-emerald-100">Shop cash</div>
+      <p className="mt-1 text-[10px] text-zinc-500">
+        Shop pool % is deducted from sales cash on-hand and logged as payroll
+        expense when you pay staff — not from owner wallets or investor capital.
+      </p>
+      <div className="mt-3 space-y-2 text-[11px]">
+        <div className="flex justify-between gap-2">
+          <span className="text-zinc-400">Sales collected (on hand)</span>
+          <span className="text-zinc-200">
+            {formatPhpFromCents(props.cashInHandCents)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span className="text-zinc-400">Available after expenses &amp; restock</span>
+          <span className="font-medium text-emerald-200">
+            {formatPhpFromCents(props.availableShopCashCents)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span className="text-zinc-400">Shop pool owed (unpaid payroll)</span>
+          <span className="font-medium text-zinc-200">
+            {formatPhpFromCents(props.pendingShopPoolCents)}
+          </span>
+        </div>
+      </div>
+      {shortfall && props.pendingShopPoolCents > 0 ? (
+        <p className="mt-2 text-[10px] text-amber-200/90">
+          Shop cash may not cover the full pool — top up from sales or owners pay
+          extra from wallet until cash catches up.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -286,7 +263,7 @@ function UnpaidPayrollBreakdownCard(props: {
         </div>
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
           <div className="text-[10px] text-emerald-200/70">
-            Staff pool ({props.payrollPoolPercent}% of shared days)
+            Shop cash ({props.payrollPoolPercent}% of shared days)
           </div>
           <div className="text-sm font-semibold text-emerald-100">
             {formatPhpFromCents(b.staffPoolCents)}
@@ -396,35 +373,6 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
     [selectedUnpaid, draft],
   );
 
-  const staffLinesFrom = (plan: OwnerPayrollPlanScope) =>
-    plan.staffLines.map((line) => ({
-      userId: line.userId,
-      employeeName: line.employeeName,
-      hoursOwedCents: line.hoursOwedCents,
-    }));
-
-  const currentPeriodPlan = useMemo(
-    () =>
-      buildOwnerPayrollPlan(
-        props.dashboard.currentPeriod.label,
-        props.dashboard.currentPeriod.profit,
-        draft,
-        staffLinesFrom(props.dashboard.currentPeriod),
-      ),
-    [draft, props.dashboard.currentPeriod],
-  );
-
-  const currentMonthPlan = useMemo(
-    () =>
-      buildOwnerPayrollPlan(
-        props.dashboard.currentMonth.label,
-        props.dashboard.currentMonth.profit,
-        draft,
-        staffLinesFrom(props.dashboard.currentMonth),
-      ),
-    [draft, props.dashboard.currentMonth],
-  );
-
   const percentTotal =
     draft.owner1Percent + draft.owner2Percent + draft.payrollPoolPercent;
   const isValidTotal = percentTotal === 100;
@@ -433,10 +381,12 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
     [draft, isValidTotal],
   );
 
-  const previewProfitCents = props.dashboard.currentPeriod.profit.netIncomeCents;
+  const sharedDayPreviewCents = selectedUnpaid
+    ? selectedBreakdown?.sharedCents ?? 0
+    : 0;
   const previewAllocation = useMemo(
-    () => allocateGrossProfit(previewProfitCents, draft),
-    [previewProfitCents, draft],
+    () => allocateAmountBySplit(sharedDayPreviewCents, draft),
+    [sharedDayPreviewCents, draft],
   );
 
   function applyPreset(preset: (typeof SPLIT_PRESETS)[number]) {
@@ -459,12 +409,12 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
     <section className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-5">
       <div>
         <h2 className="text-sm font-semibold text-violet-100">
-          Owner &amp; staff profit split
+          Owner payroll split
         </h2>
         <p className="mt-1 max-w-2xl text-[11px] text-zinc-400">
-          Set how gross profit is divided, pick each owner&apos;s weekly volunteer
-          day (you pay staff in full from your own wallet that day), and plan
-          unpaid salaries below.
+          Split staff wages between your wallets and shop cash — not from sales
+          profit. Volunteer day = you pay 100% from your wallet. Other days split
+          by % below.
         </p>
       </div>
 
@@ -473,7 +423,9 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
         className="mt-4 space-y-4 rounded-xl border border-violet-500/25 bg-black/25 p-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-medium text-zinc-300">Split percentages</p>
+          <p className="text-xs font-medium text-zinc-300">
+            Split shared-day wages (not sales profit)
+          </p>
           <span
             className={`text-[11px] font-medium ${
               isValidTotal ? "text-emerald-300" : "text-amber-300"
@@ -528,7 +480,7 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
 
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block text-xs text-zinc-400">
-            {draft.owner1Name} share %
+            {draft.owner1Name} wallet %
             <input
               name="owner1Percent"
               type="number"
@@ -543,7 +495,7 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
             />
           </label>
           <label className="block text-xs text-zinc-400">
-            {draft.owner2Name} share %
+            {draft.owner2Name} wallet %
             <input
               name="owner2Percent"
               type="number"
@@ -558,7 +510,7 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
             />
           </label>
           <label className="block text-xs text-zinc-400">
-            Staff / shop payroll %
+            Shop pays % (shop cash expense)
             <input
               name="payrollPoolPercent"
               type="number"
@@ -572,7 +524,7 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
               className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
             />
             <span className="mt-1 block text-[10px] text-zinc-600">
-              Raise this to give more of profit to employees
+              Logged to shop cash when you pay — deducted from sales on-hand
             </span>
           </label>
         </div>
@@ -648,24 +600,24 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
           ) : null}
         </div>
 
-        {previewProfitCents > 0 ? (
+        {selectedUnpaid && sharedDayPreviewCents > 0 ? (
           <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px]">
             <p className="text-zinc-500">
-              Live preview at current pay period profit (
-              {formatPhpFromCents(previewProfitCents)}):
+              Example on selected unpaid — shared days only (
+              {formatPhpFromCents(sharedDayPreviewCents)}):
             </p>
             <p className="mt-1 text-zinc-300">
-              {draft.owner1Name}{" "}
+              {draft.owner1Name} wallet{" "}
               <span className="text-violet-200">
                 {formatPhpFromCents(previewAllocation.owner1Cents)}
               </span>
               {" · "}
-              {draft.owner2Name}{" "}
+              {draft.owner2Name} wallet{" "}
               <span className="text-violet-200">
                 {formatPhpFromCents(previewAllocation.owner2Cents)}
               </span>
               {" · "}
-              Staff pool{" "}
+              Shop cash{" "}
               <span className="text-emerald-200">
                 {formatPhpFromCents(previewAllocation.payrollPoolCents)}
               </span>
@@ -783,21 +735,15 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <PlanScopeCard
-          plan={currentPeriodPlan}
+        <WalletObligationsCard
           owner1Name={draft.owner1Name}
           owner2Name={draft.owner2Name}
-          owner1Percent={draft.owner1Percent}
-          owner2Percent={draft.owner2Percent}
-          payrollPoolPercent={draft.payrollPoolPercent}
+          obligations={props.dashboard.walletObligations}
         />
-        <PlanScopeCard
-          plan={currentMonthPlan}
-          owner1Name={draft.owner1Name}
-          owner2Name={draft.owner2Name}
-          owner1Percent={draft.owner1Percent}
-          owner2Percent={draft.owner2Percent}
-          payrollPoolPercent={draft.payrollPoolPercent}
+        <ShopCashStatusCard
+          cashInHandCents={props.dashboard.shopCash.cashInHandCents}
+          availableShopCashCents={props.dashboard.shopCash.availableShopCashCents}
+          pendingShopPoolCents={props.dashboard.shopCash.pendingShopPoolCents}
         />
       </div>
 
@@ -805,16 +751,15 @@ export function OwnerProfitSplitPanel(props: { dashboard: OwnerProfitSplitDashbo
         <p className="font-medium text-zinc-400">How to use this</p>
         <ul className="mt-1.5 list-inside list-disc space-y-1">
           <li>
-            Volunteer day = that owner pays 100% of staff hours that weekday from
-            their own wallet (your free help day for the shop).
+            Volunteer day = that owner pays 100% from personal wallet — partner
+            and shop pay nothing that day.
           </li>
           <li>
-            Other weekdays split by your % — owners share their portion, staff
-            pool covers its %.
+            Other days: split wages by wallet % (owners) + shop cash % (logged as
+            payroll expense when you hit Pay now).
           </li>
-          <li>Pick an unpaid salary above to see the exact split before you pay.</li>
-          <li>Pay staff from the green pool first when using profit-based planning.</li>
-          <li>Left column = current pay period. Right = whole month overview.</li>
+          <li>Shop pool uses sales on-hand cash — not investor capital.</li>
+          <li>Pick an unpaid salary above to see the exact split before paying.</li>
         </ul>
       </div>
     </section>

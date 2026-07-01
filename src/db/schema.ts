@@ -556,6 +556,9 @@ export const payrollPayouts = sqliteTable("payroll_payouts", {
   paymentReference: text("payment_reference"),
   paidByUserId: integer("paid_by_user_id"),
   notes: text("notes"),
+  /** Shop-cash expense logged for the shop pool % of this payout */
+  shopCashOutflowId: integer("shop_cash_outflow_id"),
+  shopPoolCents: integer("shop_pool_cents"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -568,6 +571,7 @@ export const SHOP_FUNDING_SOURCES = ["shop_cash", "investor_capital"] as const;
 export type ShopFundingSource = (typeof SHOP_FUNDING_SOURCES)[number];
 
 export const SHOP_EXPENSE_CATEGORIES = [
+  "payroll",
   "utilities_electric",
   "utilities_water",
   "utilities_internet",

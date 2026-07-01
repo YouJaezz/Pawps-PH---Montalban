@@ -5,23 +5,18 @@ import { db } from "@/db";
 import { ownerProfitSplitSettings, timeEntries } from "@/db/schema";
 import type { PayrollRow } from "@/db/queries/payroll";
 import { grossPayFromMinutes } from "@/db/queries/payroll";
+import { getCashProfitReport } from "@/db/queries/cash-profit-report";
 import { entryMinutes } from "@/db/queries/time-attendance";
-import { computeProfitForDateRange, computeMonthlyNetIncome } from "@/lib/investor-income";
 import {
-  buildOwnerPayrollPlan,
   DEFAULT_OWNER_PROFIT_SPLIT,
-  type OwnerPayrollPlanScope,
   type OwnerProfitSplitSettings,
 } from "@/lib/owner-profit-split";
 import {
+  buildUnpaidPayrollSplitBreakdown,
   payrollRowKey,
   type UnpaidPayrollItem,
 } from "@/lib/owner-volunteer-payroll";
-import {
-  payrollPeriodBounds,
-  semiMonthlyPeriods,
-} from "@/lib/payroll-period";
-import { phMonthLabel, phNow } from "@/lib/ph-time";
+import { payrollPeriodBounds } from "@/lib/payroll-period";
 import { buildPayrollSlipDaySummaries } from "@/lib/payroll-slip-format";
 
 function rowFromDb(
@@ -69,36 +64,6 @@ function isUnpaidPayrollRow(row: PayrollRow) {
   if (row.status === "Accrued") return true;
   if (row.canGenerate) return true;
   return false;
-}
-
-function staffLinesForPeriod(
-  rows: PayrollRow[],
-  employeeRoleById: Map<number, string>,
-  match: (row: PayrollRow) => boolean,
-) {
-  const byUser = new Map<number, { employeeName: string; hoursOwedCents: number }>();
-
-  for (const row of rows) {
-    if (!match(row)) continue;
-    if (!isStaffPayrollRow(row, employeeRoleById)) continue;
-    if (row.grossPayCents <= 0) continue;
-
-    const existing = byUser.get(row.userId);
-    if (existing) {
-      existing.hoursOwedCents += row.grossPayCents;
-    } else {
-      byUser.set(row.userId, {
-        employeeName: row.employeeName,
-        hoursOwedCents: row.grossPayCents,
-      });
-    }
-  }
-
-  return Array.from(byUser.entries()).map(([userId, line]) => ({
-    userId,
-    employeeName: line.employeeName,
-    hoursOwedCents: line.hoursOwedCents,
-  }));
 }
 
 function clockInDateKey(clockInAt: Date) {
@@ -205,11 +170,23 @@ async function buildUnpaidPayrollItems(
   });
 }
 
+export type WalletObligationsSummary = {
+  owner1TotalCents: number;
+  owner2TotalCents: number;
+  shopPoolTotalCents: number;
+  grossUnpaidCents: number;
+  unpaidCount: number;
+};
+
 export type OwnerProfitSplitDashboard = {
   settings: OwnerProfitSplitSettings;
-  currentPeriod: OwnerPayrollPlanScope;
-  currentMonth: OwnerPayrollPlanScope;
   unpaidPayroll: UnpaidPayrollItem[];
+  walletObligations: WalletObligationsSummary;
+  shopCash: {
+    cashInHandCents: number;
+    availableShopCashCents: number;
+    pendingShopPoolCents: number;
+  };
 };
 
 export async function getOwnerProfitSplitDashboard(input: {
@@ -231,50 +208,38 @@ export async function getOwnerProfitSplitDashboard(input: {
       return b.grossPayCents - a.grossPayCents;
     });
 
-  const period = semiMonthlyPeriods(1)[0]!;
-  const { start, end } = payrollPeriodBounds(
-    period.year,
-    period.month,
-    period.half,
-    period.periodDay,
-  );
-
-  const now = phNow();
-  const monthLabel = phMonthLabel(now.year, now.month);
-
-  const [periodProfit, monthProfit, unpaidPayroll] = await Promise.all([
-    computeProfitForDateRange(start.getTime(), end.getTime()),
-    computeMonthlyNetIncome(now.year, now.month),
+  const [unpaidPayroll, cashReport] = await Promise.all([
     buildUnpaidPayrollItems(unpaidRows),
+    getCashProfitReport(),
   ]);
 
-  const periodMatch = (row: PayrollRow) =>
-    row.year === period.year &&
-    row.month === period.month &&
-    row.half === period.half &&
-    row.periodDay === period.periodDay;
+  let owner1TotalCents = 0;
+  let owner2TotalCents = 0;
+  let shopPoolTotalCents = 0;
+  let grossUnpaidCents = 0;
 
-  const monthMatch = (row: PayrollRow) =>
-    row.year === now.year && row.month === now.month;
-
-  const currentPeriod = buildOwnerPayrollPlan(
-    period.label,
-    periodProfit,
-    settings,
-    staffLinesForPeriod(allRows, roleById, periodMatch),
-  );
-
-  const currentMonth = buildOwnerPayrollPlan(
-    monthLabel,
-    monthProfit,
-    settings,
-    staffLinesForPeriod(allRows, roleById, monthMatch),
-  );
+  for (const item of unpaidPayroll) {
+    const breakdown = buildUnpaidPayrollSplitBreakdown(item, settings);
+    owner1TotalCents += breakdown.owner1TotalCents;
+    owner2TotalCents += breakdown.owner2TotalCents;
+    shopPoolTotalCents += breakdown.staffPoolCents;
+    grossUnpaidCents += breakdown.grossPayCents;
+  }
 
   return {
     settings,
-    currentPeriod,
-    currentMonth,
     unpaidPayroll,
+    walletObligations: {
+      owner1TotalCents,
+      owner2TotalCents,
+      shopPoolTotalCents,
+      grossUnpaidCents,
+      unpaidCount: unpaidPayroll.length,
+    },
+    shopCash: {
+      cashInHandCents: cashReport.cash.cashInHandCents,
+      availableShopCashCents: cashReport.cash.availableShopCashCents,
+      pendingShopPoolCents: shopPoolTotalCents,
+    },
   };
 }

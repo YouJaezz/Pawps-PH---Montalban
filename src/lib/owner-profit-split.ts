@@ -43,6 +43,14 @@ export type ProfitSplitAllocation = {
   payrollPoolCents: number;
 };
 
+/** Split any amount (e.g. wages on shared days) by owner / shop pool %. */
+export function allocateAmountBySplit(
+  amountCents: number,
+  settings: OwnerProfitSplitSettings,
+): ProfitSplitAllocation {
+  return allocateGrossProfit(amountCents, settings);
+}
+
 export function allocateGrossProfit(
   netIncomeCents: number,
   settings: OwnerProfitSplitSettings,
