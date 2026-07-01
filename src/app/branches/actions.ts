@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 
 function revalidateBranchPaths() {
   revalidatePath("/branches");
+  revalidatePath("/settings");
   revalidatePath("/products");
   revalidatePath("/orders");
   revalidatePath("/");

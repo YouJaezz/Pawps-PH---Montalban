@@ -47,6 +47,7 @@ import { revalidateSalesPages } from "@/lib/revalidate-sales";
 
 function revalidatePreOrderPaths() {
   revalidatePath("/preorders");
+  revalidatePath("/customers");
   revalidateSalesPages();
 }
 
@@ -224,6 +225,7 @@ export async function createPreOrder(formData: FormData) {
   });
 
   revalidatePath("/preorders");
+  revalidatePath("/customers");
 }
 
 export async function linkPreOrderItemToProduct(
@@ -331,6 +333,7 @@ export async function updatePreOrderStatus(
     }
 
     revalidatePath("/preorders");
+  revalidatePath("/customers");
     return { ok: true, message: "Status updated." };
   } catch (err) {
     console.error("updatePreOrderStatus failed:", err);
@@ -385,6 +388,7 @@ export async function receivePreOrderItem(
     }
 
     revalidatePath("/preorders");
+  revalidatePath("/customers");
     return { ok: true, message: "Received quantity saved." };
   } catch (err) {
     console.error("receivePreOrderItem failed:", err);
@@ -414,4 +418,5 @@ export async function deletePreOrder(formData: FormData) {
   await db.delete(preOrders).where(eq(preOrders.id, id));
 
   revalidatePath("/preorders");
+  revalidatePath("/customers");
 }

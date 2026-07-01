@@ -11,6 +11,7 @@ import type {
   NormalizeUploadFile,
   PawpsNormalizedRow,
 } from "@/lib/pricelist-normalize-types";
+import { productsSuppliersHref } from "@/lib/nav-urls";
 
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf";
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -669,7 +670,7 @@ export function NormalizePricelistClient(props: {
                   Process another file
                 </button>
                 <Link
-                  href="/suppliers"
+                  href={productsSuppliersHref}
                   className={`${btnSecondary} inline-flex items-center`}
                   style={{ borderColor: "#1e1e30" }}
                 >

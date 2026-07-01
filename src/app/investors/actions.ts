@@ -17,6 +17,7 @@ import {
 } from "@/lib/investor-income";
 import { phIsCurrentMonth, phMonthLabel } from "@/lib/ph-time";
 import { requireAdmin } from "@/lib/auth-guard";
+import { payrollInvestorsHref } from "@/lib/nav-urls";
 
 export type InvestorActionResult = {
   ok?: boolean;
@@ -39,6 +40,7 @@ function parseSharePercent(value: FormDataEntryValue | null) {
 
 function revalidateInvestorPages() {
   revalidatePath("/investors");
+  revalidatePath("/payroll");
   revalidatePath("/");
   revalidatePath("/reports");
 }
@@ -85,7 +87,7 @@ export async function upsertInvestorProfile(
   const [inserted] = await db.insert(investors).values(values).returning({ id: investors.id });
   if (inserted) await ensureDefaultAgreement(inserted.id);
   revalidateInvestorPages();
-  redirect("/investors?step=agreement");
+  redirect(`${payrollInvestorsHref}&step=agreement`);
 }
 
 export async function upsertInvestorAgreement(

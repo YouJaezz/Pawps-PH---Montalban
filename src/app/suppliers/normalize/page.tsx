@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { suppliers } from "@/db/schema";
 import { isAnthropicApiConfigured } from "@/lib/pricelist-normalize-ai";
 
+import { productsSuppliersHref } from "@/lib/nav-urls";
+
 export default async function NormalizePricelistPage() {
   const supplierRows = await db
     .select({ id: suppliers.id, name: suppliers.name })
@@ -16,7 +18,7 @@ export default async function NormalizePricelistPage() {
     <AppShell>
       <div className="min-h-full w-full px-0 py-4" style={{ background: "#0f0f14" }}>
         <div className="text-sm" style={{ color: "#8888aa" }}>
-          <Link href="/suppliers" className="hover:underline">
+          <Link href={productsSuppliersHref} className="hover:underline">
             Suppliers
           </Link>
           <span className="mx-1.5">/</span>

@@ -10,6 +10,7 @@ import { getRecentCostChangeAlerts } from "@/db/queries/price-alerts";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getInvestorSummary } from "@/lib/investor-income";
 import { formatPhpFromCents } from "@/lib/money";
+import { payrollInvestorsHref, productsShopCashHref } from "@/lib/nav-urls";
 import { rowSearchText } from "@/lib/table-filter";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,7 @@ export default async function ReportsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/shop-cash"
+              href={productsShopCashHref}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
             >
               Shop cash
@@ -143,7 +144,7 @@ export default async function ReportsPage() {
             {formatPhpFromCents(report.cash.shopOutflowsThisMonthCents)} (
             {formatPhpFromCents(report.cash.shopExpensesThisMonthCents)} expenses,{" "}
             {formatPhpFromCents(report.cash.shopRestockThisMonthCents)} restock).{" "}
-            <Link href="/shop-cash" className="underline hover:text-zinc-400">
+            <Link href={productsShopCashHref} className="underline hover:text-zinc-400">
               Record expenses &amp; restock →
             </Link>
           </p>
@@ -250,7 +251,7 @@ export default async function ReportsPage() {
               </span>
             </span>
             <Link
-              href="/investors"
+              href={payrollInvestorsHref}
               className="ml-2 text-xs text-zinc-400 underline hover:text-zinc-200"
             >
               Investor details →

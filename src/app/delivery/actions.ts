@@ -66,5 +66,6 @@ export async function createDeliveryLog(formData: FormData) {
   }
 
   revalidatePath("/delivery");
+  revalidatePath("/orders");
 }
 

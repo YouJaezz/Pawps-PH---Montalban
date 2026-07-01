@@ -1,51 +1,48 @@
+import { BranchesPanel } from "@/app/branches/BranchesPanel";
+import { SettingsAccountsPanel } from "@/app/settings/SettingsAccountsPanel";
 import { AppShell } from "@/components/AppShell";
-import {
-  AccountsTable,
-  AddAccountForm,
-  ChangePasswordForm,
-} from "@/app/settings/SettingsPanel";
-import { toggleAccountActive } from "@/app/settings/actions";
-import { listUsers } from "@/db/queries/users";
+import { PageHeader } from "@/components/PageHeader";
+import { SectionTabs } from "@/components/SectionTabs";
 import { requireAdmin } from "@/lib/auth-guard";
+import { settingsAccountsHref, settingsBranchesHref } from "@/lib/nav-urls";
 
-export default async function SettingsPage() {
+export default async function SettingsPage(props: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await requireAdmin();
-  const accounts = await listUsers();
+  const sp = await props.searchParams;
+  const activeTab = sp.tab === "branches" ? "branches" : "accounts";
 
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <div className="text-sm text-zinc-400">Admin</div>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Manage your password and team accounts.
-        </p>
+        <PageHeader
+          eyebrow="Admin"
+          title="Settings"
+          description="Team accounts, passwords, and stock branch locations."
+        />
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 text-sm font-medium text-zinc-100">
-              Change password
-            </div>
-            <ChangePasswordForm />
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 text-sm font-medium text-zinc-100">
-              Add account
-            </div>
-            <AddAccountForm />
-          </div>
+        <div className="mt-4">
+          <SectionTabs
+            activeTab={activeTab}
+            tabs={[
+              { id: "accounts", label: "Team & accounts", href: settingsAccountsHref },
+              { id: "branches", label: "Branches", href: settingsBranchesHref },
+            ]}
+          />
         </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="mb-3 text-sm font-medium text-zinc-100">
-            Accounts ({accounts.length})
-          </div>
-          <AccountsTable
-            accounts={accounts}
-            currentUserId={session.userId}
-            toggleAction={toggleAccountActive}
-          />
+        <div className="mt-6">
+          {activeTab === "branches" ? (
+            <>
+              <p className="mb-4 text-sm text-zinc-400">
+                Track where stock is kept — shop, home storage, or other locations.
+              </p>
+              <BranchesPanel />
+            </>
+          ) : (
+            <SettingsAccountsPanel currentUserId={session.userId} />
+          )}
         </div>
       </div>
     </AppShell>

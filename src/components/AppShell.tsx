@@ -7,8 +7,6 @@ import { logoutAction } from "@/app/login/actions";
 import { BrandLogo } from "@/components/BrandLogo";
 import { MobileNav } from "@/components/MobileNav";
 import { SidebarShiftStatus } from "@/components/SidebarShiftStatus";
-import { TeamChatNavLink } from "@/components/TeamChatNavLink";
-import { TeamChatNotifier } from "@/components/TeamChatNotifier";
 import { BRAND_TAGLINE } from "@/lib/brand";
 import { isAdmin, roleLabel } from "@/lib/roles";
 import { getSession, type SessionUser } from "@/lib/session";
@@ -46,35 +44,37 @@ function ShellBody(props: {
                 <>
                   <NavItem href="/" label="Dashboard" />
                   <NavItem href="/reports" label="Reports" hint="insights" />
-                  <NavItem href="/shop-cash" label="Shop cash" hint="expenses" />
-                  <NavItem href="/payroll" label="Payroll" hint="employees" />
-                  <NavItem href="/investors" label="Investors" hint="confidential" />
-                </>
-              ) : null}
-              <NavItem href="/products" label="Inventory" hint={props.admin ? "CRUD" : "add stock"} />
-              <NavItem href="/orders" label="Sales & Orders" hint="quick sell" />
-              <NavItem href="/preorders" label="Pre-orders" hint="customers" />
-              <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
-              <TeamChatNavLink />
-              {props.admin ? (
-                <>
-                  <NavItem href="/customers" label="Customers" hint="CRM" />
                   <NavItem
-                    href="/delivery"
-                    label="Delivery Log"
+                    href="/products"
+                    label="Inventory & purchasing"
+                    hint="stock · cash"
+                  />
+                  <NavItem
+                    href="/orders"
+                    label="Sales & delivery"
                     hint={
                       props.pendingDeliveryCount > 0
                         ? `${props.pendingDeliveryCount} pending`
-                        : "—"
+                        : "orders"
                     }
                   />
-                  <NavItem href="/suppliers" label="Suppliers" hint="catalog" />
-                  <NavItem href="/branches" label="Branches" hint="stock sites" />
+                  <NavItem
+                    href="/customers"
+                    label="Customers"
+                    hint="CRM · pre-orders"
+                  />
+                  <NavItem href="/payroll" label="Payroll" hint="pay · investors" />
+                  <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
                   <NavItem href="/transport" label="Pet Transport" hint="driver" />
-                  <NavItem href="/settings" label="Settings" hint="admin" />
+                  <NavItem href="/settings" label="Settings" hint="team · branches" />
                 </>
               ) : (
-                <NavItem href="/customers" label="Customers" hint="checkout" />
+                <>
+                  <NavItem href="/products" label="Inventory" hint="add stock" />
+                  <NavItem href="/orders" label="Sales & Orders" hint="quick sell" />
+                  <NavItem href="/customers" label="Customers" hint="checkout" />
+                  <NavItem href="/attendance" label="Time In / Out" hint="attendance" />
+                </>
               )}
             </div>
             {props.session ? (
@@ -120,30 +120,16 @@ export async function AppShell(props: {
     session ? getUserOpenShift(session.userId) : Promise.resolve(null),
   ]);
 
-  const body = (
-    <ShellBody
-      admin={admin}
-      session={session}
-      pendingDeliveryCount={pendingDeliveryCount}
-      openShiftClockIn={openShift?.clockInAt.toISOString() ?? null}
-    >
-      {props.children}
-    </ShellBody>
-  );
-
   return (
     <div className="h-dvh overflow-hidden bg-brand-black text-zinc-50">
-      {session ? (
-        <TeamChatNotifier
-          userId={session.userId}
-          userName={session.name ?? session.email}
-          isAdmin={admin}
-        >
-          {body}
-        </TeamChatNotifier>
-      ) : (
-        body
-      )}
+      <ShellBody
+        admin={admin}
+        session={session}
+        pendingDeliveryCount={pendingDeliveryCount}
+        openShiftClockIn={openShift?.clockInAt.toISOString() ?? null}
+      >
+        {props.children}
+      </ShellBody>
     </div>
   );
 }

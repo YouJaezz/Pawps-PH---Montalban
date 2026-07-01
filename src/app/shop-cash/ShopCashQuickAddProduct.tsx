@@ -13,6 +13,7 @@ import { formatPhpFromCents } from "@/lib/money";
 import {
   isWeightProduct,
 } from "@/lib/price-units";
+import { productsSuppliersHref } from "@/lib/nav-urls";
 import { catalogItemKey } from "@/lib/supplier-item-key";
 
 function CreateProductMessage(props: {
@@ -142,7 +143,7 @@ export function ShopCashQuickAddProduct(props: {
     return (
       <p className="text-[11px] text-zinc-500">
         Add a supplier first under{" "}
-        <a href="/suppliers" className="underline hover:text-zinc-300">
+        <a href={productsSuppliersHref} className="underline hover:text-zinc-300">
           Suppliers
         </a>
         .

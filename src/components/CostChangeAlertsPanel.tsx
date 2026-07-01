@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { CostChangeAlert } from "@/db/queries/price-alerts";
 import { formatPhpFromCents } from "@/lib/money";
+import { productsShopCashHref, productsSuppliersHref } from "@/lib/nav-urls";
 
 function formatDateShort(d: Date) {
   return new Intl.DateTimeFormat("en-PH", {
@@ -91,11 +92,11 @@ export function CostChangeAlertsPanel(props: {
         </tbody>
       </table>
       <p className="border-t border-white/5 px-3 py-2 text-[10px] text-zinc-600">
-        <Link href="/suppliers" className="underline hover:text-zinc-400">
+        <Link href={productsSuppliersHref} className="underline hover:text-zinc-400">
           Supplier price analytics
         </Link>
         {" · "}
-        <Link href="/shop-cash" className="underline hover:text-zinc-400">
+        <Link href={productsShopCashHref} className="underline hover:text-zinc-400">
           Record restock
         </Link>
       </p>

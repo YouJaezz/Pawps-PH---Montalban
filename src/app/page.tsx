@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { StatCard } from "@/components/StatCard";
 import { AppShell } from "@/components/AppShell";
 import { ExpiringSoonTable } from "@/components/ExpiringSoonTable";
@@ -12,7 +14,10 @@ import { formatStockLabel } from "@/lib/product-stock";
 import type { StockUnit } from "@/db/schema";
 import { StockAlertsTable } from "@/components/StockAlertsTable";
 import { CostChangeAlertsPanel } from "@/components/CostChangeAlertsPanel";
-import Link from "next/link";
+import {
+  payrollInvestorsHref,
+  productsShopCashHref,
+} from "@/lib/nav-urls";
 
 function formatDateShort(d: Date) {
   return new Intl.DateTimeFormat("en-PH", {
@@ -117,7 +122,7 @@ export default async function Home() {
               title="Investor share"
               value="Setup needed"
               subtitle={
-                <Link href="/investors" className="text-brand-blue underline">
+                <Link href={payrollInvestorsHref} className="text-brand-blue underline">
                   Complete agreement →
                 </Link>
               }
@@ -127,7 +132,7 @@ export default async function Home() {
               title="Investor share"
               value="—"
               subtitle={
-                <Link href="/investors" className="text-zinc-400 underline">
+                <Link href={payrollInvestorsHref} className="text-zinc-400 underline">
                   Add investor →
                 </Link>
               }
@@ -137,7 +142,7 @@ export default async function Home() {
             title="Investor capital"
             value={formatPhpFromCents(investorCapital.balanceCents)}
             subtitle={
-              <Link href="/shop-cash" className="text-zinc-400 underline">
+              <Link href={productsShopCashHref} className="text-zinc-400 underline">
                 Pool for non-sales expenses →
               </Link>
             }
@@ -164,7 +169,7 @@ export default async function Home() {
               </>
             ) : null}
             <Link
-              href="/investors"
+              href={payrollInvestorsHref}
               className="ml-3 text-xs text-zinc-400 underline hover:text-zinc-200"
             >
               Investor tab →
@@ -180,7 +185,7 @@ export default async function Home() {
             Cash &amp; profit report
           </Link>
           <Link
-            href="/shop-cash"
+            href={productsShopCashHref}
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-100 hover:bg-white/10"
           >
             Shop cash

@@ -22,12 +22,10 @@ export const CASHIER_HOME = "/orders";
 /** Routes a cashier may open (sales + inventory add + customers for checkout). */
 export function isCashierPathAllowed(pathname: string) {
   if (pathname === "/orders" || pathname.startsWith("/orders/")) return true;
-  if (pathname === "/products") return true;
-  if (pathname === "/customers") return true;
+  if (pathname === "/products" || pathname.startsWith("/products/")) return true;
+  if (pathname === "/customers" || pathname.startsWith("/customers/")) return true;
   if (pathname === "/attendance") return true;
-  if (pathname === "/team-chat") return true;
-  if (pathname === "/preorders") return true;
-  if (pathname.startsWith("/api/chat")) return true;
+  if (pathname === "/preorders" || pathname.startsWith("/preorders/")) return true;
   return false;
 }
 
@@ -40,8 +38,10 @@ export function isAdminOnlyPath(pathname: string) {
   if (pathname.startsWith("/suppliers")) return true;
   if (pathname.startsWith("/branches")) return true;
   if (pathname.startsWith("/delivery")) return true;
+  if (pathname.startsWith("/shop-cash")) return true;
   if (pathname.startsWith("/transport")) return true;
   if (pathname.startsWith("/api/export")) return true;
+  if (pathname.startsWith("/team-chat")) return true;
   return false;
 }
 

@@ -15,5 +15,6 @@ export async function deleteDeliveryLog(formData: FormData) {
 
   await db.delete(deliveryLogs).where(eq(deliveryLogs.id, id));
   revalidatePath("/delivery");
+  revalidatePath("/orders");
 }
 

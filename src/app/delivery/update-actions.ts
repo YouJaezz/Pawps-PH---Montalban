@@ -68,6 +68,7 @@ export async function updateDeliveryLog(formData: FormData) {
   }
 
   revalidatePath("/delivery");
+  revalidatePath("/orders");
 }
 
 export async function getDeliveryHistory(deliveryLogId: number) {

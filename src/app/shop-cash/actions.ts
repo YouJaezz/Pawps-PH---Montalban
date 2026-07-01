@@ -101,6 +101,7 @@ export async function recordInvestorContribution(
 
   revalidateShopCash();
   revalidatePath("/investors");
+  revalidatePath("/payroll");
   return { ok: true, message: "Investor contribution recorded." };
 }
 
@@ -129,6 +130,7 @@ export async function deleteInvestorContribution(
 
   revalidateShopCash();
   revalidatePath("/investors");
+  revalidatePath("/payroll");
   return { ok: true, message: "Contribution removed." };
 }
 

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { CustomerPricelistExport } from "@/app/products/CustomerPricelistExport";
 import {
@@ -6,6 +6,12 @@ import {
   type InventoryTableRow,
 } from "@/app/products/InventoryTable";
 import { ProductAddButton } from "@/app/products/ProductAddButton";
+import {
+  InventoryAdminLinks,
+  ProductsHubHeader,
+} from "@/app/products/ProductsHubHeader";
+import { ShopCashSection } from "@/app/shop-cash/ShopCashSection";
+import { SuppliersPanel } from "@/app/suppliers/SuppliersPanel";
 import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { getSupplierCatalogRows } from "@/db/queries/suppliers";
@@ -30,9 +36,50 @@ import { rowSearchText } from "@/lib/table-filter";
 import type { StockUnit } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export default async function ProductsPage() {
+export default async function ProductsPage(props: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await getSession();
   const admin = isAdmin(session?.role);
+  const sp = await props.searchParams;
+  const rawTab = sp.tab;
+
+  if (!admin && (rawTab === "shop-cash" || rawTab === "suppliers")) {
+    redirect("/products");
+  }
+
+  const activeTab =
+    rawTab === "shop-cash"
+      ? "shop-cash"
+      : rawTab === "suppliers"
+        ? "suppliers"
+        : "inventory";
+
+  if (activeTab === "shop-cash" && admin) {
+    return (
+      <AppShell>
+        <div className="w-full px-0 py-4">
+          <ProductsHubHeader activeTab="shop-cash" admin={admin} />
+          <div className="mt-6">
+            <ShopCashSection />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (activeTab === "suppliers" && admin) {
+    return (
+      <AppShell>
+        <div className="flex h-full min-h-0 flex-col px-0 py-3">
+          <ProductsHubHeader activeTab="suppliers" admin={admin} />
+          <div className="mt-4 min-h-0 flex-1">
+            <SuppliersPanel />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   const [supplierRows, catalogData, branchRows] = await Promise.all([
     db
@@ -232,53 +279,36 @@ export default async function ProductsPage() {
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-sm text-zinc-400">Inventory</div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Stock &amp; pricing
-            </h1>
-            <p className="mt-1 max-w-xl text-sm text-zinc-500">
-              Totals include all branches. Manage locations under Branches and
-              move stock when supplies go home.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ProductAddButton
-              suppliers={suppliersForForm}
-              catalogItems={catalogPickItems}
-              branches={branchRows.map((b) => ({
-                id: b.id,
-                name: b.name,
-                isDefault: b.isDefault,
-              }))}
-            />
-            {admin ? (
-              <>
-                <Link
-                  href="/branches"
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
-                >
-                  Branches
-                </Link>
-                <Link
-                  href="/suppliers"
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
-                >
-                  Suppliers
-                </Link>
-                <CustomerPricelistExport />
-                <a
-                  href="/api/export/stock-levels.csv"
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
-                  title="Internal stock export with costs and quantities"
-                >
-                  Stock CSV
-                </a>
-              </>
-            ) : null}
-          </div>
-        </div>
+        <ProductsHubHeader
+          activeTab="inventory"
+          admin={admin}
+          actions={
+            <>
+              <ProductAddButton
+                suppliers={suppliersForForm}
+                catalogItems={catalogPickItems}
+                branches={branchRows.map((b) => ({
+                  id: b.id,
+                  name: b.name,
+                  isDefault: b.isDefault,
+                }))}
+              />
+              {admin ? (
+                <>
+                  <InventoryAdminLinks />
+                  <CustomerPricelistExport />
+                  <a
+                    href="/api/export/stock-levels.csv"
+                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/5"
+                    title="Internal stock export with costs and quantities"
+                  >
+                    Stock CSV
+                  </a>
+                </>
+              ) : null}
+            </>
+          }
+        />
 
         {admin ? (
         <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:max-w-2xl">

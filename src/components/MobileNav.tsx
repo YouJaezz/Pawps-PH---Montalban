@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { UnreadBadge, useTeamChat } from "@/components/TeamChatNotifier";
-
-function NavLink(props: { href: string; label: string; badge?: number }) {
+function NavLink(props: { href: string; label: string }) {
   const pathname = usePathname();
   const active =
     props.href === "/"
@@ -22,32 +20,25 @@ function NavLink(props: { href: string; label: string; badge?: number }) {
       }`}
     >
       {props.label}
-      {props.badge != null && props.badge > 0 ? (
-        <UnreadBadge count={props.badge} />
-      ) : null}
     </Link>
   );
 }
 
 export function MobileNav(props: { admin: boolean }) {
-  const chat = useTeamChat();
-  const unread = chat?.unreadCount ?? 0;
-
   const cashierItems = [
     { href: "/orders", label: "Sales" },
-    { href: "/preorders", label: "Pre-order" },
     { href: "/products", label: "Stock" },
     { href: "/customers", label: "Customers" },
     { href: "/attendance", label: "Time" },
-    { href: "/team-chat", label: "Chat", badge: unread },
   ];
 
   const adminItems = [
     { href: "/", label: "Home" },
     { href: "/orders", label: "Sales" },
     { href: "/products", label: "Stock" },
+    { href: "/customers", label: "Customers" },
     { href: "/payroll", label: "Payroll" },
-    { href: "/team-chat", label: "Chat", badge: unread },
+    { href: "/settings", label: "Settings" },
   ];
 
   const items = props.admin ? adminItems : cashierItems;
@@ -56,12 +47,7 @@ export function MobileNav(props: { admin: boolean }) {
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#000000]/95 backdrop-blur md:hidden print:hidden">
       <div className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-2 py-2">
         {items.map((item) => (
-          <NavLink
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            badge={item.badge}
-          />
+          <NavLink key={item.href} href={item.href} label={item.label} />
         ))}
       </div>
     </nav>

@@ -5,8 +5,10 @@ export function revalidateSalesPages() {
   revalidatePath("/");
   revalidatePath("/orders");
   revalidatePath("/investors");
+  revalidatePath("/payroll");
   revalidatePath("/reports");
   revalidatePath("/customers");
   revalidatePath("/products");
   revalidatePath("/delivery");
+  revalidatePath("/orders");
 }
