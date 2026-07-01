@@ -31,12 +31,20 @@ function rowFromDb(
 }
 
 export const getOwnerProfitSplitSettings = cache(async () => {
-  const [row] = await db
-    .select()
-    .from(ownerProfitSplitSettings)
-    .where(eq(ownerProfitSplitSettings.id, 1))
-    .limit(1);
-  return rowFromDb(row);
+  try {
+    const [row] = await db
+      .select()
+      .from(ownerProfitSplitSettings)
+      .where(eq(ownerProfitSplitSettings.id, 1))
+      .limit(1);
+    return rowFromDb(row);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("no such table") || msg.includes("owner_profit_split_settings")) {
+      return { ...DEFAULT_OWNER_PROFIT_SPLIT };
+    }
+    throw err;
+  }
 });
 
 function isStaffPayrollRow(

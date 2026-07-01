@@ -36,14 +36,18 @@ export default async function PayrollPage(props: {
     ]);
     data = dashboard;
     attendanceReport = report;
-    profitSplit = await getOwnerProfitSplitDashboard({
-      semiMonthlyRows: dashboard.semiMonthlyRows,
-      dailyRows: dashboard.dailyRows,
-      employees: dashboard.employees.map((e) => ({
-        id: e.id,
-        role: e.role,
-      })),
-    });
+    try {
+      profitSplit = await getOwnerProfitSplitDashboard({
+        semiMonthlyRows: dashboard.semiMonthlyRows,
+        dailyRows: dashboard.dailyRows,
+        employees: dashboard.employees.map((e) => ({
+          id: e.id,
+          role: e.role,
+        })),
+      });
+    } catch (err) {
+      console.error("Owner profit split unavailable:", err);
+    }
   }
 
   return (
@@ -77,9 +81,11 @@ export default async function PayrollPage(props: {
         <div className="mt-6 space-y-6">
           {activeTab === "investors" ? (
             <InvestorsPanel highlightAgreement={sp.step === "agreement"} />
-          ) : data && attendanceReport && profitSplit ? (
+          ) : data && attendanceReport ? (
             <>
-              <OwnerProfitSplitPanel dashboard={profitSplit} />
+              {profitSplit ? (
+                <OwnerProfitSplitPanel dashboard={profitSplit} />
+              ) : null}
               <PayrollWorkspace
                 employees={data.employees.map((e) => ({
                   id: e.id,
