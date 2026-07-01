@@ -40,6 +40,7 @@ export function ProductSelectField(props: {
   onChange: (id: number) => void;
   label?: string;
   placeholder?: string;
+  emptySearchHint?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -122,7 +123,12 @@ export function ProductSelectField(props: {
           <ul className="max-h-72 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-center text-[11px] text-zinc-500">
-                No products match your search.
+                {props.products.length === 0
+                  ? "No inventory products yet."
+                  : "No products match your search."}
+                {props.emptySearchHint ? (
+                  <span className="mt-1 block text-zinc-600">{props.emptySearchHint}</span>
+                ) : null}
               </li>
             ) : (
               filtered.map((p) => {

@@ -9,50 +9,62 @@ import { db } from "@/db";
 import { getCashProfitReport } from "@/db/queries/cash-profit-report";
 import { getInvestorCapitalDashboard } from "@/db/queries/investor-capital";
 import { getShopCashDashboard } from "@/db/queries/shop-cash";
-import { investors, products, suppliers } from "@/db/schema";
+import { getSupplierCatalogRows } from "@/db/queries/suppliers";
+import { investors, products } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getActiveBranches } from "@/lib/branch-stock";
 import type { StockUnit } from "@/db/schema";
+import { catalogItemKey } from "@/lib/supplier-item-key";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopCashPage() {
   await requireAdmin();
 
-  const [dashboard, cashReport, investorCapital, productRows, branchRows, supplierRows, investorRows] =
-    await Promise.all([
-      getShopCashDashboard(),
-      getCashProfitReport(),
-      getInvestorCapitalDashboard(),
-      db
-        .select({
-          id: products.id,
-          name: products.name,
-          brand: products.brand,
-          variant: products.variant,
-          itemType: products.itemType,
-          stockUnit: products.stockUnit,
-          supplierId: products.supplierId,
-          costPrice: products.costPrice,
-          kgPerSack: products.kgPerSack,
-          unitsPerCase: products.unitsPerCase,
-        })
-        .from(products)
-        .where(eq(products.archived, false))
-        .orderBy(products.brand, products.name),
-      getActiveBranches(),
-      db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).orderBy(suppliers.name),
-      db
-        .select({ id: investors.id, fullName: investors.fullName })
-        .from(investors)
-        .where(eq(investors.active, true))
-        .orderBy(investors.fullName),
-    ]);
+  const [
+    dashboard,
+    cashReport,
+    investorCapital,
+    productRows,
+    branchRows,
+    catalogData,
+    investorRows,
+  ] = await Promise.all([
+    getShopCashDashboard(),
+    getCashProfitReport(),
+    getInvestorCapitalDashboard(),
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        variant: products.variant,
+        itemType: products.itemType,
+        stockUnit: products.stockUnit,
+        supplierId: products.supplierId,
+        supplierCatalogItemId: products.supplierCatalogItemId,
+        costPrice: products.costPrice,
+        kgPerSack: products.kgPerSack,
+        unitsPerCase: products.unitsPerCase,
+      })
+      .from(products)
+      .where(eq(products.archived, false))
+      .orderBy(products.brand, products.name),
+    getActiveBranches(),
+    getSupplierCatalogRows(),
+    db
+      .select({ id: investors.id, fullName: investors.fullName })
+      .from(investors)
+      .where(eq(investors.active, true))
+      .orderBy(investors.fullName),
+  ]);
+
+  const { suppliersWithCounts, searchRows: catalogItems } = catalogData;
 
   const cashCollectedCents = cashReport.cash.cashInHandCents;
   const availableShopCashCents = cashCollectedCents - dashboard.shopCashAllTime.totalCents;
 
-  const supplierById = new Map(supplierRows.map((s) => [s.id, s.name]));
+  const supplierById = new Map(suppliersWithCounts.map((s) => [s.id, s.name]));
 
   const restockProducts: Array<
     ProductSelectOption & {
@@ -82,6 +94,40 @@ export default async function ShopCashPage() {
     };
   });
 
+  const catalogPickItems = catalogItems.map((c) => ({
+    id: c.id,
+    supplierId: c.supplierId,
+    itemName: c.itemName,
+    brand: c.brand,
+    variant: c.variant,
+    unitCost: c.unitCost,
+    retailPrice: c.retailPrice,
+    perKiloPrice: c.perKiloPrice,
+    packSize: c.packSize,
+    packUnit: c.packUnit,
+    priceUnit: c.priceUnit,
+    unitsPerCase: c.unitsPerCase,
+    itemType: c.itemType,
+  }));
+
+  const suppliersForForm = suppliersWithCounts.map((s) => ({
+    id: s.id,
+    name: s.name,
+    itemCount: s.itemCount,
+  }));
+
+  const inventoryCatalogItemIds = productRows
+    .map((p) => p.supplierCatalogItemId)
+    .filter((id): id is number => id != null);
+
+  const inventoryProductKeys = productRows.map((p) =>
+    catalogItemKey({
+      brand: p.brand,
+      variant: p.variant,
+      itemName: p.name,
+    }),
+  );
+
   return (
     <AppShell>
       <div className="w-full px-0 py-4">
@@ -108,8 +154,15 @@ export default async function ShopCashPage() {
             investorCapital={investorCapital}
             entries={dashboard.entries}
             restockProducts={restockProducts}
-            branches={branchRows.map((b) => ({ id: b.id, name: b.name }))}
-            suppliers={supplierRows}
+            branches={branchRows.map((b) => ({
+              id: b.id,
+              name: b.name,
+              isDefault: b.isDefault,
+            }))}
+            suppliers={suppliersForForm}
+            catalogItems={catalogPickItems}
+            inventoryCatalogItemIds={inventoryCatalogItemIds}
+            inventoryProductKeys={inventoryProductKeys}
             investors={investorRows}
           />
         </div>

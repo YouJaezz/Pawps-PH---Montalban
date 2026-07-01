@@ -50,6 +50,7 @@ function parseIntOr(value: FormDataEntryValue | null, fallback: number) {
 export type CreateProductResult = {
   ok: boolean;
   error?: string;
+  productId?: number;
   itemLabel?: string;
   stockQuantity?: number;
   stockUnit?: StockUnit;
@@ -302,6 +303,7 @@ export async function createProduct(
   revalidatePath("/branches");
   revalidatePath("/preorders");
   revalidatePath("/orders");
+  revalidatePath("/shop-cash");
   revalidatePath("/");
 
   const effectiveQty = displayStockQuantity(stockUnit, stockQuantity);
@@ -311,6 +313,7 @@ export async function createProduct(
 
   return {
     ok: true,
+    productId,
     itemLabel: variant ? `${name} (${variant})` : name,
     stockQuantity: effectiveQty,
     stockUnit,
