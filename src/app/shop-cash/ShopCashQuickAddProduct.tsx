@@ -21,15 +21,17 @@ function CreateProductMessage(props: {
   if (!props.result) return null;
   if (props.result.error) {
     return (
-      <p className="mt-2 text-xs text-red-300" role="alert">
+      <p className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200" role="alert">
         {props.result.error}
       </p>
     );
   }
   if (props.result.ok && props.result.itemLabel) {
     return (
-      <p className="mt-2 text-xs text-emerald-300" role="status">
-        Added {props.result.itemLabel} to inventory — select it above to restock.
+      <p className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200" role="status">
+        <span className="font-medium">{props.result.itemLabel}</span> is now in inventory
+        (0 stock). Continue to Step 2 below — enter amount paid and quantity, then
+        &quot;Record restock payment&quot;.
       </p>
     );
   }
@@ -118,6 +120,10 @@ export function ShopCashQuickAddProduct(props: {
   const kgPerSack = inferKgPerSack(selectedCatalog);
 
   useEffect(() => {
+    if (missingFromInventory.length > 0) setOpen(true);
+  }, [missingFromInventory.length]);
+
+  useEffect(() => {
     if (!selectedCatalog) return;
     const ws = selectedCatalog.unitCost ?? 0;
     const supRetail = selectedCatalog.retailPrice ?? 0;
@@ -128,7 +134,6 @@ export function ShopCashQuickAddProduct(props: {
   useEffect(() => {
     if (state?.ok && state.productId) {
       props.onAdded(state.productId);
-      setOpen(false);
       setCatalogItemId("");
     }
   }, [state?.ok, state?.productId, props.onAdded]);
@@ -145,138 +150,154 @@ export function ShopCashQuickAddProduct(props: {
     );
   }
 
+  if (!defaultBranchId) {
+    return (
+      <p className="text-[11px] text-red-300" role="alert">
+        Add a branch under Branches before adding inventory products.
+      </p>
+    );
+  }
+
   return (
-    <details
-      open={open}
-      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      className="rounded-xl border border-brand-blue/20 bg-brand-blue/5"
-    >
-      <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-brand-cyan/90 hover:bg-brand-blue/10">
-        Product not in the list? Add from supplier catalog
-        {missingFromInventory.length > 0 ? (
-          <span className="ml-2 font-normal text-zinc-500">
-            ({missingFromInventory.length} on pricelist, not in inventory)
-          </span>
-        ) : null}
-      </summary>
+    <div className="space-y-2">
+      {state?.ok && state.itemLabel ? (
+        <CreateProductMessage result={state} />
+      ) : null}
 
-      <div className="border-t border-brand-blue/15 px-4 py-4">
-        <p className="text-[11px] text-zinc-500">
-          Pick an item from your supplier pricelist to add it to inventory. You can
-          record the restock payment right after — stock is added separately in the
-          form above.
-        </p>
-
-        <form action={formAction} className="mt-4 space-y-3">
-          <input type="hidden" name="stockQuantity" value="0" />
-          <input type="hidden" name="purchaseTier" value="Wholesale" />
-          <input type="hidden" name="branchId" value={defaultBranchId} />
-          {selectedCatalog ? (
-            <>
-              <input type="hidden" name="name" value={selectedCatalog.itemName} />
-              <input type="hidden" name="brand" value={selectedCatalog.brand ?? selectedCatalog.itemName} />
-              <input type="hidden" name="variant" value={selectedCatalog.variant ?? ""} />
-              <input type="hidden" name="itemType" value={selectedCatalog.itemType ?? ""} />
-              {trackInKg ? <input type="hidden" name="trackInKg" value="on" /> : null}
-              {kgPerSack ? <input type="hidden" name="kgPerSack" value={kgPerSack} /> : null}
-              <input
-                type="hidden"
-                name="unitsPerCase"
-                value={String(selectedCatalog.unitsPerCase ?? 24)}
-              />
-            </>
+      <details
+        open={open}
+        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+        className="rounded-xl border border-brand-blue/20 bg-brand-blue/5"
+      >
+        <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-brand-cyan/90 hover:bg-brand-blue/10">
+          New product from supplier pricelist
+          {missingFromInventory.length > 0 ? (
+            <span className="ml-2 font-normal text-zinc-500">
+              ({missingFromInventory.length} not in inventory yet)
+            </span>
           ) : null}
+        </summary>
 
-          <label className="block text-xs text-zinc-400">
-            Supplier
-            <select
-              name="supplierId"
-              value={supplierId}
-              onChange={(e) => {
-                setSupplierId(e.target.value);
-                setCatalogItemId("");
-              }}
-              className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-            >
-              {props.suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.itemCount != null ? ` (${s.itemCount} catalog)` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="border-t border-brand-blue/15 px-4 py-4">
+          <p className="text-[11px] text-zinc-500">
+            This only creates the product in inventory (starts at 0 stock). You still
+            record the purchase and add quantity in Step 2.
+          </p>
 
-          <div>
-            <div className="mb-1 text-xs text-zinc-400">Supplier catalog item</div>
-            <CatalogItemSelect
-              name="supplierCatalogItemId"
-              items={missingFromInventory.length > 0 ? missingFromInventory : catalogForSupplier}
-              value={catalogItemId}
-              onChange={setCatalogItemId}
-            />
-            {missingFromInventory.length === 0 && catalogForSupplier.length > 0 ? (
-              <p className="mt-1 text-[10px] text-zinc-600">
-                All items for this supplier are already in inventory — you can still pick
-                one to link a duplicate row.
-              </p>
-            ) : null}
-          </div>
-
-          {selectedCatalog ? (
-            <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
-              Adding{" "}
-              <span className="text-zinc-200">
-                {displayCatalogProductName(selectedCatalog)}
-              </span>
-              {selectedCatalog.unitCost ? (
-                <>
-                  {" "}
-                  · supplier WS {formatPhpFromCents(selectedCatalog.unitCost)}
-                </>
-              ) : null}
-              {trackInKg ? " · tracks stock in kg" : " · tracks stock in pcs"}
-            </div>
-          ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-xs text-zinc-400">
-              Our retail sell price (₱)
-              <input
-                name="retailPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                value={retailInput}
-                onChange={(e) => setRetailInput(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-              />
-            </label>
-            <label className="block text-xs text-zinc-400">
-              Our bulk / WS sell price (₱)
-              <input
-                name="bulkPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                value={bulkInput}
-                onChange={(e) => setBulkInput(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-              />
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={pending || !catalogItemId}
-            className="rounded-xl bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 disabled:opacity-50"
+          <form
+            id="shop-cash-quick-add-form"
+            action={formAction}
+            className="mt-4 space-y-3"
           >
-            {pending ? "Adding…" : "Add to inventory"}
-          </button>
-          <CreateProductMessage result={state} />
-        </form>
-      </div>
-    </details>
+            <input type="hidden" name="stockQuantity" value="0" />
+            <input type="hidden" name="purchaseTier" value="Wholesale" />
+            <input type="hidden" name="branchId" value={defaultBranchId} />
+            {selectedCatalog ? (
+              <>
+                <input type="hidden" name="name" value={selectedCatalog.itemName} />
+                <input type="hidden" name="brand" value={selectedCatalog.brand ?? selectedCatalog.itemName} />
+                <input type="hidden" name="variant" value={selectedCatalog.variant ?? ""} />
+                <input type="hidden" name="itemType" value={selectedCatalog.itemType ?? ""} />
+                {trackInKg ? <input type="hidden" name="trackInKg" value="on" /> : null}
+                {kgPerSack ? <input type="hidden" name="kgPerSack" value={kgPerSack} /> : null}
+                <input
+                  type="hidden"
+                  name="unitsPerCase"
+                  value={String(selectedCatalog.unitsPerCase ?? 24)}
+                />
+              </>
+            ) : null}
+
+            <label className="block text-xs text-zinc-400">
+              Supplier
+              <select
+                name="supplierId"
+                value={supplierId}
+                onChange={(e) => {
+                  setSupplierId(e.target.value);
+                  setCatalogItemId("");
+                }}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              >
+                {props.suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.itemCount != null ? ` (${s.itemCount} catalog)` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div>
+              <div className="mb-1 text-xs text-zinc-400">Supplier catalog item</div>
+              <CatalogItemSelect
+                name="supplierCatalogItemId"
+                items={missingFromInventory.length > 0 ? missingFromInventory : catalogForSupplier}
+                value={catalogItemId}
+                onChange={setCatalogItemId}
+              />
+              {missingFromInventory.length === 0 && catalogForSupplier.length > 0 ? (
+                <p className="mt-1 text-[10px] text-zinc-600">
+                  All items for this supplier are already in inventory.
+                </p>
+              ) : null}
+            </div>
+
+            {selectedCatalog ? (
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
+                Adding{" "}
+                <span className="text-zinc-200">
+                  {displayCatalogProductName(selectedCatalog)}
+                </span>
+                {selectedCatalog.unitCost ? (
+                  <>
+                    {" "}
+                    · supplier WS {formatPhpFromCents(selectedCatalog.unitCost)}
+                  </>
+                ) : null}
+                {trackInKg ? " · tracks stock in kg" : " · tracks stock in pcs"}
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs text-zinc-400">
+                Our retail sell price (₱)
+                <input
+                  name="retailPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={retailInput}
+                  onChange={(e) => setRetailInput(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                Our bulk / WS sell price (₱)
+                <input
+                  name="bulkPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={bulkInput}
+                  onChange={(e) => setBulkInput(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={pending || !catalogItemId}
+              className="rounded-xl bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 disabled:opacity-50"
+            >
+              {pending ? "Adding…" : "Add to inventory"}
+            </button>
+            {state?.error ? <CreateProductMessage result={state} /> : null}
+          </form>
+        </div>
+      </details>
+    </div>
   );
 }

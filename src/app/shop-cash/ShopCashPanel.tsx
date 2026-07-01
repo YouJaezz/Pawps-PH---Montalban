@@ -359,14 +359,73 @@ function RestockForm(props: {
     router.refresh();
   };
 
+  const canRecordRestock =
+    !addStock || (productId > 0 && props.restockProducts.some((p) => p.id === productId));
+
   return (
-    <form action={action} className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
       <h3 className="text-sm font-semibold text-zinc-100">Record restock payment</h3>
       <p className="mt-1 text-[11px] text-zinc-500">
-        When you add stock, we calculate unit cost (amount ÷ units) and update inventory
-        + supplier catalog if the price changed. Visible on Suppliers and Reports.
+        {addStock
+          ? "Step 1: pick or add the product. Step 2: enter what you paid and how much stock to add."
+          : "Log a supplier payment without changing inventory (uncheck “add units” below)."}
       </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+      {addStock ? (
+        <section className="mt-4 space-y-3 rounded-xl border border-brand-blue/15 bg-brand-blue/[0.03] p-4">
+          <div>
+            <div className="text-xs font-semibold text-brand-cyan/90">Step 1 — Product</div>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Choose an item you already track, or add a new one from your supplier pricelist.
+            </p>
+          </div>
+          {props.restockProducts.length === 0 ? (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-3 text-xs text-amber-100/90">
+              Nothing in inventory yet — add a product from the supplier catalog below, then
+              continue to Step 2.
+            </div>
+          ) : (
+            <>
+              <ProductSelectField
+                label="Inventory product"
+                products={props.restockProducts}
+                value={productId}
+                onChange={handleProductChange}
+                placeholder="Search and select product…"
+                emptySearchHint="Not listed? Add it from the supplier catalog below."
+              />
+              {selectedProduct ? (
+                <div className="text-[10px] text-zinc-500">
+                  Stock unit:{" "}
+                  <span className="text-zinc-300">{selectedProduct.stockUnit}</span>
+                  {kgPerSackDisplay ? (
+                    <>
+                      {" "}
+                      · {kgPerSackDisplay} kg/sack
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
+          <ShopCashQuickAddProduct
+            suppliers={props.suppliers}
+            catalogItems={props.catalogItems}
+            inventoryCatalogItemIds={props.inventoryCatalogItemIds}
+            inventoryProductKeys={props.inventoryProductKeys}
+            branches={props.branches}
+            onAdded={handleQuickAdd}
+          />
+        </section>
+      ) : null}
+
+      <form action={action} className="mt-4">
+        <div className="mb-3">
+          <div className="text-xs font-semibold text-zinc-200">
+            {addStock ? "Step 2 — Payment & stock" : "Payment details"}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
         <FundingSourceField />
         <label className="block text-xs text-zinc-400">
           Amount paid (₱)
@@ -402,164 +461,123 @@ function RestockForm(props: {
           />
           Also add units to inventory now
         </label>
-        {addStock ? (
+        {addStock && selectedProduct ? (
           <>
-            {props.restockProducts.length === 0 ? (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-3 text-xs text-amber-100/90 sm:col-span-2">
-                No inventory products yet. Add one from your supplier catalog below,
-                or uncheck &quot;Also add units&quot; to record payment only.
-              </div>
-            ) : (
-              <>
-                <div className="sm:col-span-2">
-                  <ProductSelectField
-                    label="Product"
-                    products={props.restockProducts}
-                    value={productId}
-                    onChange={handleProductChange}
-                    placeholder="Search and select product…"
-                    emptySearchHint="Not listed? Expand “Add from supplier catalog” below."
-                  />
-                  <input type="hidden" name="productId" value={productId || ""} />
-                  <input type="hidden" name="stockEntryMode" value={stockEntryMode} />
-                  {selectedProduct?.kgPerSack ? (
-                    <input
-                      type="hidden"
-                      name="kgPerSack"
-                      value={kgPerSackDisplay ?? ""}
-                    />
-                  ) : null}
-                </div>
-                {selectedProduct ? (
-                  <div className="text-[10px] text-zinc-500 sm:col-span-2">
-                    Stock unit:{" "}
-                    <span className="text-zinc-300">{selectedProduct.stockUnit}</span>
-                    {kgPerSackDisplay ? (
-                      <>
-                        {" "}
-                        · {kgPerSackDisplay} kg/sack
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-                {isWeight ? (
-                  <label className="block text-xs text-zinc-400">
-                    Enter quantity as
-                    <select
-                      value={stockEntryMode}
-                      onChange={(e) =>
-                        setStockEntryMode(e.target.value as "sacks" | "kg")
-                      }
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                    >
-                      <option value="kg">Kilograms (kg)</option>
-                      <option value="sacks">Sacks</option>
-                    </select>
-                  </label>
-                ) : showCaseMode ? (
-                  <label className="block text-xs text-zinc-400">
-                    Enter quantity as
-                    <select
-                      value={stockEntryMode}
-                      onChange={(e) =>
-                        setStockEntryMode(e.target.value as "cases" | "pcs")
-                      }
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                    >
-                      <option value="pcs">Pieces (pcs)</option>
-                      <option value="cases">Cases</option>
-                    </select>
-                  </label>
-                ) : null}
-                {selectedProduct && parsedQty ? (
-                <div
-                  className={`rounded-lg border px-3 py-2 text-[11px] sm:col-span-2 ${
-                    costChanged
-                      ? "border-amber-500/30 bg-amber-500/10 text-amber-100"
-                      : "border-white/10 bg-black/20 text-zinc-400"
-                  }`}
-                >
-                  Current unit cost: {formatPhpFromCents(selectedProduct.costPriceCents)}
-                  {" · "}
-                  Adding:{" "}
-                  {formatRestockQtyDelta(
-                    selectedProduct.stockUnit,
-                    parsedQty.rawDelta,
-                    {
-                      kgPerSack: selectedProduct.kgPerSack,
-                      unitsPerCase: selectedProduct.unitsPerCase,
-                      itemType: selectedProduct.itemType,
-                    },
-                  )}
-                  {impliedUnitCost != null ? (
-                    <>
-                      {" "}
-                      · Unit cost from payment: {formatPhpFromCents(impliedUnitCost)}
-                    </>
-                  ) : null}
-                  {costChanged ? (
-                    <span className="text-amber-200">
-                      {" "}
-                      — will update product &amp; supplier on save
-                    </span>
-                  ) : impliedUnitCost != null ? (
-                    <span> — no cost change</span>
-                  ) : null}
-                </div>
-              ) : null}
+            <input type="hidden" name="productId" value={productId || ""} />
+            <input type="hidden" name="stockEntryMode" value={stockEntryMode} />
+            {selectedProduct.kgPerSack ? (
+              <input
+                type="hidden"
+                name="kgPerSack"
+                value={kgPerSackDisplay ?? ""}
+              />
+            ) : null}
+            {isWeight ? (
               <label className="block text-xs text-zinc-400">
-                Branch
+                Enter quantity as
                 <select
-                  name="branchId"
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                  defaultValue={
-                    props.branches.find((b) => b.isDefault)?.id ??
-                    props.branches[0]?.id ??
-                    ""
+                  value={stockEntryMode}
+                  onChange={(e) =>
+                    setStockEntryMode(e.target.value as "sacks" | "kg")
                   }
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
                 >
-                  {props.branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
+                  <option value="kg">Kilograms (kg)</option>
+                  <option value="sacks">Sacks</option>
                 </select>
               </label>
+            ) : showCaseMode ? (
               <label className="block text-xs text-zinc-400">
-                {qtyLabel}
-                <input
-                  name="stockQty"
-                  type="text"
-                  inputMode="decimal"
-                  required={addStock}
-                  value={stockQty}
-                  onChange={(e) => setStockQty(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
-                  placeholder={
-                    isWeight
-                      ? stockEntryMode === "sacks"
-                        ? "e.g. 2"
-                        : "e.g. 40 or 2.5"
-                      : stockEntryMode === "cases"
-                        ? "e.g. 1"
-                        : "e.g. 24"
+                Enter quantity as
+                <select
+                  value={stockEntryMode}
+                  onChange={(e) =>
+                    setStockEntryMode(e.target.value as "cases" | "pcs")
                   }
-                />
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                >
+                  <option value="pcs">Pieces (pcs)</option>
+                  <option value="cases">Cases</option>
+                </select>
               </label>
-              </>
-            )}
-            <div className="sm:col-span-2">
-              <ShopCashQuickAddProduct
-                suppliers={props.suppliers}
-                catalogItems={props.catalogItems}
-                inventoryCatalogItemIds={props.inventoryCatalogItemIds}
-                inventoryProductKeys={props.inventoryProductKeys}
-                branches={props.branches}
-                onAdded={handleQuickAdd}
+            ) : null}
+            {parsedQty ? (
+              <div
+                className={`rounded-lg border px-3 py-2 text-[11px] sm:col-span-2 ${
+                  costChanged
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-100"
+                    : "border-white/10 bg-black/20 text-zinc-400"
+                }`}
+              >
+                Current unit cost: {formatPhpFromCents(selectedProduct.costPriceCents)}
+                {" · "}
+                Adding:{" "}
+                {formatRestockQtyDelta(
+                  selectedProduct.stockUnit,
+                  parsedQty.rawDelta,
+                  {
+                    kgPerSack: selectedProduct.kgPerSack,
+                    unitsPerCase: selectedProduct.unitsPerCase,
+                    itemType: selectedProduct.itemType,
+                  },
+                )}
+                {impliedUnitCost != null ? (
+                  <>
+                    {" "}
+                    · Unit cost from payment: {formatPhpFromCents(impliedUnitCost)}
+                  </>
+                ) : null}
+                {costChanged ? (
+                  <span className="text-amber-200">
+                    {" "}
+                    — will update product &amp; supplier on save
+                  </span>
+                ) : impliedUnitCost != null ? (
+                  <span> — no cost change</span>
+                ) : null}
+              </div>
+            ) : null}
+            <label className="block text-xs text-zinc-400">
+              Branch
+              <select
+                name="branchId"
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                defaultValue={
+                  props.branches.find((b) => b.isDefault)?.id ??
+                  props.branches[0]?.id ??
+                  ""
+                }
+              >
+                {props.branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs text-zinc-400">
+              {qtyLabel}
+              <input
+                name="stockQty"
+                type="text"
+                inputMode="decimal"
+                required={addStock}
+                value={stockQty}
+                onChange={(e) => setStockQty(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                placeholder={
+                  isWeight
+                    ? stockEntryMode === "sacks"
+                      ? "e.g. 2"
+                      : "e.g. 40 or 2.5"
+                    : stockEntryMode === "cases"
+                      ? "e.g. 1"
+                      : "e.g. 24"
+                }
               />
-            </div>
+            </label>
           </>
-        ) : (
+        ) : !addStock ? (
           <label className="block text-xs text-zinc-400 sm:col-span-2">
             Description
             <input
@@ -569,7 +587,12 @@ function RestockForm(props: {
               placeholder="Supplier delivery — bulk dog food"
             />
           </label>
-        )}
+        ) : addStock ? (
+          <p className="text-xs text-amber-200/90 sm:col-span-2">
+            Complete Step 1 above — pick or add a product — then enter payment and quantity
+            here.
+          </p>
+        ) : null}
         <label className="block text-xs text-zinc-400">
           Supplier (optional)
           <select
@@ -602,13 +625,14 @@ function RestockForm(props: {
       </div>
       <button
         type="submit"
-        disabled={pending || (addStock && props.restockProducts.length === 0)}
+        disabled={pending || !canRecordRestock}
         className="mt-4 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
       >
         {pending ? "Saving…" : "Record restock payment"}
       </button>
       <ActionMessage result={state} />
-    </form>
+      </form>
+    </div>
   );
 }
 
