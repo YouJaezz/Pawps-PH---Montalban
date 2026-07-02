@@ -56,7 +56,9 @@ export function BulkOrderModal(props: {
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ModalStep>("form");
-  const [receiptDismissed, setReceiptDismissed] = useState(false);
+  const [dismissedReceiptOrderId, setDismissedReceiptOrderId] = useState<
+    number | null
+  >(null);
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
@@ -78,13 +80,21 @@ export function BulkOrderModal(props: {
   const [discountValue, setDiscountValue] = useState("");
   const [discountNote, setDiscountNote] = useState("");
 
+  const receiptOrderId = state?.receipt?.orderId ?? state?.orderId ?? null;
   const activeStep: ModalStep =
-    state?.ok && state.receipt && !receiptDismissed ? "receipt" : step;
+    state?.ok &&
+    state.receipt &&
+    receiptOrderId != null &&
+    receiptOrderId !== dismissedReceiptOrderId
+      ? "receipt"
+      : step;
 
   function closeModal() {
+    if (receiptOrderId != null) {
+      setDismissedReceiptOrderId(receiptOrderId);
+    }
     setOpen(false);
     setStep("form");
-    setReceiptDismissed(true);
     setFormKey((k) => k + 1);
     setCustomerName("");
     setContact("");
@@ -102,7 +112,6 @@ export function BulkOrderModal(props: {
   function openModal() {
     setFormKey((k) => k + 1);
     setStep("form");
-    setReceiptDismissed(false);
     setOpen(true);
   }
 
