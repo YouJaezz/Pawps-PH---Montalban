@@ -133,6 +133,8 @@ export async function ShopCashSection() {
       </div>
       <ShopCashPanel
         cashCollectedCents={cashCollectedCents}
+        grossSubtotalCents={cashReport.cash.grossSubtotalCents}
+        totalDiscountCents={cashReport.cash.totalDiscountCents}
         availableShopCashCents={availableShopCashCents}
         thisMonthExpenseCents={dashboard.thisMonthShopCash.expenseCents}
         thisMonthRestockCents={dashboard.thisMonthShopCash.restockCents}

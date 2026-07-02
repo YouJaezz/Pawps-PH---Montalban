@@ -295,10 +295,22 @@ export function DailySalesPanel(props: {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             compact
-            title="Order charges (this date)"
+            title="Gross charges (this date)"
+            value={formatPhpFromCents(report.collections.totalGrossSubtotalCents)}
+            subtitle="Before discounts"
+          />
+          <StatCard
+            compact
+            title="Discounts given"
+            value={formatPhpFromCents(report.collections.totalDiscountCents)}
+            subtitle="Not counted as cash collected"
+          />
+          <StatCard
+            compact
+            title="Net charges (this date)"
             value={formatPhpFromCents(report.collections.totalChargesCents)}
             subtitle={`${report.collections.visitCount} order(s) · ${report.collections.walkInOrderCount} walk-in · ${report.collections.onlineOrderCount} online`}
           />
@@ -306,13 +318,15 @@ export function DailySalesPanel(props: {
             compact
             title="Paid (on these orders)"
             value={formatPhpFromCents(report.collections.totalPaidCents)}
-            subtitle="Amount collected on these orders"
+            subtitle="Net collected on these orders"
           />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
           <StatCard
             compact
             title="Outstanding balance"
             value={formatPhpFromCents(report.collections.outstandingCents)}
-            subtitle="Charges minus payments on these orders"
+            subtitle="Still owed on orders from this date"
           />
         </div>
 

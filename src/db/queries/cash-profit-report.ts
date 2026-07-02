@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, ne, sql } from "drizzle-orm";
+import { and, gte, lt, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orders } from "@/db/schema";
@@ -43,17 +43,37 @@ export const getCashProfitReport = cache(async () => {
   const createdMs = orderCreatedMsColumn();
   const activeOrders = ne(orders.orderStatus, "Cancelled");
 
-  const [cashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch, shopOutflows, shopOutflowsThisMonth, investorCapital] =
+  const monthBounds = phMonthBounds(now.year, now.month);
+  const monthStartMs = monthBounds.start.getTime();
+  const monthEndMs = monthBounds.end.getTime();
+
+  const [cashRow, monthCashRow, inventoryProducts, todayProfit, last7Profit, last30Profit, monthBatch, shopOutflows, shopOutflowsThisMonth, investorCapital] =
     await Promise.all([
       db
         .select({
           cashInHandCents: sql<number>`coalesce(sum(${orders.amountPaid}), 0)`,
+          grossSubtotalCents: sql<number>`coalesce(sum(${orders.subtotalCents}), 0)`,
+          totalDiscountCents: sql<number>`coalesce(sum(${orders.discountCents}), 0)`,
           totalBilledCents: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
           receivablesCents: sql<number>`coalesce(sum(${orders.totalAmount} - ${orders.amountPaid}), 0)`,
           orderCount: sql<number>`count(*)`,
         })
         .from(orders)
         .where(activeOrders)
+        .then((rows) => rows[0]),
+      db
+        .select({
+          grossSubtotalCents: sql<number>`coalesce(sum(${orders.subtotalCents}), 0)`,
+          totalDiscountCents: sql<number>`coalesce(sum(${orders.discountCents}), 0)`,
+        })
+        .from(orders)
+        .where(
+          and(
+            activeOrders,
+            gte(orderCreatedMsColumn(), monthStartMs),
+            lt(orderCreatedMsColumn(), monthEndMs),
+          ),
+        )
         .then((rows) => rows[0]),
       getActiveInventoryProducts(),
       computeProfitForDateRange(todayMs, todayMs + MS_PER_DAY),
@@ -91,6 +111,10 @@ export const getCashProfitReport = cache(async () => {
     monthLabel,
     cash: {
       cashInHandCents,
+      grossSubtotalCents: Number(cashRow?.grossSubtotalCents ?? 0),
+      totalDiscountCents: Number(cashRow?.totalDiscountCents ?? 0),
+      thisMonthGrossSubtotalCents: Number(monthCashRow?.grossSubtotalCents ?? 0),
+      thisMonthDiscountCents: Number(monthCashRow?.totalDiscountCents ?? 0),
       receivablesCents: Number(cashRow?.receivablesCents ?? 0),
       totalBilledCents: Number(cashRow?.totalBilledCents ?? 0),
       activeOrderCount: Number(cashRow?.orderCount ?? 0),

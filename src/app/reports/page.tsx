@@ -101,13 +101,25 @@ export default async function ReportsPage() {
           <p className="mt-1 text-[11px] text-zinc-500">
             All orders except cancelled · full database, not the orders table limit
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <StatCard
+              compact
+              title="Gross sales"
+              value={formatPhpFromCents(report.cash.grossSubtotalCents)}
+              subtitle="Before discounts · all active orders"
+            />
+            <StatCard
+              compact
+              title="Total discounts given"
+              value={formatPhpFromCents(report.cash.totalDiscountCents)}
+              subtitle={`${report.monthLabel}: ${formatPhpFromCents(report.cash.thisMonthDiscountCents)}`}
+            />
             <StatCard
               accent
               compact
               title="Cash in hand"
               value={formatPhpFromCents(report.cash.cashInHandCents)}
-              subtitle="Total payments recorded from customers"
+              subtitle="Net collected after discounts"
             />
             <StatCard
               compact
@@ -127,11 +139,21 @@ export default async function ReportsPage() {
               value={formatPhpFromCents(report.cash.receivablesCents)}
               subtitle="Unpaid balance on open orders"
             />
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatCard
               compact
-              title="Total billed"
+              title="Total billed (net)"
               value={formatPhpFromCents(report.cash.totalBilledCents)}
-              subtitle={`${report.cash.activeOrderCount} active order(s)`}
+              subtitle={`${report.cash.activeOrderCount} active order(s) · after discounts`}
+            />
+            <StatCard
+              compact
+              title="Check"
+              value={formatPhpFromCents(
+                report.cash.cashInHandCents + report.cash.receivablesCents,
+              )}
+              subtitle="Cash in hand + still to collect should equal total billed"
             />
           </div>
           <p className="mt-3 text-[10px] text-zinc-600">
@@ -149,8 +171,8 @@ export default async function ReportsPage() {
             </Link>
           </p>
           <p className="mt-1 text-[10px] text-zinc-600">
-            Cash in hand + still to collect = total billed. Use Daily sales for
-            payments on a specific date.
+            Gross sales − discounts = net billed. Cash in hand is what customers actually paid
+            (after discounts). Use Daily sales for payments on a specific date.
           </p>
         </section>
 

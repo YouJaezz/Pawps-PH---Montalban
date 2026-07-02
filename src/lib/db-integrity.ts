@@ -66,6 +66,62 @@ export async function repairDatabaseIntegrity(client: Client) {
   }
 
   await repairCatLitterStockUnits(client);
+  await repairOrderPaymentIntegrity(client);
+}
+
+/**
+ * Discounted orders sometimes kept pre-discount amount_paid (or total_amount).
+ * Cash in hand sums amount_paid — cap to net total and align totals with discounts.
+ */
+async function repairOrderPaymentIntegrity(client: Client) {
+  await client.execute(`
+    UPDATE orders
+    SET subtotal_cents = total_amount + discount_cents
+    WHERE order_status != 'Cancelled'
+      AND subtotal_cents = 0
+      AND (total_amount > 0 OR discount_cents > 0)
+  `);
+
+  await client.execute(`
+    UPDATE orders
+    SET subtotal_cents = total_amount + discount_cents
+    WHERE order_status != 'Cancelled'
+      AND discount_cents > 0
+      AND subtotal_cents = total_amount
+  `);
+
+  const totalFix = await client.execute(`
+    UPDATE orders
+    SET total_amount = CASE
+      WHEN subtotal_cents > discount_cents THEN subtotal_cents - discount_cents
+      ELSE 0
+    END
+    WHERE order_status != 'Cancelled'
+      AND discount_cents > 0
+      AND total_amount != CASE
+        WHEN subtotal_cents > discount_cents THEN subtotal_cents - discount_cents
+        ELSE 0
+      END
+  `);
+
+  const paidFix = await client.execute(`
+    UPDATE orders
+    SET amount_paid = total_amount,
+        payment_status = CASE
+          WHEN total_amount <= 0 THEN payment_status
+          ELSE 'Paid'
+        END
+    WHERE order_status != 'Cancelled'
+      AND amount_paid > total_amount
+  `);
+
+  const totalRows =
+    Number(totalFix.rowsAffected ?? 0) + Number(paidFix.rowsAffected ?? 0);
+  if (totalRows > 0) {
+    console.log(
+      `Repair: fixed ${totalRows} order payment row(s) (discount / overpaid cash)`,
+    );
+  }
 }
 
 /** Cat litter is sold per sack — convert legacy kg-tracked rows to per-sack pieces. */

@@ -74,6 +74,8 @@ function FundingSourceField(props: { name?: string; defaultValue?: string }) {
 
 function SummaryCards(props: {
   cashCollectedCents: number;
+  grossSubtotalCents: number;
+  totalDiscountCents: number;
   availableShopCashCents: number;
   thisMonthExpenseCents: number;
   thisMonthRestockCents: number;
@@ -83,7 +85,7 @@ function SummaryCards(props: {
 }) {
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-brand-cyan/25 bg-brand-blue/10 px-4 py-3">
           <div className="text-[10px] font-medium uppercase tracking-wide text-brand-cyan/80">
             Available shop cash
@@ -97,13 +99,35 @@ function SummaryCards(props: {
         </div>
         <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
           <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-            Cash from sales
+            Cash in hand
           </div>
           <div className="mt-1 text-lg font-semibold text-zinc-100">
             {formatPhpFromCents(props.cashCollectedCents)}
           </div>
           <div className="mt-0.5 text-[10px] text-zinc-600">
-            Total customer payments recorded
+            Net collected after discounts
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Gross sales
+          </div>
+          <div className="mt-1 text-lg font-semibold text-zinc-100">
+            {formatPhpFromCents(props.grossSubtotalCents)}
+          </div>
+          <div className="mt-0.5 text-[10px] text-zinc-600">
+            Before discounts · all orders
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-rose-200/70">
+            Total discounts given
+          </div>
+          <div className="mt-1 text-lg font-semibold text-rose-100">
+            {formatPhpFromCents(props.totalDiscountCents)}
+          </div>
+          <div className="mt-0.5 text-[10px] text-rose-200/60">
+            Not counted as cash collected
           </div>
         </div>
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
@@ -1004,6 +1028,8 @@ function LedgerTable(props: { entries: ShopCashLedgerRow[] }) {
 
 export function ShopCashPanel(props: {
   cashCollectedCents: number;
+  grossSubtotalCents: number;
+  totalDiscountCents: number;
   availableShopCashCents: number;
   thisMonthExpenseCents: number;
   thisMonthRestockCents: number;
@@ -1034,6 +1060,8 @@ export function ShopCashPanel(props: {
     <div className="space-y-6">
       <SummaryCards
         cashCollectedCents={props.cashCollectedCents}
+        grossSubtotalCents={props.grossSubtotalCents}
+        totalDiscountCents={props.totalDiscountCents}
         availableShopCashCents={props.availableShopCashCents}
         thisMonthExpenseCents={props.thisMonthExpenseCents}
         thisMonthRestockCents={props.thisMonthRestockCents}

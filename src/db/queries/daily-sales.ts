@@ -26,6 +26,8 @@ const orderSelectFields = {
   id: orders.id,
   customerName: orders.customerName,
   orderStatus: orders.orderStatus,
+  subtotalCents: orders.subtotalCents,
+  discountCents: orders.discountCents,
   totalAmount: orders.totalAmount,
   amountPaid: orders.amountPaid,
   paymentStatus: orders.paymentStatus,
@@ -40,6 +42,8 @@ type OrderRow = {
   id: number;
   customerName: string;
   orderStatus: string;
+  subtotalCents: number;
+  discountCents: number;
   totalAmount: number;
   amountPaid: number;
   paymentStatus: string;
@@ -60,6 +64,8 @@ function mapOrderRows(
     id: number;
     customerName: string;
     orderStatus: string;
+    subtotalCents: number;
+    discountCents: number;
     totalAmount: number;
     amountPaid: number;
     paymentStatus: string;
@@ -171,6 +177,11 @@ export const getDailySalesReport = cache(
     );
 
     const totalChargesOnDate = visitsOnDate.reduce((sum, r) => sum + r.totalAmount, 0);
+    const totalGrossSubtotalOnDate = visitsOnDate.reduce(
+      (sum, r) => sum + (r.subtotalCents > 0 ? r.subtotalCents : r.totalAmount),
+      0,
+    );
+    const totalDiscountOnDate = visitsOnDate.reduce((sum, r) => sum + r.discountCents, 0);
     const totalPaidOnDate = visitsOnDate.reduce((sum, r) => sum + r.amountPaid, 0);
     const outstandingOnDate = visitsOnDate.reduce((sum, r) => sum + r.balance, 0);
 
@@ -279,6 +290,8 @@ export const getDailySalesReport = cache(
           a.branchName.localeCompare(b.branchName),
         ),
         totalChargesCents: totalChargesOnDate,
+        totalGrossSubtotalCents: totalGrossSubtotalOnDate,
+        totalDiscountCents: totalDiscountOnDate,
         totalPaidCents: totalPaidOnDate,
         outstandingCents: outstandingOnDate,
         visitsTable,
