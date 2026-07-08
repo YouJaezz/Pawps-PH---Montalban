@@ -99,7 +99,7 @@ export default async function ReportsPage() {
         <section className="mt-8 rounded-2xl border border-brand-cyan/20 bg-brand-blue/5 p-5">
           <h2 className="text-sm font-semibold text-zinc-100">Cash from sales</h2>
           <p className="mt-1 text-[11px] text-zinc-500">
-            All orders except cancelled · full database, not the orders table limit
+            All orders except cancelled · full database
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <StatCard

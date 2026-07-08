@@ -30,7 +30,7 @@ function excessQtyFromNote(lineNote: string | null) {
 }
 
 export const getOrdersPageData = cache(async () => {
-  const [customerRows, recentOrders, inventoryProducts, branchRows] =
+  const [customerRows, allOrders, inventoryProducts, branchRows] =
     await Promise.all([
     db
       .select({
@@ -60,8 +60,7 @@ export const getOrdersPageData = cache(async () => {
         createdAt: orders.createdAt,
       })
       .from(orders)
-      .orderBy(desc(orderCreatedMsColumn()))
-      .limit(50),
+      .orderBy(desc(orderCreatedMsColumn())),
     getActiveInventoryProducts(),
     getActiveBranches(),
   ]);
@@ -95,10 +94,10 @@ export const getOrdersPageData = cache(async () => {
   );
 
   const productById = new Map(inventoryProducts.map((p) => [p.id, p]));
-  const recentOrderIds = recentOrders.map((o) => o.id);
+  const orderIds = allOrders.map((o) => o.id);
 
-  const recentLines =
-    recentOrderIds.length === 0
+  const orderLines =
+    orderIds.length === 0
       ? []
       : await db
           .select({
@@ -115,12 +114,12 @@ export const getOrdersPageData = cache(async () => {
             lineTotal: orderItems.lineTotal,
           })
           .from(orderItems)
-          .where(inArray(orderItems.orderId, recentOrderIds));
+          .where(inArray(orderItems.orderId, orderIds));
 
   const linesByOrder = new Map<number, string[]>();
   const editableByOrderId: Record<number, OrderEditPayload> = {};
 
-  for (const o of recentOrders) {
+  for (const o of allOrders) {
     editableByOrderId[o.id] = {
       id: o.id,
       customerName: o.customerName,
@@ -134,7 +133,7 @@ export const getOrdersPageData = cache(async () => {
     };
   }
 
-  for (const l of recentLines) {
+  for (const l of orderLines) {
     const p = productById.get(l.productId);
     if (!p) continue;
 
@@ -172,7 +171,7 @@ export const getOrdersPageData = cache(async () => {
     }
   }
 
-  const boardRows = recentOrders.map((o) => {
+  const boardRows = allOrders.map((o) => {
     const items = linesByOrder.get(o.id) ?? [];
     return {
       id: o.id,

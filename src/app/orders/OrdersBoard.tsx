@@ -155,7 +155,8 @@ export function OrdersBoard(props: {
           <option value="Paid">Paid</option>
         </select>
         <span className="text-[10px] text-zinc-600">
-          {filtered.length} / {props.rows.length} shown ·{" "}
+          {filtered.length} of {props.rows.length} order
+          {props.rows.length === 1 ? "" : "s"} · full history ·{" "}
           <Link href="/reports" className="text-brand-blue underline">
             Cash &amp; profit report
           </Link>{" "}
