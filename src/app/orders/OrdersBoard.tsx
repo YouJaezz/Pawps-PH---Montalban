@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   addPayment,
@@ -51,6 +52,8 @@ export function OrdersBoard(props: {
   adminMode?: boolean;
   staffCanUpdateStatus?: boolean;
 }) {
+  const router = useRouter();
+  const [statusPending, startStatusTransition] = useTransition();
   const adminMode = props.adminMode ?? true;
   const staffCanUpdateStatus = props.staffCanUpdateStatus ?? false;
   const canChangeStatus = adminMode || staffCanUpdateStatus;
@@ -278,12 +281,21 @@ export function OrdersBoard(props: {
                       {canChangeStatus &&
                       status !== "Cancelled" &&
                       status !== "Completed" ? (
-                        <form action={updateOrderStatus} className="space-y-1">
-                          <input type="hidden" name="orderId" value={o.id} />
+                        <form className="space-y-1">
                           <select
                             name="orderStatus"
                             defaultValue={status}
-                            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                            disabled={statusPending}
+                            onChange={(e) => {
+                              const next = e.currentTarget.value;
+                              startStatusTransition(async () => {
+                                const fd = new FormData();
+                                fd.set("orderId", String(o.id));
+                                fd.set("orderStatus", next);
+                                await updateOrderStatus(fd);
+                                router.refresh();
+                              });
+                            }}
                             className={`app-select w-full max-w-[9rem] rounded-md border px-1.5 py-1 text-[10px] outline-none ${ORDER_STATUS_SELECT_BORDER[status]}`}
                           >
                             {(adminMode ? ORDER_STATUSES : STAFF_ORDER_STATUSES)
