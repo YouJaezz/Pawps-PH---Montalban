@@ -715,7 +715,13 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                 ) : null}
 
                 {transferMessage ? (
-                  <div className="rounded-lg border border-brand-cyan/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-cyan/90">
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs ${
+                      transferMessage.startsWith("Stock transferred")
+                        ? "border-brand-cyan/30 bg-brand-blue/10 text-brand-cyan/90"
+                        : "border-red-500/30 bg-red-500/10 text-red-300"
+                    }`}
+                  >
                     {transferMessage}
                   </div>
                 ) : null}
@@ -793,28 +799,27 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                         if (kgPerSackInput) fd.set("kgPerSack", kgPerSackInput);
                         if (transferNote.trim()) fd.set("note", transferNote);
                         startTransition(async () => {
-                          try {
-                            const updated = await transferBranchStock(fd);
-                            setBranchStock(updated);
-                            setBranchStockInputs(
-                              branchStockInputsFromRows(
-                                updated,
-                                stockQtyUnit,
-                                stockEntryMode,
-                                kgPerSackTenths,
-                                p.unitsPerCase,
-                              ),
-                            );
-                            setTransferQty("");
-                            setTransferNote("");
-                            setTransferMessage("Stock transferred — quantities updated.");
-                            router.refresh();
-                          } catch (err) {
-                            setTransferMessage(null);
-                            alert(
-                              err instanceof Error ? err.message : "Transfer failed.",
-                            );
+                          const result = await transferBranchStock(fd);
+                          if (!result.ok) {
+                            setTransferMessage(result.error);
+                            return;
                           }
+                          setBranchStock(result.branchStock);
+                          setBranchStockInputs(
+                            branchStockInputsFromRows(
+                              result.branchStock,
+                              stockQtyUnit,
+                              stockEntryMode,
+                              kgPerSackTenths,
+                              p.unitsPerCase,
+                            ),
+                          );
+                          setTransferQty("");
+                          setTransferNote("");
+                          setTransferMessage(
+                            "Stock transferred — quantities updated.",
+                          );
+                          router.refresh();
                         });
                       }}
                       className="mt-2 w-full rounded-lg border border-brand-cyan/30 px-3 py-2 text-xs text-brand-cyan/90 hover:bg-brand-blue/10 disabled:opacity-50"

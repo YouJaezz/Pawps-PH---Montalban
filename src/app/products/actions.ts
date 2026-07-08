@@ -12,9 +12,11 @@ import {
 } from "@/db/schema";
 import {
   displayStockQuantity,
+  formatDualStock,
   parseKgPerSackFromInput,
   parseStockEntryMode,
   parseStockQuantityInput,
+  parseTransferQuantityInput,
 } from "@/lib/product-stock";
 import { normalizeCatalogItemType, isCatLitterItemType } from "@/lib/catalog-item-types";
 import { requireAuth } from "@/lib/auth-guard";
@@ -23,11 +25,14 @@ import { tryAutoFulfillPreOrdersForProduct } from "@/lib/preorder-fulfillment";
 import {
   adjustBranchStock,
   getActiveBranches,
+  getBranchName,
+  getBranchStockQuantity,
   getDefaultBranchId,
   resolveSaleBranchId,
   setBranchStockQuantity,
   transferBranchStock as transferBranchStockCore,
   getProductBranchStock,
+  type ProductBranchStock,
 } from "@/lib/branch-stock";
 import { catalogItemKey } from "@/lib/supplier-item-key";
 import { and, eq } from "drizzle-orm";
@@ -511,58 +516,110 @@ export async function updateProduct(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function transferBranchStock(formData: FormData) {
-  await requireAuth();
+export async function transferBranchStock(formData: FormData): Promise<
+  | { ok: true; branchStock: ProductBranchStock[] }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireAuth();
 
-  const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
-  const fromBranchId = Number.parseInt(String(formData.get("fromBranchId") ?? ""), 10);
-  const toBranchId = Number.parseInt(String(formData.get("toBranchId") ?? ""), 10);
-  const noteRaw = String(formData.get("note") ?? "").trim();
+    const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+    const fromBranchId = Number.parseInt(String(formData.get("fromBranchId") ?? ""), 10);
+    const toBranchId = Number.parseInt(String(formData.get("toBranchId") ?? ""), 10);
+    const noteRaw = String(formData.get("note") ?? "").trim();
 
-  const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
-  const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
-    ? (stockUnitRaw as StockUnit)
-    : ("Piece" as const);
-  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
-  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
-  const unitForParse =
-    stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return { ok: false, error: "Invalid product." };
+    }
+    if (!Number.isFinite(fromBranchId) || !Number.isFinite(toBranchId)) {
+      return { ok: false, error: "Choose valid branches." };
+    }
+    if (fromBranchId === toBranchId) {
+      return { ok: false, error: "Choose two different branches." };
+    }
 
-  if (!Number.isFinite(productId) || productId <= 0) {
-    throw new Error("Invalid product.");
+    const [productRow] = await db
+      .select({
+        unitsPerCase: products.unitsPerCase,
+        stockUnit: products.stockUnit,
+        kgPerSack: products.kgPerSack,
+        itemType: products.itemType,
+        name: products.name,
+      })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
+
+    if (!productRow) {
+      return { ok: false, error: "Product not found." };
+    }
+
+    const stockUnit = productRow.stockUnit as StockUnit;
+    const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
+    const kgPerSack =
+      parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? "")) ??
+      productRow.kgPerSack;
+    const itemType = productRow.itemType;
+    const unitForParse =
+      stockUnit === "Kilogram" || stockUnit === "Sack" ? "Kilogram" : stockUnit;
+
+    const quantity = parseTransferQuantityInput(
+      String(formData.get("transferQuantity") ?? ""),
+      unitForParse,
+      {
+        stockEntryMode,
+        kgPerSack,
+        unitsPerCase: productRow.unitsPerCase,
+        itemType,
+      },
+    );
+    if (quantity == null || quantity <= 0) {
+      return {
+        ok: false,
+        error:
+          'Enter a valid quantity (e.g. "5", "5 kg", "1 sack", or "2 cases").',
+      };
+    }
+
+    const available = await getBranchStockQuantity(fromBranchId, productId);
+    if (quantity > available) {
+      const branchName = await getBranchName(fromBranchId);
+      const onHand = formatDualStock(stockUnit, available, {
+        kgPerSack,
+        unitsPerCase: productRow.unitsPerCase,
+        itemType,
+      });
+      const requested = formatDualStock(stockUnit, quantity, {
+        kgPerSack,
+        unitsPerCase: productRow.unitsPerCase,
+        itemType,
+      });
+      return {
+        ok: false,
+        error: `Not enough stock at ${branchName}. On hand: ${onHand.primary}${onHand.secondary !== "—" ? ` (${onHand.secondary})` : ""}. You tried to move ${requested.primary}.`,
+      };
+    }
+
+    await transferBranchStockCore({
+      fromBranchId,
+      toBranchId,
+      productId,
+      quantity,
+      note: noteRaw.length ? noteRaw : undefined,
+    });
+
+    revalidatePath("/products");
+    revalidatePath("/branches");
+    revalidatePath("/orders");
+    revalidatePath("/");
+
+    const branchStock = await getProductBranchStock(productId);
+    return { ok: true, branchStock };
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "Transfer failed. Please try again.";
+    return { ok: false, error: message };
   }
-
-  const [productRow] = await db
-    .select({ unitsPerCase: products.unitsPerCase })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  const quantity = parseStockQuantityInput(
-    String(formData.get("transferQuantity") ?? ""),
-    unitForParse,
-    {
-      stockEntryMode,
-      kgPerSack,
-      unitsPerCase: productRow?.unitsPerCase,
-    },
-  );
-  if (quantity == null || quantity <= 0) {
-    throw new Error("Enter a valid quantity to move.");
-  }
-
-  await transferBranchStockCore({
-    fromBranchId,
-    toBranchId,
-    productId,
-    quantity,
-    note: noteRaw.length ? noteRaw : undefined,
-  });
-
-  revalidatePath("/products");
-  revalidatePath("/branches");
-  revalidatePath("/orders");
-  revalidatePath("/");
-
-  return getProductBranchStock(productId);
 }

@@ -18,6 +18,64 @@ export function parseStockEntryMode(
   return "kg";
 }
 
+/** Pull the first number from inputs like "5", "5 kg", or "1.5 sacks". */
+export function extractLeadingNumber(raw: string): number | null {
+  const match = raw.trim().replace(/,/g, "").match(/^(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function detectQuantityEntryMode(
+  raw: string,
+  fallback: "sacks" | "kg" | "cases" | "pcs",
+): "sacks" | "kg" | "cases" | "pcs" {
+  const lower = raw.trim().toLowerCase();
+  if (/\bkg\b|kilogram/.test(lower)) return "kg";
+  if (/\bsack/.test(lower)) return "sacks";
+  if (/\bcase/.test(lower)) return "cases";
+  if (/\bpc|piece|pack/.test(lower)) return "pcs";
+  return fallback;
+}
+
+/** Parse transfer/adjust qty — understands suffixes like "5 kg" or "2 sacks". */
+export function parseTransferQuantityInput(
+  raw: string,
+  stockUnit: StockUnit,
+  opts?: {
+    stockEntryMode?: "sacks" | "kg" | "cases" | "pcs";
+    kgPerSack?: number | null;
+    unitsPerCase?: number | null;
+    itemType?: string | null;
+  },
+): number | null {
+  const n = extractLeadingNumber(raw);
+  if (n == null || n <= 0) return null;
+
+  const entryMode = detectQuantityEntryMode(
+    raw,
+    opts?.stockEntryMode ?? "pcs",
+  );
+
+  if (isCatLitterItemType(opts?.itemType)) {
+    return Math.max(0, Math.round(n));
+  }
+
+  if (stockUnit === "Kilogram" || stockUnit === "Sack") {
+    if (entryMode === "sacks" && opts?.kgPerSack != null && opts.kgPerSack > 0) {
+      return Math.max(0, Math.round(n * opts.kgPerSack));
+    }
+    return Math.max(0, Math.round(n * 10));
+  }
+
+  if (entryMode === "cases") {
+    const caseSize = opts?.unitsPerCase ?? DEFAULT_UNITS_PER_CASE;
+    return Math.max(0, Math.round(n * caseSize));
+  }
+
+  return Math.max(0, Math.round(n));
+}
+
 export function parseStockQuantityInput(
   raw: string,
   stockUnit: StockUnit,
@@ -25,24 +83,10 @@ export function parseStockQuantityInput(
     stockEntryMode?: "sacks" | "kg" | "cases" | "pcs";
     kgPerSack?: number | null;
     unitsPerCase?: number | null;
+    itemType?: string | null;
   },
 ) {
-  const n = Number(raw.trim());
-  if (!Number.isFinite(n) || n < 0) return null;
-
-  if (stockUnit === "Kilogram" || stockUnit === "Sack") {
-    if (opts?.stockEntryMode === "sacks" && opts.kgPerSack != null && opts.kgPerSack > 0) {
-      return Math.max(0, Math.round(n * opts.kgPerSack));
-    }
-    return Math.max(0, Math.round(n * 10));
-  }
-
-  if (opts?.stockEntryMode === "cases") {
-    const caseSize = opts.unitsPerCase ?? DEFAULT_UNITS_PER_CASE;
-    return Math.max(0, Math.round(n * caseSize));
-  }
-
-  return Math.max(0, Math.round(n));
+  return parseTransferQuantityInput(raw, stockUnit, opts);
 }
 
 export function parseKgPerSackFromInput(raw: string) {
