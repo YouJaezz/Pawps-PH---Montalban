@@ -3,10 +3,16 @@
 import { useActionState } from "react";
 
 import { ActionMessage } from "@/app/shop-cash/ShopCashActionMessage";
-import type { BranchPendingRemitRow, BranchRemittanceLedgerRow } from "@/db/queries/branch-remittances";
+import type {
+  BranchPendingRemitRow,
+  BranchRemittanceLedgerRow,
+} from "@/db/queries/branch-remittances";
 import { formatPhpFromCents } from "@/lib/money";
 
-import { recordBranchRemittance, type BranchRemitActionResult } from "./branch-remit-actions";
+import {
+  recordBranchRemittance,
+  type BranchRemitActionResult,
+} from "./branch-remit-actions";
 
 function dateInputValue(date: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -26,10 +32,10 @@ export function BranchPendingRemitPanel(props: {
   recent: BranchRemittanceLedgerRow[];
   adminMode: boolean;
 }) {
-  const [state, action, pending] = useActionState<BranchRemitActionResult, FormData>(
-    recordBranchRemittance,
-    {},
-  );
+  const [state, action, pending] = useActionState<
+    BranchRemitActionResult,
+    FormData
+  >(recordBranchRemittance, {});
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -39,8 +45,8 @@ export function BranchPendingRemitPanel(props: {
             Pending to remit (by branch)
           </h2>
           <p className="mt-1 text-[11px] text-zinc-500">
-            Walk-in cash collected − recorded remittances. This helps when branches remit
-            days later.
+            Walk-in cash collected − recorded remittances. This helps when
+            branches remit days later.
           </p>
         </div>
         <div className="min-w-[260px]">
@@ -56,10 +62,11 @@ export function BranchPendingRemitPanel(props: {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-zinc-100">{r.branchName}</div>
+                <div className="text-sm font-semibold text-zinc-100">
+                  {r.branchName}
+                </div>
                 <div className="mt-0.5 text-[10px] text-zinc-500">
-                  Last remit:{" "}
-                  {r.lastRemittedAt ? r.lastRemittedAt.toLocaleDateString() : "—"}
+                  Last remit: {r.lastRemittedAt ?? "—"}
                 </div>
               </div>
               <div className="text-right">
@@ -92,7 +99,10 @@ export function BranchPendingRemitPanel(props: {
             </div>
 
             {props.adminMode ? (
-              <form action={action} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
+              <form
+                action={action}
+                className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4"
+              >
                 <input type="hidden" name="branchId" value={String(r.branchId)} />
                 <label className="block text-[10px] text-zinc-400 sm:col-span-2">
                   Amount remitted (PHP)
@@ -139,7 +149,9 @@ export function BranchPendingRemitPanel(props: {
 
       {props.recent.length ? (
         <div className="mt-5">
-          <h3 className="text-xs font-medium text-zinc-200">Recent remittances</h3>
+          <h3 className="text-xs font-medium text-zinc-200">
+            Recent remittances
+          </h3>
           <div className="mt-2 overflow-x-auto rounded-xl border border-white/10">
             <table className="min-w-full text-[11px]">
               <thead className="bg-white/5 text-left text-[10px] text-zinc-500">
@@ -154,7 +166,7 @@ export function BranchPendingRemitPanel(props: {
                 {props.recent.map((e) => (
                   <tr key={e.id} className="border-t border-white/5">
                     <td className="px-3 py-2 text-zinc-300">
-                      {e.remittedAt.toLocaleDateString()}
+                      {e.remittedAt || "—"}
                     </td>
                     <td className="px-3 py-2 text-zinc-300">{e.branchName}</td>
                     <td className="px-3 py-2 text-right font-medium text-zinc-100">
@@ -171,4 +183,3 @@ export function BranchPendingRemitPanel(props: {
     </section>
   );
 }
-
