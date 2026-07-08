@@ -200,6 +200,32 @@ export async function getProductBranchStock(
   }));
 }
 
+export async function getBranchAssignmentsForProducts(
+  productIds: number[],
+): Promise<Map<number, Set<number>>> {
+  const result = new Map<number, Set<number>>();
+  if (productIds.length === 0) return result;
+
+  const rows = await db
+    .select({
+      productId: branchStock.productId,
+      branchId: branchStock.branchId,
+    })
+    .from(branchStock)
+    .where(inArray(branchStock.productId, productIds));
+
+  for (const row of rows) {
+    let set = result.get(row.productId);
+    if (!set) {
+      set = new Set();
+      result.set(row.productId, set);
+    }
+    set.add(row.branchId);
+  }
+
+  return result;
+}
+
 export async function getBranchStockForProducts(
   productIds: number[],
 ): Promise<Map<number, ProductBranchStock[]>> {

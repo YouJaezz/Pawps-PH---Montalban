@@ -29,6 +29,7 @@ import {
   formatBranchStockSummary,
   getActiveBranches,
   getBranchStockForProducts,
+  getBranchAssignmentsForProducts,
 } from "@/lib/branch-stock";
 import { isCatLitterItemType, displayCatalogItemType } from "@/lib/catalog-item-types";
 import { repairInventoryLabelsFromCatalog } from "@/lib/inventory-catalog-sync";
@@ -178,7 +179,10 @@ export default async function ProductsPage(props: {
   );
 
   const productIds = rows.map((p) => p.id);
-  const branchStockByProduct = await getBranchStockForProducts(productIds);
+  const [branchStockByProduct, branchAssignmentsByProduct] = await Promise.all([
+    getBranchStockForProducts(productIds),
+    getBranchAssignmentsForProducts(productIds),
+  ]);
 
   const inventoryTableRows: InventoryTableRow[] = rows.map((p) => {
     const catalog = p.supplierCatalogItemId
@@ -224,6 +228,9 @@ export default async function ProductsPage(props: {
     for (const line of branchRows) {
       branchQtyById[line.branchId] = line.stockQuantity;
     }
+    const assignedBranchIds = [
+      ...Array.from(branchAssignmentsByProduct.get(p.id) ?? []),
+    ];
 
     return {
       id: p.id,
@@ -247,6 +254,7 @@ export default async function ProductsPage(props: {
       unitSuffix,
       stockQuantity: p.stockQuantity,
       branchQtyById,
+      assignedBranchIds,
       searchText: rowSearchText([
         item,
         brand,

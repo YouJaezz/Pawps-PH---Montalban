@@ -92,6 +92,7 @@ export type InventoryReplenishmentRow = {
   supplierId: number | null;
   stockQuantity: number;
   branchQtyById: Record<number, number>;
+  assignedBranchIds: number[];
   productEdit: {
     stockUnit: StockUnit;
     kgPerSack: number | null;
@@ -117,6 +118,13 @@ export function buildReplenishmentLines(
 
   for (const row of rows) {
     if (opts.supplierId !== "all" && row.supplierId !== opts.supplierId) {
+      continue;
+    }
+
+    if (
+      opts.branchId !== "all" &&
+      !row.assignedBranchIds.includes(opts.branchId)
+    ) {
       continue;
     }
 
@@ -150,14 +158,13 @@ export function buildReplenishmentLines(
 
     let branchLabel: string;
     if (opts.branchId === "all") {
-      const parts = Object.entries(row.branchQtyById)
-        .filter(([, qty]) => qty > 0)
-        .map(([id, qty]) => {
-          const name = branchNameById.get(Number(id)) ?? "Branch";
-          const disp = formatDualStock(stockUnit, qty, evalOpts);
-          return `${name}: ${disp.primary}`;
-        });
-      branchLabel = parts.length ? parts.join(" · ") : "No branch stock";
+      const parts = row.assignedBranchIds.map((id) => {
+        const qty = row.branchQtyById[id] ?? 0;
+        const name = branchNameById.get(id) ?? "Branch";
+        const disp = formatDualStock(stockUnit, qty, evalOpts);
+        return `${name}: ${disp.primary}`;
+      });
+      branchLabel = parts.length ? parts.join(" · ") : "Not assigned to any branch";
     } else {
       branchLabel =
         branchNameById.get(opts.branchId) ?? `Branch #${opts.branchId}`;

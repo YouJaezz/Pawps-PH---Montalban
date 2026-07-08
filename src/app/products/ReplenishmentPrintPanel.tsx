@@ -88,7 +88,8 @@ export function ReplenishmentPrintPanel(props: {
             here — e.g. threshold{" "}
             <span className="font-medium text-amber-100">1</span> includes out
             of stock and anything with 1 pc, 1 kg, or 1 sack left (per product
-            unit).
+            unit). When a branch is selected, only products set up at that
+            branch appear (after transfer or initial stock).
           </p>
         </div>
         <button
@@ -145,7 +146,7 @@ export function ReplenishmentPrintPanel(props: {
                 onChange={(e) => setBranchFilter(e.target.value)}
                 className="app-select mt-1 w-full rounded-md border border-white/10 px-2 py-1.5 text-xs outline-none"
               >
-                <option value="all">All branches (total stock)</option>
+                <option value="all">All branches (shop total)</option>
                 {props.branches.map((b) => (
                   <option key={b.id} value={String(b.id)}>
                     {b.name}

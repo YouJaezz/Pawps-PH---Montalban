@@ -35,6 +35,8 @@ export type InventoryTableRow = {
   unitSuffix: string;
   stockQuantity: number;
   branchQtyById: Record<number, number>;
+  /** Branches where this product has a branch_stock row (set up or transferred). */
+  assignedBranchIds: number[];
   searchText: string;
   productEdit: ProductEditRow;
 };
@@ -65,7 +67,7 @@ export function InventoryTable(props: {
 
     if (branchFilter !== "all") {
       const branchId = Number.parseInt(branchFilter, 10);
-      list = list.filter((r) => (r.branchQtyById[branchId] ?? 0) > 0);
+      list = list.filter((r) => r.assignedBranchIds.includes(branchId));
     }
 
     if (stockFilter === "in") {
