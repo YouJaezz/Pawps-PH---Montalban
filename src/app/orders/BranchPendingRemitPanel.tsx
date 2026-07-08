@@ -14,9 +14,9 @@ export function BranchPendingRemitPanel(props: {
             Pending to remit (by branch)
           </h2>
           <p className="mt-1 text-[11px] text-zinc-500">
-            Walk-in cash on orders not yet marked Completed. When status is
-            Completed, money is treated as already remitted / received by
-            accountant.
+            Walk-in and online collections on orders not yet marked Completed.
+            When status is Completed, money is treated as already remitted /
+            received by accountant.
           </p>
         </div>
         <div className="text-right">
@@ -41,8 +41,8 @@ export function BranchPendingRemitPanel(props: {
                   {r.branchName}
                 </div>
                 <div className="mt-0.5 text-[10px] text-zinc-500">
-                  {r.pendingOrderCount} open walk-in order
-                  {r.pendingOrderCount === 1 ? "" : "s"} with cash
+                  {r.pendingOrderCount} open order
+                  {r.pendingOrderCount === 1 ? "" : "s"} with payment
                 </div>
               </div>
               <div className="text-right">
@@ -69,13 +69,13 @@ export function BranchPendingRemitPanel(props: {
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-zinc-500">
-                  All walk-in cash
+                  All collections
                 </div>
                 <div className="mt-1 text-sm font-medium text-zinc-200">
                   {formatPhpFromCents(r.cashCollectedCents)}
                 </div>
                 <div className="mt-0.5 text-[10px] text-zinc-600">
-                  Pending + completed
+                  Walk-in + online
                 </div>
               </div>
             </div>

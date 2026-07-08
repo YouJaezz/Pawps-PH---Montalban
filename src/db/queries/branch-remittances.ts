@@ -7,17 +7,18 @@ import { branches, orders } from "@/db/schema";
 export type BranchPendingRemitRow = {
   branchId: number;
   branchName: string;
-  /** Walk-in cash on orders not yet Completed (still with branch). */
+  /** Collected money on orders not yet Completed (still with branch). */
   pendingRemitCents: number;
-  /** Walk-in cash on Completed orders (already remitted / received). */
+  /** Collected money on Completed orders (already remitted / received). */
   remittedCents: number;
-  /** All walk-in cash collected (pending + remitted). */
+  /** All collected money (pending + remitted). */
   cashCollectedCents: number;
   pendingOrderCount: number;
 };
 
 /**
- * Pending to remit = walk-in cash on open (non-Completed, non-Cancelled) orders.
+ * Pending to remit = any collected order money (walk-in + online) on open
+ * (non-Completed, non-Cancelled) orders.
  * Completed = already remitted / received by accountant — no separate remittance record needed.
  */
 export const getBranchPendingRemittances = cache(async () => {
@@ -42,7 +43,6 @@ export const getBranchPendingRemittances = cache(async () => {
     .from(orders)
     .where(
       and(
-        eq(orders.storeType, "Walk-in"),
         sql`${orders.amountPaid} > 0`,
         notInArray(orders.orderStatus, ["Cancelled", "Completed"]),
       ),
@@ -57,7 +57,6 @@ export const getBranchPendingRemittances = cache(async () => {
     .from(orders)
     .where(
       and(
-        eq(orders.storeType, "Walk-in"),
         eq(orders.orderStatus, "Completed"),
         sql`${orders.amountPaid} > 0`,
       ),
