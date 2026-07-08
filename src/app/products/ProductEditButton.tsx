@@ -196,15 +196,11 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
     p.unitsPerCase != null &&
     p.unitsPerCase > 1;
   const showTransferUnitPicker = isWeight || hasCases;
-  const transferQtyLabel = isLitter
-    ? "Quantity (sacks)"
-    : isWeight
-      ? transferEntryMode === "sacks"
-        ? "Quantity (sacks)"
-        : "Quantity (kg)"
-      : transferEntryMode === "cases"
-        ? "Quantity (cases)"
-        : "Quantity (pcs)";
+  const transferQtyLabel = showTransferUnitPicker
+    ? "Quantity"
+    : isLitter
+      ? "Quantity (sacks)"
+      : "Quantity (pcs)";
   const transferFromBranch = branchStock.find(
     (b) => String(b.branchId) === transferFrom,
   );
@@ -804,60 +800,61 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                         </select>
                       </label>
                     </div>
+                    {showTransferUnitPicker ? (
+                      <label className="mt-2 block space-y-1">
+                        <span className="text-[10px] text-zinc-500">Unit</span>
+                        <select
+                          value={transferEntryMode}
+                          onChange={(e) => {
+                            setTransferEntryMode(
+                              e.target.value as "sacks" | "kg" | "cases" | "pcs",
+                            );
+                            setTransferQty("");
+                          }}
+                          className={inputClass}
+                          aria-label="Transfer unit"
+                        >
+                          {isWeight ? (
+                            <>
+                              <option value="sacks">Sacks</option>
+                              <option value="kg">Kilograms (kg)</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="cases">Cases</option>
+                              <option value="pcs">Pieces (pcs)</option>
+                            </>
+                          )}
+                        </select>
+                      </label>
+                    ) : null}
                     <label className="mt-2 block space-y-1">
                       <span className="text-[10px] text-zinc-500">{transferQtyLabel}</span>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          inputMode={transferEntryMode === "kg" ? "decimal" : "numeric"}
-                          value={transferQty}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (transferEntryMode === "kg") {
-                              setTransferQty(
-                                v.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"),
-                              );
-                            } else {
-                              setTransferQty(v.replace(/\D/g, ""));
-                            }
-                          }}
-                          placeholder={
-                            transferEntryMode === "kg"
-                              ? "e.g. 2.5"
-                              : transferEntryMode === "sacks"
-                                ? "e.g. 1"
-                                : transferEntryMode === "cases"
-                                  ? "e.g. 1"
-                                  : "e.g. 12"
+                      <input
+                        type="text"
+                        inputMode={transferEntryMode === "kg" ? "decimal" : "numeric"}
+                        value={transferQty}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (transferEntryMode === "kg") {
+                            setTransferQty(
+                              v.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"),
+                            );
+                          } else {
+                            setTransferQty(v.replace(/\D/g, ""));
                           }
-                          className={`${inputClass} min-w-0 flex-1`}
-                        />
-                        {showTransferUnitPicker ? (
-                          <select
-                            value={transferEntryMode}
-                            onChange={(e) => {
-                              setTransferEntryMode(
-                                e.target.value as "sacks" | "kg" | "cases" | "pcs",
-                              );
-                              setTransferQty("");
-                            }}
-                            className={`${inputClass} w-auto shrink-0`}
-                            aria-label="Unit"
-                          >
-                            {isWeight ? (
-                              <>
-                                <option value="sacks">sacks</option>
-                                <option value="kg">kg</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="cases">cases</option>
-                                <option value="pcs">pcs</option>
-                              </>
-                            )}
-                          </select>
-                        ) : null}
-                      </div>
+                        }}
+                        placeholder={
+                          transferEntryMode === "kg"
+                            ? "e.g. 2.5"
+                            : transferEntryMode === "sacks"
+                              ? "e.g. 1"
+                              : transferEntryMode === "cases"
+                                ? "e.g. 1"
+                                : "e.g. 12"
+                        }
+                        className={inputClass}
+                      />
                       {transferFromBranch ? (
                         <p className="text-[10px] text-zinc-500">
                           Available at {transferFromBranch.branchName}:{" "}
