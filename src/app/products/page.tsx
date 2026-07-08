@@ -5,6 +5,7 @@ import {
   InventoryTable,
   type InventoryTableRow,
 } from "@/app/products/InventoryTable";
+import { ReplenishmentPrintPanel } from "@/app/products/ReplenishmentPrintPanel";
 import { ProductAddButton } from "@/app/products/ProductAddButton";
 import {
   InventoryAdminLinks,
@@ -338,6 +339,14 @@ export default async function ProductsPage(props: {
             <div className="mb-3 text-sm font-medium text-zinc-100">
               Inventory ({rows.length})
             </div>
+
+            {admin ? (
+              <ReplenishmentPrintPanel
+                rows={inventoryTableRows}
+                branches={branchRows.map((b) => ({ id: b.id, name: b.name }))}
+                suppliers={inventorySuppliers}
+              />
+            ) : null}
 
             <InventoryTable
               rows={inventoryTableRows}

@@ -8,6 +8,10 @@ import { ScrollableTable } from "@/components/ScrollableTable";
 import { TableToolbar } from "@/components/TableToolbar";
 import { matchesQuery } from "@/lib/table-filter";
 import { formatDualStock } from "@/lib/product-stock";
+import {
+  inventoryComparableQuantity,
+  replenishmentStatus,
+} from "@/lib/inventory-replenishment";
 import type { StockUnit } from "@/db/schema";
 
 export type InventoryTableRow = {
@@ -65,11 +69,34 @@ export function InventoryTable(props: {
     }
 
     if (stockFilter === "in") {
-      list = list.filter((r) => r.stockQuantity > 0);
+      list = list.filter((r) => {
+        const raw =
+          branchFilter !== "all"
+            ? (r.branchQtyById[Number.parseInt(branchFilter, 10)] ?? 0)
+            : r.stockQuantity;
+        return raw > 0;
+      });
     } else if (stockFilter === "out") {
-      list = list.filter((r) => r.stockQuantity <= 0);
+      list = list.filter((r) => {
+        const raw =
+          branchFilter !== "all"
+            ? (r.branchQtyById[Number.parseInt(branchFilter, 10)] ?? 0)
+            : r.stockQuantity;
+        return raw <= 0;
+      });
     } else if (stockFilter === "low") {
-      list = list.filter((r) => r.stockQuantity > 0 && r.stockQuantity <= 50);
+      list = list.filter((r) => {
+        const raw =
+          branchFilter !== "all"
+            ? (r.branchQtyById[Number.parseInt(branchFilter, 10)] ?? 0)
+            : r.stockQuantity;
+        const comparable = inventoryComparableQuantity({
+          stockUnit: r.productEdit.stockUnit,
+          rawQuantity: raw,
+          itemType: r.productEdit.itemType,
+        });
+        return replenishmentStatus(comparable, 5) === "low";
+      });
     }
 
     if (query.trim()) {
@@ -122,7 +149,7 @@ export function InventoryTable(props: {
             options: [
               { value: "all", label: "All stock" },
               { value: "in", label: "In stock" },
-              { value: "low", label: "Low stock" },
+              { value: "low", label: "Low stock (≤5)" },
               { value: "out", label: "Out of stock" },
             ],
           },

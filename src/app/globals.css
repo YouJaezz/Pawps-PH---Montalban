@@ -152,4 +152,24 @@ body {
   .payroll-slip-days-cols {
     column-gap: 6mm;
   }
+
+  body.printing-replenishment * {
+    visibility: hidden;
+  }
+
+  body.printing-replenishment .replenishment-print-sheet,
+  body.printing-replenishment .replenishment-print-sheet * {
+    visibility: visible;
+  }
+
+  body.printing-replenishment .replenishment-print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block !important;
+    width: 100%;
+    padding: 0;
+    background: #fff;
+    color: #111;
+  }
 }
