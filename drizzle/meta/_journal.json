@@ -288,6 +288,13 @@
       "when": 1782600000000,
       "tag": "0041_payroll_shop_cash",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1782700000000,
+      "tag": "0042_branch_cash_remittances",
+      "breakpoints": true
     }
   ]
 }

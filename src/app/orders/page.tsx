@@ -1,5 +1,6 @@
 import { BulkOrderModal } from "@/app/orders/BulkOrderModal";
 import { DailySalesPanel } from "@/app/orders/DailySalesPanel";
+import { BranchPendingRemitPanel } from "@/app/orders/BranchPendingRemitPanel";
 import { DeliveryPanel } from "@/app/delivery/DeliveryPanel";
 import { OrdersBoard } from "@/app/orders/OrdersBoard";
 import { QuickSellPanel } from "@/app/orders/QuickSellPanel";
@@ -8,6 +9,10 @@ import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { getPendingDeliveryCount } from "@/db/queries/delivery-nav";
 import { getDailySalesReport } from "@/db/queries/daily-sales";
+import {
+  getBranchPendingRemittances,
+  getRecentBranchRemittances,
+} from "@/db/queries/branch-remittances";
 import { getOrdersPageData } from "@/db/queries/orders-board";
 import { phNow, phTodayDateKey, resolvePhDateParams } from "@/lib/ph-time";
 import { getSession } from "@/lib/session";
@@ -40,12 +45,16 @@ export default async function OrdersPage(props: {
   const [
     { customerRows, branches, quickSellProducts, boardRows, editableByOrderId },
     dailyReport,
+    branchPending,
+    branchRecent,
     pendingDeliveryCount,
   ] = await Promise.all([
     getOrdersPageData(),
     wantsDailySales
       ? getDailySalesReport(year, month, day)
       : Promise.resolve(null),
+    admin ? getBranchPendingRemittances() : Promise.resolve([]),
+    admin ? getRecentBranchRemittances(15) : Promise.resolve([]),
     admin ? getPendingDeliveryCount() : Promise.resolve(0),
   ]);
 
@@ -105,6 +114,15 @@ export default async function OrdersPage(props: {
         </div>
 
         <div className="mt-3 min-h-0 flex-1">
+          {admin && branchPending.length ? (
+            <div className="mb-3">
+              <BranchPendingRemitPanel
+                rows={branchPending}
+                recent={branchRecent}
+                adminMode={admin}
+              />
+            </div>
+          ) : null}
           {activeTab === "delivery" ? (
             <DeliveryPanel />
           ) : activeTab === "daily-sales" && dailyReport ? (

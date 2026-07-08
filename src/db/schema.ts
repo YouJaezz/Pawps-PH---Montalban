@@ -624,6 +624,19 @@ export const shopCashOutflows = sqliteTable("shop_cash_outflows", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/** Cash remitted/turned over by a branch to HQ/shop safe. */
+export const branchCashRemittances = sqliteTable("branch_cash_remittances", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  branchId: integer("branch_id").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  remittedAt: integer("remitted_at", { mode: "timestamp" }).notNull(),
+  note: text("note"),
+  recordedByUserId: integer("recorded_by_user_id"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 /** Singleton — how shop gross profit is split between owners and staff payroll. */
 export const ownerProfitSplitSettings = sqliteTable("owner_profit_split_settings", {
   id: integer("id").primaryKey(),
