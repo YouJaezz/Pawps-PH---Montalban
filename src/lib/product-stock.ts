@@ -89,6 +89,51 @@ export function parseStockQuantityInput(
   return parseTransferQuantityInput(raw, stockUnit, opts);
 }
 
+/** Format stored qty in the unit the user picked (kg, sacks, cases, or pcs). */
+export function formatStockInEntryMode(
+  storedQty: number,
+  stockUnit: StockUnit,
+  entryMode: "sacks" | "kg" | "cases" | "pcs",
+  opts?: {
+    kgPerSack?: number | null;
+    unitsPerCase?: number | null;
+    itemType?: string | null;
+  },
+): string {
+  if (isCatLitterItemType(opts?.itemType)) {
+    const n = Math.max(0, Math.round(storedQty));
+    return `${n} ${n === 1 ? "sack" : "sacks"}`;
+  }
+
+  if (stockUnit === "Kilogram" || stockUnit === "Sack") {
+    if (
+      entryMode === "sacks" &&
+      opts?.kgPerSack != null &&
+      opts.kgPerSack > 0
+    ) {
+      const sacks = storedQty / opts.kgPerSack;
+      const label = sacks % 1 === 0 ? sacks.toFixed(0) : sacks.toFixed(1);
+      return `${label} ${sacks === 1 ? "sack" : "sacks"}`;
+    }
+    const kg = displayStockQuantity("Kilogram", storedQty);
+    const label = kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(1);
+    return `${label} kg`;
+  }
+
+  if (
+    entryMode === "cases" &&
+    opts?.unitsPerCase != null &&
+    opts.unitsPerCase > 1
+  ) {
+    const cases = storedQty / opts.unitsPerCase;
+    const label = cases % 1 === 0 ? cases.toFixed(0) : cases.toFixed(1);
+    return `${label} ${cases === 1 ? "case" : "cases"}`;
+  }
+
+  const pcs = Math.max(0, Math.round(storedQty));
+  return `${pcs} ${pcs === 1 ? "pc" : "pcs"}`;
+}
+
 export function parseKgPerSackFromInput(raw: string) {
   const n = Number(raw.trim());
   if (!Number.isFinite(n) || n <= 0) return null;

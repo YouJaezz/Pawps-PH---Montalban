@@ -10,7 +10,7 @@ import { CATALOG_ITEM_TYPES, isCatLitterItemType } from "@/lib/catalog-item-type
 import type { ProductBranchStock } from "@/lib/branch-stock";
 import { displayKgPerSack } from "@/lib/order-line-math";
 import { formatPhpFromCents } from "@/lib/money";
-import { displayStockQuantity } from "@/lib/product-stock";
+import { displayStockQuantity, formatDualStock, formatStockInEntryMode } from "@/lib/product-stock";
 
 export type ProductEditRow = {
   id: number;
@@ -143,6 +143,9 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
       ),
   );
   const [transferQty, setTransferQty] = useState("");
+  const [transferEntryMode, setTransferEntryMode] = useState<
+    "sacks" | "kg" | "cases" | "pcs"
+  >("pcs");
   const [transferNote, setTransferNote] = useState("");
 
   useEffect(() => {
@@ -176,7 +179,46 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
       kgPerSackTenths,
       p.unitsPerCase,
     );
+  const branchStockDisplayLabel = (storedQty: number) => {
+    const dual = formatDualStock(stockQtyUnit, storedQty, {
+      kgPerSack: kgPerSackTenths,
+      unitsPerCase: p.unitsPerCase,
+      itemType,
+    });
+    if (dual.secondary === "—") return dual.primary;
+    return `${dual.primary} (${dual.secondary})`;
+  };
+  const totalStockDisplay = branchStockDisplayLabel(totalStored);
   const totalDisplayQty = formattedStock(totalStored);
+  const hasCases =
+    !isLitter &&
+    !isWeight &&
+    p.unitsPerCase != null &&
+    p.unitsPerCase > 1;
+  const showTransferUnitPicker = isWeight || hasCases;
+  const transferQtyLabel = isLitter
+    ? "Quantity (sacks)"
+    : isWeight
+      ? transferEntryMode === "sacks"
+        ? "Quantity (sacks)"
+        : "Quantity (kg)"
+      : transferEntryMode === "cases"
+        ? "Quantity (cases)"
+        : "Quantity (pcs)";
+  const transferFromBranch = branchStock.find(
+    (b) => String(b.branchId) === transferFrom,
+  );
+  const availableAtFrom = transferFromBranch?.stockQuantity ?? 0;
+  const availableAtFromLabel = formatStockInEntryMode(
+    availableAtFrom,
+    stockUnit,
+    isLitter ? "pcs" : transferEntryMode,
+    {
+      kgPerSack: kgPerSackTenths,
+      unitsPerCase: p.unitsPerCase,
+      itemType,
+    },
+  );
   const stockUnitLabel = isLitter
     ? "sacks"
     : stockUnit === "Kilogram" || stockUnit === "Sack"
@@ -260,6 +302,7 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
       ),
     );
     setTransferQty("");
+    setTransferEntryMode(nextEntryMode);
     setTransferNote("");
     setTransferMessage(null);
     setTab("details");
@@ -703,13 +746,13 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                         {branch.branchName}
                         {branch.isDefault ? " (default)" : ""}:{" "}
                         <span className="text-zinc-200">
-                          {formattedStock(branch.stockQuantity)} {stockUnitLabel}
+                          {branchStockDisplayLabel(branch.stockQuantity)}
                         </span>
                       </span>
                     ))}
                     <span className="text-zinc-500">
                       {" "}
-                      · Total {totalDisplayQty} {stockUnitLabel}
+                      · Total {totalStockDisplay}
                     </span>
                   </div>
                 ) : null}
@@ -762,19 +805,65 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                       </label>
                     </div>
                     <label className="mt-2 block space-y-1">
-                      <span className="text-[10px] text-zinc-500">Quantity</span>
-                      <input
-                        value={transferQty}
-                        onChange={(e) => setTransferQty(e.target.value)}
-                        placeholder={
-                          isWeight
-                            ? "e.g. 1 sack or 2.5 kg"
-                            : stockEntryMode === "cases"
-                              ? "e.g. 1 case"
-                              : "e.g. 12"
-                        }
-                        className={inputClass}
-                      />
+                      <span className="text-[10px] text-zinc-500">{transferQtyLabel}</span>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          inputMode={transferEntryMode === "kg" ? "decimal" : "numeric"}
+                          value={transferQty}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (transferEntryMode === "kg") {
+                              setTransferQty(
+                                v.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"),
+                              );
+                            } else {
+                              setTransferQty(v.replace(/\D/g, ""));
+                            }
+                          }}
+                          placeholder={
+                            transferEntryMode === "kg"
+                              ? "e.g. 2.5"
+                              : transferEntryMode === "sacks"
+                                ? "e.g. 1"
+                                : transferEntryMode === "cases"
+                                  ? "e.g. 1"
+                                  : "e.g. 12"
+                          }
+                          className={`${inputClass} min-w-0 flex-1`}
+                        />
+                        {showTransferUnitPicker ? (
+                          <select
+                            value={transferEntryMode}
+                            onChange={(e) => {
+                              setTransferEntryMode(
+                                e.target.value as "sacks" | "kg" | "cases" | "pcs",
+                              );
+                              setTransferQty("");
+                            }}
+                            className={`${inputClass} w-auto shrink-0`}
+                            aria-label="Unit"
+                          >
+                            {isWeight ? (
+                              <>
+                                <option value="sacks">sacks</option>
+                                <option value="kg">kg</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="cases">cases</option>
+                                <option value="pcs">pcs</option>
+                              </>
+                            )}
+                          </select>
+                        ) : null}
+                      </div>
+                      {transferFromBranch ? (
+                        <p className="text-[10px] text-zinc-500">
+                          Available at {transferFromBranch.branchName}:{" "}
+                          <span className="text-zinc-300">{availableAtFromLabel}</span>
+                        </p>
+                      ) : null}
                     </label>
                     <label className="mt-2 block space-y-1">
                       <span className="text-[10px] text-zinc-500">Note (optional)</span>
@@ -795,7 +884,10 @@ export function ProductEditButton(props: { product: ProductEditRow }) {
                         fd.set("toBranchId", transferTo);
                         fd.set("transferQuantity", transferQty);
                         fd.set("stockUnit", stockUnit);
-                        fd.set("stockEntryMode", stockEntryMode);
+                        fd.set(
+                          "stockEntryMode",
+                          isLitter ? "pcs" : transferEntryMode,
+                        );
                         if (kgPerSackInput) fd.set("kgPerSack", kgPerSackInput);
                         if (transferNote.trim()) fd.set("note", transferNote);
                         startTransition(async () => {

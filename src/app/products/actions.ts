@@ -13,6 +13,7 @@ import {
 import {
   displayStockQuantity,
   formatDualStock,
+  formatStockInEntryMode,
   parseKgPerSackFromInput,
   parseStockEntryMode,
   parseStockQuantityInput,
@@ -576,27 +577,31 @@ export async function transferBranchStock(formData: FormData): Promise<
     if (quantity == null || quantity <= 0) {
       return {
         ok: false,
-        error:
-          'Enter a valid quantity (e.g. "5", "5 kg", "1 sack", or "2 cases").',
+        error: "Enter a valid whole number for the quantity to move.",
       };
     }
 
     const available = await getBranchStockQuantity(fromBranchId, productId);
     if (quantity > available) {
       const branchName = await getBranchName(fromBranchId);
-      const onHand = formatDualStock(stockUnit, available, {
+      const onHand = formatStockInEntryMode(available, stockUnit, stockEntryMode, {
         kgPerSack,
         unitsPerCase: productRow.unitsPerCase,
         itemType,
       });
-      const requested = formatDualStock(stockUnit, quantity, {
-        kgPerSack,
-        unitsPerCase: productRow.unitsPerCase,
-        itemType,
-      });
+      const requested = formatStockInEntryMode(
+        quantity,
+        stockUnit,
+        stockEntryMode,
+        {
+          kgPerSack,
+          unitsPerCase: productRow.unitsPerCase,
+          itemType,
+        },
+      );
       return {
         ok: false,
-        error: `Not enough stock at ${branchName}. On hand: ${onHand.primary}${onHand.secondary !== "—" ? ` (${onHand.secondary})` : ""}. You tried to move ${requested.primary}.`,
+        error: `Not enough stock at ${branchName}. On hand: ${onHand}. You tried to move ${requested}.`,
       };
     }
 
