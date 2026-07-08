@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  branchStockTransfers,
   branchStock,
   branches,
   products,
@@ -373,6 +374,7 @@ export async function transferBranchStock(params: {
   productId: number;
   quantity: number;
   note?: string | null;
+  createdByUserId?: number | null;
 }) {
   if (params.fromBranchId === params.toBranchId) {
     throw new Error("Choose two different branches.");
@@ -395,6 +397,15 @@ export async function transferBranchStock(params: {
     delta: params.quantity,
     movementType: "Transfer",
     note: `${label} (in)`,
+  });
+
+  await db.insert(branchStockTransfers).values({
+    productId: params.productId,
+    fromBranchId: params.fromBranchId,
+    toBranchId: params.toBranchId,
+    quantity: params.quantity,
+    note: params.note?.trim() || null,
+    createdByUserId: params.createdByUserId ?? null,
   });
 }
 

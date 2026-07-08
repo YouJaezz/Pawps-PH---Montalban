@@ -522,7 +522,7 @@ export async function transferBranchStock(formData: FormData): Promise<
   | { ok: false; error: string }
 > {
   try {
-    await requireAuth();
+    const session = await requireAuth();
 
     const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
     const fromBranchId = Number.parseInt(String(formData.get("fromBranchId") ?? ""), 10);
@@ -611,6 +611,7 @@ export async function transferBranchStock(formData: FormData): Promise<
       productId,
       quantity,
       note: noteRaw.length ? noteRaw : undefined,
+      createdByUserId: session.userId,
     });
 
     revalidatePath("/products");

@@ -58,6 +58,7 @@ function ShellBody(props: {
                         : "orders"
                     }
                   />
+                  <NavItem href="/transfers" label="Transfer History" hint="audit" />
                   <NavItem
                     href="/customers"
                     label="Customers"

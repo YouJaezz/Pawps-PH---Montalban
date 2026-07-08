@@ -294,6 +294,20 @@ export const stockMovements = sqliteTable("stock_movements", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+export const branchStockTransfers = sqliteTable("branch_stock_transfers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("product_id").notNull(),
+  fromBranchId: integer("from_branch_id").notNull(),
+  toBranchId: integer("to_branch_id").notNull(),
+  /** Stored units (same units as branch_stock.stock_quantity). */
+  quantity: integer("quantity").notNull(),
+  note: text("note"),
+  createdByUserId: integer("created_by_user_id"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 /** Physical stock locations (shop, home storage, etc.). */
 export const branches = sqliteTable("branches", {
   id: integer("id").primaryKey({ autoIncrement: true }),

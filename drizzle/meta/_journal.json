@@ -295,6 +295,13 @@
       "when": 1782700000000,
       "tag": "0042_branch_cash_remittances",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1783700000000,
+      "tag": "0043_branch_stock_transfers",
+      "breakpoints": true
     }
   ]
 }

@@ -36,6 +36,7 @@ export function MobileNav(props: { admin: boolean }) {
     { href: "/", label: "Home" },
     { href: "/orders", label: "Sales" },
     { href: "/products", label: "Stock" },
+    { href: "/transfers", label: "Transfers" },
     { href: "/customers", label: "Customers" },
     { href: "/payroll", label: "Payroll" },
     { href: "/settings", label: "Settings" },
