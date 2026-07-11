@@ -10,18 +10,7 @@ import type {
 } from "@/db/queries/branch-remittances";
 import { formatPhpFromCents } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
-
-function formatWhen(d: Date | string | null) {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-PH", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatOrderWhen } from "@/lib/order-timestamp";
 
 export function BranchPendingRemitPanel(props: {
   rows: BranchPendingRemitRow[];
@@ -316,7 +305,10 @@ export function BranchPendingRemitPanel(props: {
                                 {order.storeType} ·{" "}
                                 {ORDER_STATUS_LABELS[order.orderStatus] ??
                                   order.orderStatus}{" "}
-                                · {formatWhen(order.createdAt)}
+                                ·{" "}
+                                {order.createdAt
+                                  ? formatOrderWhen(order.createdAt)
+                                  : "—"}
                                 {order.cashierName
                                   ? ` · ${order.cashierName}`
                                   : ""}

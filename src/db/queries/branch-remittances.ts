@@ -3,6 +3,7 @@ import { and, asc, desc, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { branches, orders, type OrderStatus } from "@/db/schema";
+import { orderCreatedMsColumn } from "@/lib/order-timestamp";
 
 export type BranchPendingRemitRow = {
   branchId: number;
@@ -135,7 +136,7 @@ export const getPendingRemitOrders = cache(async () => {
         notInArray(orders.orderStatus, ["Cancelled", "Completed"]),
       ),
     )
-    .orderBy(asc(orders.branchId), desc(orders.createdAt), desc(orders.id));
+    .orderBy(asc(orders.branchId), desc(orderCreatedMsColumn()), desc(orders.id));
 
   return rows
     .filter((r) => r.branchId != null && Number(r.branchId) > 0)
