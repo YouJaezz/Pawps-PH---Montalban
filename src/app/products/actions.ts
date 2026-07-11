@@ -382,139 +382,165 @@ export async function restockProduct(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function updateProduct(formData: FormData) {
-  await requireAuth();
-  const session = await getSession();
+export async function updateProduct(formData: FormData): Promise<
+  | { ok: true }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireAuth();
+    const session = await getSession();
 
-  const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
-  if (!Number.isFinite(productId) || productId <= 0) {
-    throw new Error("Invalid product.");
-  }
-
-  const name = String(formData.get("name") ?? "").trim();
-  const brand = String(formData.get("brand") ?? "").trim();
-  const variantRaw = String(formData.get("variant") ?? "").trim();
-  const variant = variantRaw.length ? variantRaw : null;
-  const packSizeRaw = String(formData.get("packSize") ?? "").trim();
-  const packSize = packSizeRaw.length ? packSizeRaw : null;
-  const itemType = normalizeCatalogItemType(String(formData.get("itemType") ?? ""));
-
-  const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
-  const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
-    ? (stockUnitRaw as StockUnit)
-    : ("Piece" as const);
-  const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
-  const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
-
-  if (!name || !brand) {
-    throw new Error("Product name and brand are required.");
-  }
-
-  const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
-  const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
-  const priceChangeReason = String(formData.get("priceChangeReason") ?? "").trim() || null;
-
-  if (retailPrice <= 0) throw new Error("Retail sell price is required.");
-
-  const [existing] = await db
-    .select({
-      id: products.id,
-      stockUnit: products.stockUnit,
-      unitsPerCase: products.unitsPerCase,
-      retailPrice: products.retailPrice,
-      bulkPrice: products.bulkPrice,
-    })
-    .from(products)
-    .where(and(eq(products.id, productId), eq(products.archived, false)))
-    .limit(1);
-
-  if (!existing) throw new Error("Product not found.");
-
-  const resolvedStockUnit =
-    stockUnit === "Sack" ? ("Kilogram" as const) : stockUnit;
-  const unitForParse =
-    resolvedStockUnit === "Kilogram" ? "Kilogram" : resolvedStockUnit;
-
-  const historyRows: Array<typeof priceHistory.$inferInsert> = [];
-  if (existing.retailPrice !== retailPrice) {
-    historyRows.push({
-      productId,
-      priceKind: "retail",
-      oldPrice: existing.retailPrice,
-      newPrice: retailPrice,
-      changedByUserId: session?.userId ?? null,
-      reason: priceChangeReason,
-    });
-  }
-  if (existing.bulkPrice !== bulkPrice) {
-    historyRows.push({
-      productId,
-      priceKind: "bulk",
-      oldPrice: existing.bulkPrice,
-      newPrice: bulkPrice,
-      changedByUserId: session?.userId ?? null,
-      reason: priceChangeReason,
-    });
-  }
-  if (historyRows.length) {
-    await db.insert(priceHistory).values(historyRows);
-  }
-
-  await db
-    .update(products)
-    .set({
-      name,
-      brand,
-      variant,
-      itemType,
-      packSize,
-      stockUnit: resolvedStockUnit,
-      kgPerSack:
-        stockUnit === "Kilogram" || stockUnit === "Sack" ? kgPerSack : null,
-      retailPrice,
-      bulkPrice,
-    })
-    .where(eq(products.id, productId));
-
-  const activeBranches = await getActiveBranches();
-  const currentBranchStock = await getProductBranchStock(productId);
-  let stockIncreased = false;
-
-  for (const branch of activeBranches) {
-    const raw = String(formData.get(`branchStock_${branch.id}`) ?? "").trim();
-    if (!raw.length) continue;
-
-    const parsed = parseStockQuantityInput(raw, unitForParse, {
-      stockEntryMode,
-      kgPerSack,
-      unitsPerCase: existing.unitsPerCase,
-    });
-    if (parsed == null) {
-      throw new Error(`Enter a valid stock quantity for ${branch.name}.`);
+    const productId = Number.parseInt(String(formData.get("productId") ?? ""), 10);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return { ok: false, error: "Invalid product." };
     }
 
-    const current =
-      currentBranchStock.find((r) => r.branchId === branch.id)?.stockQuantity ?? 0;
-    if (parsed === current) continue;
-    if (parsed > current) stockIncreased = true;
+    const name = String(formData.get("name") ?? "").trim();
+    const brand = String(formData.get("brand") ?? "").trim();
+    const variantRaw = String(formData.get("variant") ?? "").trim();
+    const variant = variantRaw.length ? variantRaw : null;
+    const packSizeRaw = String(formData.get("packSize") ?? "").trim();
+    const packSize = packSizeRaw.length ? packSizeRaw : null;
+    const itemType = normalizeCatalogItemType(String(formData.get("itemType") ?? ""));
 
-    await setBranchStockQuantity({
-      branchId: branch.id,
-      productId,
-      quantity: parsed,
-      note: `Stock edit — ${branch.name}`,
-    });
+    const stockUnitRaw = String(formData.get("stockUnit") ?? "Piece");
+    const stockUnit = (STOCK_UNITS as readonly string[]).includes(stockUnitRaw)
+      ? (stockUnitRaw as StockUnit)
+      : ("Piece" as const);
+    const kgPerSack = parseKgPerSackFromInput(String(formData.get("kgPerSack") ?? ""));
+    const stockEntryMode = parseStockEntryMode(formData.get("stockEntryMode"));
+
+    if (!name || !brand) {
+      return { ok: false, error: "Product name and brand are required." };
+    }
+
+    const retailPrice = parseMoneyToCents(formData.get("retailPrice"));
+    const bulkPrice = parseMoneyToCents(formData.get("bulkPrice"));
+    const priceChangeReason =
+      String(formData.get("priceChangeReason") ?? "").trim() || null;
+
+    if (retailPrice <= 0) {
+      return { ok: false, error: "Retail sell price is required." };
+    }
+
+    const [existing] = await db
+      .select({
+        id: products.id,
+        stockUnit: products.stockUnit,
+        unitsPerCase: products.unitsPerCase,
+        retailPrice: products.retailPrice,
+        bulkPrice: products.bulkPrice,
+      })
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.archived, false)))
+      .limit(1);
+
+    if (!existing) {
+      return { ok: false, error: "Product not found." };
+    }
+
+    const resolvedStockUnit =
+      stockUnit === "Sack" ? ("Kilogram" as const) : stockUnit;
+    const unitForParse =
+      resolvedStockUnit === "Kilogram" ? "Kilogram" : resolvedStockUnit;
+
+    const historyRows: Array<typeof priceHistory.$inferInsert> = [];
+    if (existing.retailPrice !== retailPrice) {
+      historyRows.push({
+        productId,
+        priceKind: "retail",
+        oldPrice: existing.retailPrice,
+        newPrice: retailPrice,
+        changedByUserId: session?.userId ?? null,
+        reason: priceChangeReason,
+      });
+    }
+    if (existing.bulkPrice !== bulkPrice) {
+      historyRows.push({
+        productId,
+        priceKind: "bulk",
+        oldPrice: existing.bulkPrice,
+        newPrice: bulkPrice,
+        changedByUserId: session?.userId ?? null,
+        reason: priceChangeReason,
+      });
+    }
+    if (historyRows.length) {
+      await db.insert(priceHistory).values(historyRows);
+    }
+
+    await db
+      .update(products)
+      .set({
+        name,
+        brand,
+        variant,
+        itemType,
+        packSize,
+        stockUnit: resolvedStockUnit,
+        kgPerSack:
+          stockUnit === "Kilogram" || stockUnit === "Sack" ? kgPerSack : null,
+        retailPrice,
+        bulkPrice,
+      })
+      .where(eq(products.id, productId));
+
+    const activeBranches = await getActiveBranches();
+    const currentBranchStock = await getProductBranchStock(productId);
+    let stockIncreased = false;
+
+    for (const branch of activeBranches) {
+      const raw = String(formData.get(`branchStock_${branch.id}`) ?? "").trim();
+      if (!raw.length) continue;
+
+      const parsed = parseStockQuantityInput(raw, unitForParse, {
+        stockEntryMode,
+        kgPerSack,
+        unitsPerCase: existing.unitsPerCase,
+        itemType,
+      });
+      if (parsed == null) {
+        return {
+          ok: false,
+          error: `Enter a valid stock quantity for ${branch.name}.`,
+        };
+      }
+
+      const current =
+        currentBranchStock.find((r) => r.branchId === branch.id)?.stockQuantity ??
+        0;
+      if (parsed === current) continue;
+      if (parsed > current) stockIncreased = true;
+
+      await setBranchStockQuantity({
+        branchId: branch.id,
+        productId,
+        quantity: parsed,
+        note: `Stock edit — ${branch.name}`,
+      });
+    }
+
+    if (stockIncreased) {
+      try {
+        await tryAutoFulfillPreOrdersForProduct(productId);
+      } catch (err) {
+        console.error("Auto-fulfill after product update failed:", err);
+      }
+    }
+
+    revalidatePath("/products");
+    revalidatePath("/branches");
+    revalidatePath("/preorders");
+    revalidatePath("/orders");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "Failed to save product. Please try again.";
+    return { ok: false, error: message };
   }
-
-  if (stockIncreased) {
-    await tryAutoFulfillPreOrdersForProduct(productId);
-  }
-
-  revalidatePath("/products");
-  revalidatePath("/branches");
-  revalidatePath("/preorders");
-  revalidatePath("/orders");
-  revalidatePath("/");
 }
 
 export async function transferBranchStock(formData: FormData): Promise<

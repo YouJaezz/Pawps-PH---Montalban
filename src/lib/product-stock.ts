@@ -86,6 +86,11 @@ export function parseStockQuantityInput(
     itemType?: string | null;
   },
 ) {
+  const n = extractLeadingNumber(raw);
+  // Allow 0 for branch stock edits / recounts (transfer parser rejects 0).
+  if (n == null || n < 0) return null;
+  if (n === 0) return 0;
+
   return parseTransferQuantityInput(raw, stockUnit, opts);
 }
 
