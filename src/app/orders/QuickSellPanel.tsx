@@ -579,10 +579,10 @@ export function QuickSellPanel(props: {
                     paidCents={orderPricing.totalAmount}
                     itemSummary={cartSummary}
                     extraNotes={[
-                      `Selling from ${saleBranchName} — stock deducts from this branch.`,
+                      `Selling from ${saleBranchName} — stock reserves from this branch.`,
                       deductStock
-                        ? "Regular and custom-quantity items deduct stock when the order is marked Completed."
-                        : "Regular and custom-quantity items will not deduct stock automatically.",
+                        ? "Regular and custom-quantity items reserve stock now while Pending. Cancelling the order restores stock."
+                        : "Regular and custom-quantity items will not reserve stock automatically.",
                       cart.some(
                         (line) => line.kind === "excess" && line.qtyPreset !== "Custom",
                       )
@@ -986,7 +986,7 @@ export function QuickSellPanel(props: {
                       onChange={(e) => setDeductStock(e.target.checked)}
                       className="size-4 accent-white"
                     />
-                    Deduct stock when order is marked Completed
+                    Deduct / reserve stock now (while Pending)
                   </label>
 
                   {state?.error ? (

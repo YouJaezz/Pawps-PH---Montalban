@@ -178,7 +178,7 @@ async function deductStockForOrder(orderId: number) {
       quantity: deductQty,
       movementType: "Sale",
       relatedOrderId: orderId,
-      note: "Order completed",
+      note: "Order stock reserved (pending)",
     });
   }
 
@@ -481,7 +481,7 @@ export async function quickSell(
             p.unitsPerCase,
           );
           return actionError(
-            `Not enough stock at ${saleBranchName} for ${p.name} (${stockLabel} on hand). Uncheck "Deduct stock", transfer stock to this branch, or restock first.`,
+            `Not enough stock at ${saleBranchName} for ${p.name} (${stockLabel} on hand). Uncheck "Reserve stock", transfer stock to this branch, or restock first.`,
           );
         }
       }
@@ -558,6 +558,11 @@ export async function quickSell(
       })),
     );
 
+    // Reserve stock immediately while Pending; cancelOrder restores it.
+    if (deductStock) {
+      await deductStockForOrder(orderId);
+    }
+
     if (deliveryMethod) {
       await db.insert(deliveryLogs).values({
         orderId,
@@ -612,8 +617,11 @@ export async function quickSell(
     });
 
     const itemLabel = lines.length === 1 ? "1 item" : `${lines.length} items`;
+    const stockNote = deductStock
+      ? " Stock reserved from inventory (restored if cancelled)."
+      : "";
     return actionSuccess(
-      `Order #${orderId} created as Pending — ${itemLabel}, ${formatPhpFromCents(totalAmount)} collected. Complete it from the orders table when ready.`,
+      `Order #${orderId} created as Pending — ${itemLabel}, ${formatPhpFromCents(totalAmount)} collected.${stockNote} Complete it from the orders table when ready.`,
       {
         orderId,
         receipt: {
@@ -687,6 +695,7 @@ export async function createBulkOrder(
         costPrice: products.costPrice,
         retailPrice: products.retailPrice,
         bulkPrice: products.bulkPrice,
+        stockUnit: products.stockUnit,
         kgPerSack: products.kgPerSack,
         unitsPerCase: products.unitsPerCase,
       })
@@ -705,6 +714,7 @@ export async function createBulkOrder(
       unitPrice: number;
       lineTotal: number;
     }> = [];
+    const deductByProduct = new Map<number, number>();
 
     for (let i = 0; i < productIds.length; i++) {
       const id = productIds[i]!;
@@ -729,6 +739,14 @@ export async function createBulkOrder(
         qtyParsed.quantity,
         qtyParsed.quantityTenths,
       );
+      const deductQty = stockDeductQuantity(
+        saleUnit,
+        qtyParsed.quantity,
+        qtyParsed.quantityTenths,
+        prod.kgPerSack,
+        prod.unitsPerCase,
+      );
+      deductByProduct.set(id, (deductByProduct.get(id) ?? 0) + deductQty);
       subtotalCents += lineTotal;
       lines.push({
         productId: id,
@@ -743,6 +761,27 @@ export async function createBulkOrder(
 
     if (lines.length === 0) return actionError("Invalid items.");
 
+    const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
+    const saleBranchName = await getBranchName(saleBranchId);
+    const siblingMap = await loadCatalogSiblingMap([...deductByProduct.keys()]);
+    for (const [productId, neededQty] of deductByProduct) {
+      const p = priceById.get(productId);
+      if (!p) continue;
+      const sourceIds = siblingMap.get(productId) ?? [productId];
+      const onHand = await getMergedBranchStockQuantity(saleBranchId, sourceIds);
+      if (onHand < neededQty) {
+        const stockLabel = formatStockLabel(
+          p.stockUnit as StockUnit,
+          onHand,
+          p.kgPerSack,
+          p.unitsPerCase,
+        );
+        return actionError(
+          `Not enough stock at ${saleBranchName} for ${p.name} (${stockLabel} on hand). Transfer stock to this branch or restock first.`,
+        );
+      }
+    }
+
     const discountInput = parseDiscountFromForm(formData);
     const discountNote =
       String(formData.get("discountNote") ?? "").trim() || null;
@@ -756,8 +795,6 @@ export async function createBulkOrder(
       contact: contactRaw,
       location: locationRaw,
     });
-
-    const saleBranchId = await resolveSaleBranchId(formData.get("branchId"));
 
     const insertedOrder = await db
       .insert(orders)
@@ -778,6 +815,7 @@ export async function createBulkOrder(
         paymentStatus: "30% Deposit",
         deliveryMethod: deliveryMethodRaw.length ? deliveryMethodRaw : null,
         storeType,
+        stockDeducted: false,
         branchId: saleBranchId,
         createdByUserId: session.userId,
         cashierName: session.name ?? session.email,
@@ -801,6 +839,9 @@ export async function createBulkOrder(
         lineTotal: l.lineTotal,
       })),
     );
+
+    // Reserve stock immediately while Pending; cancelOrder restores it.
+    await deductStockForOrder(orderId);
 
     if (deliveryMethodRaw.length) {
       await db.insert(deliveryLogs).values({
@@ -840,7 +881,7 @@ export async function createBulkOrder(
     });
 
     return actionSuccess(
-      `Order #${orderId} created as Pending — ${formatPhpFromCents(deposit)} deposit collected. Complete it from the orders table when ready.`,
+      `Order #${orderId} created as Pending — ${formatPhpFromCents(deposit)} deposit collected. Stock reserved (restored if cancelled). Complete it from the orders table when ready.`,
       {
         orderId,
         receipt: {
