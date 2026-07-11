@@ -1,8 +1,8 @@
 import { cache } from "react";
-import { and, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { branches, orders } from "@/db/schema";
+import { branches, orders, type OrderStatus } from "@/db/schema";
 
 export type BranchPendingRemitRow = {
   branchId: number;
@@ -14,6 +14,18 @@ export type BranchPendingRemitRow = {
   /** All collected money (pending + remitted). */
   cashCollectedCents: number;
   pendingOrderCount: number;
+};
+
+export type PendingRemitOrderRow = {
+  id: number;
+  branchId: number;
+  customerName: string;
+  storeType: string;
+  orderStatus: OrderStatus;
+  amountPaid: number;
+  totalAmount: number;
+  cashierName: string | null;
+  createdAt: Date | null;
 };
 
 /**
@@ -100,4 +112,45 @@ export const getBranchPendingRemittances = cache(async () => {
       } satisfies BranchPendingRemitRow;
     })
     .sort((a, b) => b.pendingRemitCents - a.pendingRemitCents);
+});
+
+/** Open paid orders waiting to be remitted / marked Collected (Completed). */
+export const getPendingRemitOrders = cache(async () => {
+  const rows = await db
+    .select({
+      id: orders.id,
+      branchId: orders.branchId,
+      customerName: orders.customerName,
+      storeType: orders.storeType,
+      orderStatus: orders.orderStatus,
+      amountPaid: orders.amountPaid,
+      totalAmount: orders.totalAmount,
+      cashierName: orders.cashierName,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
+      and(
+        sql`${orders.amountPaid} > 0`,
+        notInArray(orders.orderStatus, ["Cancelled", "Completed"]),
+      ),
+    )
+    .orderBy(asc(orders.branchId), desc(orders.createdAt), desc(orders.id));
+
+  return rows
+    .filter((r) => r.branchId != null && Number(r.branchId) > 0)
+    .map(
+      (r) =>
+        ({
+          id: r.id,
+          branchId: Number(r.branchId),
+          customerName: r.customerName,
+          storeType: r.storeType,
+          orderStatus: r.orderStatus as OrderStatus,
+          amountPaid: r.amountPaid,
+          totalAmount: r.totalAmount,
+          cashierName: r.cashierName,
+          createdAt: r.createdAt,
+        }) satisfies PendingRemitOrderRow,
+    );
 });

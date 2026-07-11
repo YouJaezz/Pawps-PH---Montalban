@@ -9,7 +9,7 @@ import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { getPendingDeliveryCount } from "@/db/queries/delivery-nav";
 import { getDailySalesReport } from "@/db/queries/daily-sales";
-import { getBranchPendingRemittances } from "@/db/queries/branch-remittances";
+import { getBranchPendingRemittances, getPendingRemitOrders } from "@/db/queries/branch-remittances";
 import { getOrdersPageData } from "@/db/queries/orders-board";
 import { phNow, phTodayDateKey, resolvePhDateParams } from "@/lib/ph-time";
 import { getSession } from "@/lib/session";
@@ -43,6 +43,7 @@ export default async function OrdersPage(props: {
     { customerRows, branches, quickSellProducts, boardRows, editableByOrderId },
     dailyReport,
     branchPending,
+    pendingRemitOrders,
     pendingDeliveryCount,
   ] = await Promise.all([
     getOrdersPageData(),
@@ -50,6 +51,7 @@ export default async function OrdersPage(props: {
       ? getDailySalesReport(year, month, day)
       : Promise.resolve(null),
     admin ? getBranchPendingRemittances() : Promise.resolve([]),
+    admin ? getPendingRemitOrders() : Promise.resolve([]),
     admin ? getPendingDeliveryCount() : Promise.resolve(0),
   ]);
 
@@ -111,7 +113,10 @@ export default async function OrdersPage(props: {
         <div className="mt-3 min-h-0 flex-1">
           {admin && branchPending.length ? (
             <div className="mb-3">
-              <BranchPendingRemitPanel rows={branchPending} />
+              <BranchPendingRemitPanel
+                rows={branchPending}
+                pendingOrders={pendingRemitOrders}
+              />
             </div>
           ) : null}
           {activeTab === "delivery" ? (

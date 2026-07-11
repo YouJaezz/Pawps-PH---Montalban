@@ -1082,6 +1082,84 @@ export async function updateOrderStatus(formData: FormData) {
   revalidateSalesPages();
 }
 
+/**
+ * Accountant / admin marks remitted cash as received.
+ * Completes selected open orders that already have collections (amountPaid > 0).
+ * Use when a branch remitted only some orders, or the full batch.
+ */
+export async function markOrdersCollected(formData: FormData): Promise<
+  | { ok: true; completedCount: number; collectedCents: number }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireAdmin();
+
+    const orderIds = formData
+      .getAll("orderId")
+      .map((v) => Number.parseInt(String(v), 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+
+    const uniqueIds = [...new Set(orderIds)];
+    if (uniqueIds.length === 0) {
+      return { ok: false, error: "Select at least one order to mark as collected." };
+    }
+
+    const openOrders = await db
+      .select({
+        id: orders.id,
+        orderStatus: orders.orderStatus,
+        amountPaid: orders.amountPaid,
+      })
+      .from(orders)
+      .where(inArray(orders.id, uniqueIds));
+
+    const eligible = openOrders.filter((o) => {
+      const status = normalizeOrderStatus(o.orderStatus);
+      return (
+        status !== "Cancelled" &&
+        status !== "Completed" &&
+        o.amountPaid > 0
+      );
+    });
+
+    if (eligible.length === 0) {
+      return {
+        ok: false,
+        error: "None of the selected orders are still pending remittance.",
+      };
+    }
+
+    let collectedCents = 0;
+    for (const order of eligible) {
+      await db
+        .update(orders)
+        .set({ orderStatus: "Completed" })
+        .where(eq(orders.id, order.id));
+
+      await db
+        .update(deliveryLogs)
+        .set({ status: "Delivered" })
+        .where(eq(deliveryLogs.orderId, order.id));
+
+      await deductStockForOrder(order.id);
+      collectedCents += order.amountPaid;
+    }
+
+    revalidateSalesPages();
+    return {
+      ok: true,
+      completedCount: eligible.length,
+      collectedCents,
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "Failed to mark orders as collected.";
+    return { ok: false, error: message };
+  }
+}
+
 export async function markOrderPaid(formData: FormData) {
   await requireAdmin();
 
