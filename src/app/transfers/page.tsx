@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { branchStockTransfers, branches, products, type StockUnit, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
+import { formatOrderWhenLong, timestampMsColumn } from "@/lib/order-timestamp";
 import { formatDualStock } from "@/lib/product-stock";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,10 @@ export default async function TransferHistoryPage(props: {
             )
           : undefined,
       )
-      .orderBy(desc(branchStockTransfers.createdAt), desc(branchStockTransfers.id))
+      .orderBy(
+        desc(timestampMsColumn(branchStockTransfers.createdAt)),
+        desc(branchStockTransfers.id),
+      )
       .limit(300),
   ]);
 
@@ -143,7 +147,7 @@ export default async function TransferHistoryPage(props: {
                   rows.map((r) => (
                     <tr key={r.id} className="border-b border-white/5">
                       <td className="px-3 py-2 text-[12px] text-zinc-400">
-                        {r.createdAt ? new Date(r.createdAt).toLocaleString("en-PH") : "—"}
+                        {r.createdAt ? formatOrderWhenLong(r.createdAt) : "—"}
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium text-zinc-100">

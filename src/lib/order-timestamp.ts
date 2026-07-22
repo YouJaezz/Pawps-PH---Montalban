@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type AnyColumn } from "drizzle-orm";
 
 import { orders } from "@/db/schema";
 import { PH_TIMEZONE } from "@/lib/ph-time";
@@ -53,12 +53,17 @@ export function normalizeOrderCreatedAt(
 }
 
 /** SQL expression matching normalizeOrderTimestampMs for ORDER BY / filters. */
-export function orderCreatedMsColumn() {
+export function timestampMsColumn(column: AnyColumn) {
   return sql<number>`CASE
-    WHEN ${orders.createdAt} >= ${ORDER_TIMESTAMP_ABSURD_MS} THEN CAST(${orders.createdAt} / 1000 AS INTEGER)
-    WHEN ${orders.createdAt} > 0 AND ${orders.createdAt} < ${ORDER_TIMESTAMP_MS_THRESHOLD} THEN ${orders.createdAt} * 1000
-    ELSE ${orders.createdAt}
+    WHEN ${column} >= ${ORDER_TIMESTAMP_ABSURD_MS} THEN CAST(${column} / 1000 AS INTEGER)
+    WHEN ${column} > 0 AND ${column} < ${ORDER_TIMESTAMP_MS_THRESHOLD} THEN ${column} * 1000
+    ELSE ${column}
   END`;
+}
+
+/** SQL expression matching normalizeOrderTimestampMs for orders.createdAt. */
+export function orderCreatedMsColumn() {
+  return timestampMsColumn(orders.createdAt);
 }
 
 function formatWithParts(d: Date, includeYear: boolean) {
